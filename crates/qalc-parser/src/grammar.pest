@@ -1,0 +1,76 @@
+// Keywords and comments
+
+WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
+
+BLOCK_COMMENT = _{ "/*" ~ (BLOCK_COMMENT | (!"*/" ~ ANY))* ~ "*/" }
+LINE_COMMENT = _{ ("//" | "#") ~ (!"\n" ~ ANY)* ~ ("\n" | EOI) }
+COMMENT = _{ LINE_COMMENT | BLOCK_COMMENT }
+
+keyword = _{ "if" | "else" | "null" | "let" | "type" | "alias" }
+
+// Identifiers
+
+identifier = @{ !(keyword ~ !ASCII_ALPHANUMERIC) ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
+
+// literals
+
+dec_integer = { ASCII_DIGIT+ }
+hex_integer = { "0x" ~ ASCII_HEX_DIGIT+ }
+bin_integer = { "0b" ~ ("0" | "1")+ }
+
+unknow_integer = @{ hex_integer | bin_integer | dec_integer }
+
+u8_integer = @{ (hex_integer | bin_integer | dec_integer) ~ "u8" }
+u16_integer = @{ (hex_integer | bin_integer | dec_integer) ~ "u16" }
+u32_integer = @{ (hex_integer | bin_integer | dec_integer) ~ "u32" }
+u64_integer = @{ (hex_integer | bin_integer | dec_integer) ~ "u64" }
+i8_integer = @{ (hex_integer | bin_integer | dec_integer) ~ "i8" }
+i16_integer = @{ (hex_integer | bin_integer | dec_integer) ~ "i16" }
+i32_integer = @{ (hex_integer | bin_integer | dec_integer) ~ "i32" }
+i64_integer = @{ (hex_integer | bin_integer | dec_integer) ~ "i64" }
+
+literal = _{ u8_integer | u16_integer | u32_integer | u64_integer | i8_integer | i16_integer | i32_integer | i64_integer | unknow_integer }
+
+// operators
+
+pipe_operator = { "|>" }
+func_application_operator = { "$" }
+
+logic_or_operator = { "||" }
+logic_and_operator = { "&&" }
+
+equal_operator = { "==" }
+not_equal_operator = { "!=" }
+less_equal_operator = { "<=" }
+greater_equal_operator = { ">=" }
+less_operator = { "<" }
+greater_operator = { ">" }
+
+add_operator = { "+" }
+subtract_operator = { "-" }
+
+multiply_operator = { "*" }
+divide_operator = { "/" }
+module_operator = { "%" }
+
+raised_operator = { "**" }
+
+or_operator = { "|" }
+and_operator = { "&" }
+xor_operator = { "^" }
+
+overloadable_operators = _{ logic_or_operator | logic_and_operator | equal_operator | not_equal_operator | less_equal_operator | greater_equal_operator | less_operator | greater_operator | add_operator | subtract_operator | raised_operator | multiply_operator | divide_operator | module_operator | or_operator | and_operator | xor_operator }
+
+binary_operators = _{ pipe_operator | func_application_operator | logic_or_operator | logic_and_operator | equal_operator | not_equal_operator | less_equal_operator | greater_equal_operator | less_operator | greater_operator | add_operator | subtract_operator | raised_operator | multiply_operator | divide_operator | module_operator | or_operator | and_operator | xor_operator }
+
+// expressions
+
+operator_identifier = { "`" ~ overloadable_operators ~ "`" }
+
+partial_operation_left = { "(" ~ binary_operators ~ expression_atom ~ ")" }
+partial_operation_right = { "(" ~ expression_atom ~ binary_operators ~ ")" }
+call_expression = { (operator_identifier | identifier | "(" ~ expression ~ ")") ~ (expression_atom)+ }
+lambda_expression = { "(" ~ (identifier)* ~ ")" ~ "=>" ~ expression }
+expression_atom = _{ partial_operation_right | partial_operation_left | call_expression | "(" ~ expression ~ ")" | identifier | literal }
+
+expression = { expression_atom ~ (binary_operators ~ expression_atom)* }
