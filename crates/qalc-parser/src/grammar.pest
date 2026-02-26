@@ -33,11 +33,15 @@ literal = _{ u8_integer | u16_integer | u32_integer | u64_integer | i8_integer |
 
 // operators
 
+apply_operator = { "$" }
 pipe_operator = { "|>" }
-func_application_operator = { "$" }
 
 logic_or_operator = { "||" }
 logic_and_operator = { "&&" }
+
+or_operator = { "|" }
+and_operator = { "&" }
+xor_operator = { "^" }
 
 equal_operator = { "==" }
 not_equal_operator = { "!=" }
@@ -55,13 +59,9 @@ module_operator = { "%" }
 
 raised_operator = { "**" }
 
-or_operator = { "|" }
-and_operator = { "&" }
-xor_operator = { "^" }
-
 overloadable_operators = _{ logic_or_operator | logic_and_operator | equal_operator | not_equal_operator | less_equal_operator | greater_equal_operator | less_operator | greater_operator | add_operator | subtract_operator | raised_operator | multiply_operator | divide_operator | module_operator | or_operator | and_operator | xor_operator }
 
-binary_operators = _{ pipe_operator | func_application_operator | logic_or_operator | logic_and_operator | equal_operator | not_equal_operator | less_equal_operator | greater_equal_operator | less_operator | greater_operator | add_operator | subtract_operator | raised_operator | multiply_operator | divide_operator | module_operator | or_operator | and_operator | xor_operator }
+binary_operators = _{ pipe_operator | apply_operator | logic_or_operator | logic_and_operator | equal_operator | not_equal_operator | less_equal_operator | greater_equal_operator | less_operator | greater_operator | add_operator | subtract_operator | raised_operator | multiply_operator | divide_operator | module_operator | or_operator | and_operator | xor_operator }
 
 // expressions
 
@@ -69,8 +69,8 @@ operator_identifier = { "`" ~ overloadable_operators ~ "`" }
 
 partial_operation_left = { "(" ~ binary_operators ~ expression_atom ~ ")" }
 partial_operation_right = { "(" ~ expression_atom ~ binary_operators ~ ")" }
-call_expression = { (operator_identifier | identifier | "(" ~ expression ~ ")") ~ (expression_atom)+ }
+call_expression = { (operator_identifier | identifier | "(" ~ expression ~ ")") ~ (lambda_expression | partial_operation_right | partial_operation_left | "(" ~ expression ~ ")" | identifier | literal | operator_identifier)+ }
 lambda_expression = { "(" ~ (identifier)* ~ ")" ~ "=>" ~ expression }
-expression_atom = _{ partial_operation_right | partial_operation_left | call_expression | "(" ~ expression ~ ")" | identifier | literal }
+expression_atom = _{ lambda_expression | partial_operation_right | partial_operation_left | call_expression | "(" ~ expression ~ ")" | identifier | literal | operator_identifier }
 
 expression = { expression_atom ~ (binary_operators ~ expression_atom)* }

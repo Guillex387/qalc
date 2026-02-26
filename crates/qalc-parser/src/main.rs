@@ -1,3 +1,5 @@
+use std::env::args;
+
 use pest::{Parser, iterators::Pairs, pratt_parser::PrattParser};
 use pest_derive::Parser;
 use qalc_ast::base_ast::{Expression, IntegerSuffix};
@@ -14,15 +16,15 @@ lazy_static::lazy_static! {
 
     // Precedence is defined lowest to highest
     PrattParser::new()
+      .op(Op::infix(apply_operator, Right))
       .op(Op::infix(pipe_operator, Left))
-      .op(Op::infix(func_application_operator, Right))
       .op(Op::infix(logic_or_operator, Left))
       .op(Op::infix(logic_and_operator, Left))
+      .op(Op::infix(or_operator, Left) | Op::infix(and_operator, Left) | Op::infix(xor_operator, Left))
       .op(Op::infix(equal_operator, Left) | Op::infix(not_equal_operator, Left) | Op::infix(less_operator, Left) | Op::infix(greater_operator, Left) | Op::infix(less_equal_operator, Left) | Op::infix(greater_equal_operator, Left))
       .op(Op::infix(add_operator, Left) | Op::infix(subtract_operator, Left))
       .op(Op::infix(multiply_operator, Left) | Op::infix(divide_operator, Left) | Op::infix(module_operator, Left))
       .op(Op::infix(raised_operator, Right))
-      .op(Op::infix(or_operator, Left) | Op::infix(and_operator, Left) | Op::infix(xor_operator, Left))
   };
 }
 
@@ -99,7 +101,14 @@ fn parse_expression(pairs: Pairs<Rule>) -> Expression {
         Expression::Identifier(primary.as_str().to_string())
       },
       Rule::operator_identifier => {
-        Expression::Identifier(primary.as_str().to_string())
+        Expression::Identifier(
+          primary
+            .into_inner()
+            .next()
+            .unwrap()
+            .as_str()
+            .to_string()
+        )
       }
       Rule::unknow_integer => {
         Expression::IntegerLiteral {
@@ -118,7 +127,7 @@ fn parse_expression(pairs: Pairs<Rule>) -> Expression {
             params: vec![left]
           }
         },
-        Rule::func_application_operator => {
+        Rule::apply_operator => {
           Expression::CallExpression {
             callee: Box::new(left),
             params: vec![right]
@@ -131,8 +140,8 @@ fn parse_expression(pairs: Pairs<Rule>) -> Expression {
 }
 
 fn main() {
-  let tokens = QalcGrammar::parse(Rule::expression, "to_array $ something 3 $ `+` 2 3").unwrap();
-  let tokens2 = QalcGrammar::parse(Rule::expression, "g 3 4 |> f 4 |> cast_prune").unwrap();
-  println!("{:#?}", parse_expression(tokens));
-  println!("{:#?}", parse_expression(tokens2));
+  let expression_str = args().nth(1).expect("1 argument required");
+  println!("Source code: '{}'", expression_str);
+  let tokens = QalcGrammar::parse(Rule::expression, &expression_str).expect("Parsing error");
+  println!("AST: {:#?}", parse_expression(tokens));
 }
