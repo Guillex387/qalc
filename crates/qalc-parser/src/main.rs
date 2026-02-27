@@ -67,6 +67,18 @@ fn parse_expression(pairs: Pairs<Rule>) -> Expression {
 
         Expression::LetBlock { assigments, value }
       },
+      Rule::if_else_block => {
+        let mut tokens = primary.into_inner();
+        let test = tokens.next().unwrap();
+        let consequent = tokens.next().unwrap();
+        let alternative = tokens.next().unwrap();
+
+        Expression::IfElseBlock {
+          test: Box::new(parse_expression(Pairs::single(test))),
+          consequent: Box::new(parse_expression(Pairs::single(consequent))),
+          alternative: Box::new(parse_expression(Pairs::single(alternative)))
+        }
+      },
       Rule::call_expression => {
         let mut call = primary.into_inner();
         let callee = call.next().unwrap();
