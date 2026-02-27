@@ -1,6 +1,6 @@
 use std::env::args;
 
-use pest::{Parser, iterators::Pairs, pratt_parser::PrattParser};
+use pest::{Parser, iterators::{Pairs}, pratt_parser::PrattParser};
 use pest_derive::Parser;
 use qalc_ast::base_ast::{Expression, IntegerSuffix};
 
@@ -32,6 +32,9 @@ fn parse_binary_expression(left: Expression, operation: Rule, right: Expression)
   let operation = match operation {
     Rule::logic_or_operator => "||",
     Rule::logic_and_operator => "&&",
+    Rule::or_operator => "|",
+    Rule::and_operator => "&",
+    Rule::xor_operator => "^",
     Rule::equal_operator => "==",
     Rule::not_equal_operator => "!=",
     Rule::less_equal_operator => "<=",
@@ -44,9 +47,6 @@ fn parse_binary_expression(left: Expression, operation: Rule, right: Expression)
     Rule::divide_operator => "/",
     Rule::module_operator => "%",
     Rule::raised_operator => "**",
-    Rule::or_operator => "|",
-    Rule::and_operator => "&",
-    Rule::xor_operator => "^",
     rule => unreachable!("Expression::parse expected binary operator, found {:?}", rule)
   }.to_string();
 
@@ -56,6 +56,17 @@ fn parse_binary_expression(left: Expression, operation: Rule, right: Expression)
 fn parse_expression(pairs: Pairs<Rule>) -> Expression {
   PRATT_PARSER
     .map_primary(|primary| match primary.as_rule() {
+      Rule::let_block => {
+        let mut tokens = primary.into_inner();
+        let value = Box::new(parse_expression(
+          Pairs::single(tokens.next_back().unwrap())
+        ));
+        let assigments: Vec<Expression> = tokens.map(|assigment_token| {
+          parse_expression(Pairs::single(assigment_token))
+        }).collect();
+
+        Expression::LetBlock { assigments, value }
+      },
       Rule::call_expression => {
         let mut call = primary.into_inner();
         let callee = call.next().unwrap();
@@ -115,6 +126,15 @@ fn parse_expression(pairs: Pairs<Rule>) -> Expression {
           number: primary.as_str().to_string(),
           suffix: IntegerSuffix::Unknow
         }
+      },
+      Rule::assigment_expression => {
+        let mut tokens = primary.into_inner();
+        let identifier = tokens.next().unwrap().as_str().to_string();
+        let value = Box::new(
+          parse_expression(Pairs::single(tokens.next().unwrap()))
+        );
+
+        Expression::Assigment { identifier, value }
       },
       Rule::expression => parse_expression(primary.into_inner()),
       rule => unreachable!("Expression::parse expected atom, found {:?}", rule)

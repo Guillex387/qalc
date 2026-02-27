@@ -13,8 +13,10 @@ pub enum IntegerSuffix {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expression {
+  LetBlock { assigments: Vec<Expression>, value: Box<Expression> },
   CallExpression { callee: Box<Expression>, params: Vec<Expression> },
   LambdaExpression { params: Vec<String>, body: Box<Expression> },
   Identifier(String),
   IntegerLiteral { number: String, suffix: IntegerSuffix },
+  Assigment { identifier: String, value: Box<Expression> }
 }
