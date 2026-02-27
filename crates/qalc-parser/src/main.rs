@@ -1,6 +1,6 @@
 use std::env::args;
 
-use pest::{Parser, iterators::{Pairs}, pratt_parser::PrattParser};
+use pest::{Parser, iterators::Pairs, pratt_parser::PrattParser};
 use pest_derive::Parser;
 use qalc_ast::base_ast::{Expression, IntegerSuffix};
 
@@ -77,6 +77,35 @@ fn parse_expression(pairs: Pairs<Rule>) -> Expression {
           test: Box::new(parse_expression(Pairs::single(test))),
           consequent: Box::new(parse_expression(Pairs::single(consequent))),
           alternative: Box::new(parse_expression(Pairs::single(alternative)))
+        }
+      },
+      Rule::case_block => {
+        let mut tokens = primary.into_inner();
+        let has_default = tokens.len() % 2 != 0;
+        let default: Option<Box<Expression>> =
+          if has_default {
+            Some(Box::new(
+              parse_expression(Pairs::single(tokens.next_back().unwrap()))
+            ))
+          } else {
+            None
+          };
+        
+        let case_conditions = tokens
+          .clone()
+          .enumerate()
+          .filter(|(index, _)| index % 2 == 0)
+          .map(|(_, tk)| parse_expression(Pairs::single(tk)));
+        let case_values = tokens
+          .enumerate()
+          .filter(|(index, _)| index % 2 != 0)
+          .map(|(_, tk)| parse_expression(Pairs::single(tk)));
+
+        let cases: Vec<(Expression, Expression)> = case_conditions.zip(case_values).collect();
+
+        Expression::CaseBlock {
+          cases,
+          default
         }
       },
       Rule::call_expression => {

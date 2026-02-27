@@ -15,6 +15,7 @@ pub enum IntegerSuffix {
 pub enum Expression {
   LetBlock { assigments: Vec<Expression>, value: Box<Expression> },
   IfElseBlock { test: Box<Expression>, consequent: Box<Expression>, alternative: Box<Expression> },
+  CaseBlock { cases: Vec<(Expression, Expression)>, default: Option<Box<Expression>> },
   CallExpression { callee: Box<Expression>, params: Vec<Expression> },
   LambdaExpression { params: Vec<String>, body: Box<Expression> },
   Identifier(String),

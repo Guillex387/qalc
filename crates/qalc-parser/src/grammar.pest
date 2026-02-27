@@ -6,7 +6,7 @@ BLOCK_COMMENT = _{ "/*" ~ (BLOCK_COMMENT | (!"*/" ~ ANY))* ~ "*/" }
 LINE_COMMENT = _{ ("//" | "#") ~ (!"\n" ~ ANY)* ~ ("\n" | EOI) }
 COMMENT = _{ LINE_COMMENT | BLOCK_COMMENT }
 
-keyword = _{ "if" | "else" | "null" | "let" | "type" | "alias" | "in" | "then" | "match" | "default" }
+keyword = _{ "if" | "else" | "null" | "let" | "type" | "alias" | "in" | "then" | "case" | "default" }
 
 // Identifiers
 
@@ -78,10 +78,10 @@ assigment_expression = { identifier ~ "=" ~ expression }
 
 let_block = { "let" ~ assigment_expression+ ~ "in" ~ expression }
 if_else_block = { "if" ~ expression ~ "then" ~ expression ~ "else" ~ expression }
-match_block = { "match" ~ (expression ~ "->" ~ expression)+ ~ ("default" ~ "->" ~ expression)? }
+case_block = { "case" ~ "{" ~ (expression ~ "->" ~ expression) ~ ("," ~ expression ~ "->" ~ expression)* ~ ("," ~ "default" ~ "->" ~ expression)? ~ "}" }
 perform_block = { "perform" ~ "{" ~ (assigment_expression | expression) ~ "}" }
 
-block_expression = _{ let_block | if_else_block | match_block | perform_block }
+block_expression = _{ let_block | if_else_block | case_block | perform_block }
 
 // Binary expressions
 
