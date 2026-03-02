@@ -79,8 +79,11 @@ fn parse_expression(pairs: Pairs<Rule>) -> Expression {
           alternative: Box::new(parse_expression(Pairs::single(alternative)))
         }
       },
-      Rule::case_block => {
+      Rule::match_block => {
         let mut tokens = primary.into_inner();
+        let value = Box::new(
+          parse_expression(Pairs::single(tokens.next().unwrap()))
+        );
         let has_default = tokens.len() % 2 != 0;
         let default: Option<Box<Expression>> =
           if has_default {
@@ -103,10 +106,33 @@ fn parse_expression(pairs: Pairs<Rule>) -> Expression {
 
         let cases: Vec<(Expression, Expression)> = case_conditions.zip(case_values).collect();
 
-        Expression::CaseBlock {
+        Expression::MatchBlock {
+          value,
           cases,
           default
         }
+      },
+      Rule::perform_block => {
+        let sequence: Vec<Expression> =
+          primary
+          .into_inner()
+          .map(|token| {
+            parse_expression(Pairs::single(token))
+          })
+          .collect();
+
+        Expression::PerformBlock { sequence }
+      },
+      Rule::linear_block => {
+        let expressions: Vec<Expression> =
+          primary
+          .into_inner()
+          .map(|token| {
+            parse_expression(Pairs::single(token))
+          })
+          .collect();
+
+        Expression::LinearBlock { expressions }
       },
       Rule::call_expression => {
         let mut call = primary.into_inner();
