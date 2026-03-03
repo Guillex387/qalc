@@ -1,7 +1,7 @@
 mod atoms;
 
 use pest::{ iterators::{ Pair, Pairs }, pratt_parser::PrattParser };
-use qalc_ast::concrete_ast::{ BinaryOperator, Expression, ExpressionKind, Span };
+use qalc_ast::{ BinaryOperator, Span, concrete_ast::{ Expression, ExpressionKind } };
 
 use crate::{ Rule, expression::atoms::parse_atom_expression };
 

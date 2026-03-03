@@ -1,5 +1,5 @@
 use pest::iterators::{ Pair, Pairs };
-use qalc_ast::concrete_ast::{ Expression, ExpressionKind, NumberSuffix };
+use qalc_ast::{ NumberSuffix, concrete_ast::{ Expression, ExpressionKind } };
 
 use crate::expression::{ parse_binary_operator, parse_expression, parse_expression_pairs };
 use crate::{ Rule, shared::token_to_span };
