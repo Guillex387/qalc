@@ -1,8 +1,8 @@
 use std::env::args;
 
-use pest::{Parser, iterators::Pairs, pratt_parser::PrattParser};
+use pest::{Parser, iterators::{Pair, Pairs}, pratt_parser::PrattParser};
 use pest_derive::Parser;
-use qalc_ast::base_ast::{Expression, IntegerSuffix};
+use qalc_ast::concrete_ast::{BinaryOperator, Expression, ExpressionKind, NumberSuffix, Span};
 
 #[allow(dead_code)]
 #[derive(Parser)]
@@ -28,35 +28,52 @@ lazy_static::lazy_static! {
   };
 }
 
-fn parse_binary_expression(left: Expression, operation: Rule, right: Expression) -> Expression {
-  let operation = match operation {
-    Rule::logic_or_operator => "||",
-    Rule::logic_and_operator => "&&",
-    Rule::or_operator => "|",
-    Rule::and_operator => "&",
-    Rule::xor_operator => "^",
-    Rule::equal_operator => "==",
-    Rule::not_equal_operator => "!=",
-    Rule::less_equal_operator => "<=",
-    Rule::greater_equal_operator => ">=",
-    Rule::less_operator => "<",
-    Rule::greater_operator => ">",
-    Rule::add_operator => "+",
-    Rule::subtract_operator => "-",
-    Rule::multiply_operator => "*",
-    Rule::divide_operator => "/",
-    Rule::module_operator => "%",
-    Rule::raised_operator => "**",
-    rule => unreachable!("Expression::parse expected binary operator, found {:?}", rule)
-  }.to_string();
+fn token_to_span(pair: &Pair<Rule>) -> Span {
+  let pest_span = pair.as_span();
+  Span::new(pest_span.start(), pest_span.end())
+}
 
-  Expression::CallExpression { callee: Box::new(Expression::Identifier(operation)), params: vec![left, right] }
+fn parse_binary_operator(operator: Pair<Rule>) -> BinaryOperator {
+  match operator.as_rule() {
+    Rule::apply_operator => BinaryOperator::Apply,
+    Rule::pipe_operator => BinaryOperator::Pipe,
+    Rule::logic_or_operator => BinaryOperator::LogicOr,
+    Rule::logic_and_operator => BinaryOperator::LogicAnd,
+    Rule::or_operator => BinaryOperator::Or,
+    Rule::and_operator => BinaryOperator::And,
+    Rule::xor_operator => BinaryOperator::Xor,
+    Rule::equal_operator => BinaryOperator::Equal,
+    Rule::not_equal_operator => BinaryOperator::NotEqual,
+    Rule::less_equal_operator => BinaryOperator::LessEqual,
+    Rule::greater_equal_operator => BinaryOperator::GreaterEqual,
+    Rule::less_operator => BinaryOperator::Less,
+    Rule::greater_operator => BinaryOperator::Greater,
+    Rule::add_operator => BinaryOperator::Add,
+    Rule::subtract_operator => BinaryOperator::Subtract,
+    Rule::multiply_operator => BinaryOperator::Multiply,
+    Rule::divide_operator => BinaryOperator::Divide,
+    Rule::module_operator => BinaryOperator::Module,
+    Rule::raised_operator => BinaryOperator::Raised,
+    rule => unreachable!("Expression::parse expected binary operator, found {:?}", rule)
+  }
+}
+
+fn parse_binary_expression(left: Expression, operator: Pair<Rule>, right: Expression) -> Expression {
+  Expression {
+    span: Span::new(left.span.start, right.span.end),
+    kind: ExpressionKind::Binary {
+      left: Box::new(left),
+      operator: parse_binary_operator(operator),
+      right: Box::new(right)
+    }
+  }
 }
 
 fn parse_expression(pairs: Pairs<Rule>) -> Expression {
   PRATT_PARSER
     .map_primary(|primary| match primary.as_rule() {
       Rule::let_block => {
+        let span = token_to_span(&primary);
         let mut tokens = primary.into_inner();
         let value = Box::new(parse_expression(
           Pairs::single(tokens.next_back().unwrap())
@@ -65,21 +82,31 @@ fn parse_expression(pairs: Pairs<Rule>) -> Expression {
           parse_expression(Pairs::single(assigment_token))
         }).collect();
 
-        Expression::LetBlock { assigments, value }
+        Expression {
+          span,
+          kind: ExpressionKind::LetBlock { assigments, value }
+        }
       },
       Rule::if_else_block => {
+        let span = token_to_span(&primary);
         let mut tokens = primary.into_inner();
-        let test = tokens.next().unwrap();
-        let consequent = tokens.next().unwrap();
-        let alternative = tokens.next().unwrap();
+        let test = Box::new(
+          parse_expression(Pairs::single(tokens.next().unwrap()))
+        );
+        let consequent = Box::new(
+          parse_expression(Pairs::single(tokens.next().unwrap()))
+        );
+        let alternative = Box::new(
+          parse_expression(Pairs::single(tokens.next().unwrap()))
+        );
 
-        Expression::IfElseBlock {
-          test: Box::new(parse_expression(Pairs::single(test))),
-          consequent: Box::new(parse_expression(Pairs::single(consequent))),
-          alternative: Box::new(parse_expression(Pairs::single(alternative)))
+        Expression {
+          span,
+          kind: ExpressionKind::IfElseBlock { test, consequent, alternative }
         }
       },
       Rule::match_block => {
+        let span = token_to_span(&primary);
         let mut tokens = primary.into_inner();
         let value = Box::new(
           parse_expression(Pairs::single(tokens.next().unwrap()))
@@ -106,13 +133,17 @@ fn parse_expression(pairs: Pairs<Rule>) -> Expression {
 
         let cases: Vec<(Expression, Expression)> = case_conditions.zip(case_values).collect();
 
-        Expression::MatchBlock {
-          value,
-          cases,
-          default
+        Expression {
+          span,
+          kind: ExpressionKind::MatchBlock {
+            value,
+            cases,
+            default
+          }
         }
       },
       Rule::perform_block => {
+        let span = token_to_span(&primary);
         let sequence: Vec<Expression> =
           primary
           .into_inner()
@@ -121,9 +152,13 @@ fn parse_expression(pairs: Pairs<Rule>) -> Expression {
           })
           .collect();
 
-        Expression::PerformBlock { sequence }
+        Expression {
+          span,
+          kind: ExpressionKind::PerformBlock { sequence }
+        }
       },
       Rule::linear_block => {
+        let span = token_to_span(&primary);
         let expressions: Vec<Expression> =
           primary
           .into_inner()
@@ -132,54 +167,71 @@ fn parse_expression(pairs: Pairs<Rule>) -> Expression {
           })
           .collect();
 
-        Expression::LinearBlock { expressions }
+        Expression {
+          span,
+          kind: ExpressionKind::LinearBlock { expressions }
+        }
       },
       Rule::call_expression => {
+        let span = token_to_span(&primary);
         let mut call = primary.into_inner();
-        let callee = call.next().unwrap();
+        let callee = Box::new(
+          parse_expression(Pairs::single(call.next().unwrap()))
+        );
+        let params: Vec<Expression> = call.map(|expr| parse_expression(Pairs::single(expr))).collect();
 
-        Expression::CallExpression {
-          callee: Box::new(parse_expression(Pairs::single(callee))),
-          params: call.map(|expr| parse_expression(Pairs::single(expr))).collect()
+        Expression {
+          span,
+          kind: ExpressionKind::Call {
+            callee,
+            params
+          }
         }
       },
       Rule::lambda_expression => {
+        let span = token_to_span(&primary);
         let mut tokens = primary.into_inner();
-        let body = tokens.next_back().unwrap();
+        let body = Box::new(parse_expression(Pairs::single(tokens.next_back().unwrap())));
+        let params: Vec<String> = tokens.map(|identifier| identifier.as_str().to_string()).collect();
 
-        Expression::LambdaExpression {
-          params: tokens.map(|identifier| identifier.as_str().to_string()).collect(),
-          body: Box::new(parse_expression(Pairs::single(body)))
+
+        Expression {
+          span,
+          kind: ExpressionKind::Lambda {
+            params,
+            body
+          }
         }
       },
       Rule::partial_operation_left => {
+        let span = token_to_span(&primary);
         let mut tokens = primary.into_inner();
-        let operator = tokens.next().unwrap().as_str().to_string();
-        let right = tokens.next().unwrap();
+        let operator = parse_binary_operator(tokens.next().unwrap());
+        let right = Box::new(parse_expression(Pairs::single(tokens.next().unwrap())));
 
-        Expression::LambdaExpression {
-          params: vec!["a".to_string()],
-          body: Box::new(Expression::CallExpression {
-            callee: Box::new(Expression::Identifier(operator)),
-            params: vec![Expression::Identifier("a".to_string()), parse_expression(Pairs::single(right))]
-          })
+        Expression {
+          span,
+          kind: ExpressionKind::PartialLeftBinary { operator, right }
         }
       },
       Rule::partial_operation_right => {
+        let span = token_to_span(&primary);
         let mut tokens = primary.into_inner();
-        let left = tokens.next().unwrap();
-        let operator = tokens.next().unwrap().as_str().to_string();
+        let left = Box::new(parse_expression(Pairs::single(tokens.next().unwrap())));
+        let operator = parse_binary_operator(tokens.next().unwrap());
 
-        Expression::CallExpression {
-          callee: Box::new(Expression::Identifier(operator.to_string())),
-          params: vec![parse_expression(Pairs::single(left))]
+        Expression {
+          span,
+          kind: ExpressionKind::PartialRightBinary { left, operator }
         }
       },
-      Rule::identifier => {
-        Expression::Identifier(primary.as_str().to_string())
+      Rule::identifier => Expression {
+        span: token_to_span(&primary),
+        kind: ExpressionKind::Identifier(primary.as_str().to_string())
       },
-      Rule::operator_identifier => {
-        Expression::Identifier(
+      Rule::operator_identifier => Expression {
+        span: token_to_span(&primary),
+        kind: ExpressionKind::Identifier(
           primary
             .into_inner()
             .next()
@@ -187,42 +239,31 @@ fn parse_expression(pairs: Pairs<Rule>) -> Expression {
             .as_str()
             .to_string()
         )
-      }
-      Rule::unknow_integer => {
-        Expression::IntegerLiteral {
+      },
+      Rule::unknow_integer => Expression {
+        span: token_to_span(&primary),
+        kind: ExpressionKind::NumberLiteral {
           number: primary.as_str().to_string(),
-          suffix: IntegerSuffix::Unknow
+          suffix: NumberSuffix::Unknow
         }
       },
       Rule::assigment_expression => {
+        let span = token_to_span(&primary);
         let mut tokens = primary.into_inner();
         let identifier = tokens.next().unwrap().as_str().to_string();
         let value = Box::new(
           parse_expression(Pairs::single(tokens.next().unwrap()))
         );
 
-        Expression::Assigment { identifier, value }
+        Expression {
+          span,
+          kind: ExpressionKind::Assigment { identifier, value } 
+        }
       },
       Rule::expression => parse_expression(primary.into_inner()),
       rule => unreachable!("Expression::parse expected atom, found {:?}", rule)
     })
-    .map_infix(|left, operation, right| {
-      match operation.as_rule() {
-        Rule::pipe_operator => {
-          Expression::CallExpression {
-            callee: Box::new(right),
-            params: vec![left]
-          }
-        },
-        Rule::apply_operator => {
-          Expression::CallExpression {
-            callee: Box::new(left),
-            params: vec![right]
-          }
-        },
-        _ => parse_binary_expression(left, operation.as_rule(), right)
-      }
-    })
+    .map_infix(|left, operator, right| parse_binary_expression(left, operator, right))
     .parse(pairs)
 }
 
