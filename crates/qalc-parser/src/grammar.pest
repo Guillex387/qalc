@@ -70,7 +70,7 @@ operator_identifier = { "`" ~ overloadable_operators ~ "`" }
 partial_operation_left = { "(" ~ binary_operators ~ expression_atom ~ ")" }
 partial_operation_right = { "(" ~ expression_atom ~ binary_operators ~ ")" }
 call_expression = { (operator_identifier | identifier | "(" ~ expression ~ ")") ~ (lambda_expression | partial_operation_right | partial_operation_left | "(" ~ expression ~ ")" | identifier | literal | operator_identifier)+ }
-lambda_expression = { "(" ~ (identifier)* ~ ")" ~ "=>" ~ expression }
+lambda_expression = { "(" ~ identifier* ~ ")" ~ "=>" ~ expression }
 
 // Block expressions
 
@@ -88,3 +88,25 @@ block_expression = _{ let_block | if_else_block | match_block | perform_block | 
 
 expression_atom = _{ block_expression | lambda_expression | partial_operation_right | partial_operation_left | call_expression | "(" ~ expression ~ ")" | identifier | literal | operator_identifier }
 expression = { expression_atom ~ (binary_operators ~ expression_atom)* }
+
+// Type
+
+type_inner = { "(" ~ type ~ ")" }
+type_slice = { "["~ type ~"]" }
+type_tuple = { "(" ~ type ~ ("," ~ type)+ ~ ")" | "(" ~ ")" }
+type_atom = _{ identifier | type_slice | type_tuple | type_inner }
+
+type = { type_atom ~ ("->" ~ type_atom)* }
+
+// Declarations
+
+type_function_annotation = { identifier ~ "::" ~ type }
+
+type_declaration = { "type" ~ identifier ~ "{" ~ type_function_annotation+ ~ "}" }
+function_declaration = { type_function_annotation ~ identifier+ ~ "=" ~ expression }
+
+statements = _{ type_declaration | function_declaration }
+
+// Entry grammar production
+
+program = { SOI ~ statements* ~ EOI }
