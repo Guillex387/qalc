@@ -76,7 +76,7 @@ lambda_expression = { "(" ~ identifier* ~ ")" ~ "=>" ~ expression }
 
 assigment_expression = { identifier ~ "=" ~ expression }
 
-let_block = { "let" ~ assigment_expression+ ~ "in" ~ expression }
+let_block = { "let" ~ assigment_expression ~ ("," ~ assigment_expression)* ~ "in" ~ expression }
 if_else_block = { "if" ~ expression ~ "then" ~ expression ~ "else" ~ expression }
 match_block = { "match" ~ expression ~ "{" ~ (expression ~ "->" ~ expression) ~ ("," ~ expression ~ "->" ~ expression)* ~ ("," ~ "default" ~ "->" ~ expression)? ~ "}" }
 perform_block = { "perform" ~ "{" ~ (assigment_expression | expression) ~ ("," ~ (assigment_expression | expression))* ~ "}" }
