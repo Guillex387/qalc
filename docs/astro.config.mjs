@@ -4,6 +4,8 @@ import starlight from "@astrojs/starlight";
 
 // https://astro.build/config
 export default defineConfig({
+  site: "https://guillex.github.io",
+  base: "/qalc",
   integrations: [
     starlight({
       title: "qalc docs",
