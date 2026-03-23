@@ -1,26 +1,31 @@
 // @ts-check
-import { defineConfig } from 'astro/config';
-import starlight from '@astrojs/starlight';
+import { defineConfig } from "astro/config";
+import starlight from "@astrojs/starlight";
 
 // https://astro.build/config
 export default defineConfig({
-	integrations: [
-		starlight({
-			title: 'My Docs',
-			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/withastro/starlight' }],
-			sidebar: [
-				{
-					label: 'Guides',
-					items: [
-						// Each item here is one entry in the navigation menu.
-						{ label: 'Example Guide', slug: 'guides/example' },
-					],
-				},
-				{
-					label: 'Reference',
-					autogenerate: { directory: 'reference' },
-				},
-			],
-		}),
-	],
+  integrations: [
+    starlight({
+      title: "qalc docs",
+      social: [{ icon: "github", label: "GitHub", href: "https://github.com/guillex/qalc" }],
+      sidebar: [
+        {
+          label: "Introduction",
+          items: [
+            { label: "What is qalc", slug: "introduction/what-is-qalc" },
+            { label: "Functional paradigm", slug: "introduction/functional-paradigm" },
+          ],
+        },
+        {
+          label: "Language",
+          items: [
+            { label: "Basic syntax", slug: "language/basic-syntax" },
+            { label: "Function definitions", slug: "language/function-definitions" },
+            { label: "Currying", slug: "language/currying" },
+            { label: "Function overloading", slug: "language/function-overloading" },
+          ],
+        },
+      ],
+    }),
+  ],
 });
