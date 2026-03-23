@@ -34,26 +34,45 @@ per overload (a static vtable or name mangling).
 User code:
 
 ```qalc
-sum :: Int -> Int -> Int
+sum :: i32 -> i32 -> i32
 sum x y = x + y
 
-sum :: Qubit -> Qubit -> QOp
-sum a b = applyQuantumAdd a b
+sum :: (Qu8, Qu8) -> (Qu8, Qu8, Qu8)
+sum (a, b) = someQaddCircuit (a, b)
 ```
 
 Internal names:
 
 ```qalc
-sum_Int
-sum_Qubit
+sum_i32
+sum_Qu8
 ```
 
 When the code says `sum x`, the compiler checks the type of `x`:
 
-1. If `x` is `Int`, it substitutes `sum` with `sum_Int`.
-2. Currying continues normally because the function type is now unambiguous.
+1. If `x` is `i32`, it substitutes `sum` with `sum_i32`.
+2. If `x` is `Qu8`, it substitutes `sum` with `sum_Qu8`.
+3. Currying continues normally because the function type is now unambiguous.
 
 ## Ambiguity errors
 
 If two overloads match the same argument types, the compiler reports an
 ambiguity error and shows the conflicting signatures.
+
+## Overloading operators
+
+Overloaded operators follow the same rules, using their operator names as the
+symbol key.
+
+```qalc
+`+` :: i32 -> i32 -> i32
+`+` x y = addI32 x y
+
+`+` :: (Qu8, Qu8) -> (Qu8, Qu8, Qu8)
+`+` (a, b) = someQaddCircuit (a, b)
+```
+
+## Notes on quantum boolean results
+
+When an overload returns a quantum boolean (for example, `Qbool`), it should be
+treated as a quantum value that is not measured unless explicitly requested.
