@@ -2,7 +2,7 @@ name: Deploy docs
 
 on:
   push:
-    branches: [docs]
+    branches: [master]
     paths:
       - "docs/**"
   workflow_dispatch:
@@ -21,17 +21,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v2
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 25
           cache: pnpm
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
       - name: Install dependencies
         run: cd docs && pnpm install
       - name: Build docs
         run: cd docs && pnpm build
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v2
+        uses: actions/upload-pages-artifact@v3
         with:
           path: docs/dist
 
@@ -44,4 +46,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v4
