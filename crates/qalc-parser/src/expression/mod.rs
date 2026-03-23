@@ -1,4 +1,5 @@
 mod atoms;
+mod numbers;
 
 use pest::{ iterators::{ Pair, Pairs }, pratt_parser::PrattParser };
 use qalc_ast::{ BinaryOperator, Span, concrete_ast::{ Expression, ExpressionKind } };

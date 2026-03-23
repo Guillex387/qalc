@@ -1,7 +1,12 @@
 use pest::iterators::{ Pair, Pairs };
-use qalc_ast::{ NumberSuffix, concrete_ast::{ Expression, ExpressionKind } };
+use qalc_ast::concrete_ast::{ Expression, ExpressionKind };
 
-use crate::expression::{ parse_binary_operator, parse_expression, parse_expression_pairs };
+use crate::expression::{
+  numbers::parse_number_literal,
+  parse_binary_operator,
+  parse_expression,
+  parse_expression_pairs,
+};
 use crate::{ Rule, shared::token_to_span };
 
 fn consume_expression(tokens: &mut Pairs<Rule>) -> Box<Expression> {
@@ -108,11 +113,7 @@ pub fn parse_atom_expression(primary: Pair<Rule>) -> Expression {
     Rule::partial_operation_right => parse_partial_op_right(tokens),
     Rule::assigment_expression => parse_assigment(tokens),
     Rule::expression => parse_expression_pairs(tokens).kind,
-    Rule::unknow_integer =>
-      ExpressionKind::NumberLiteral {
-        number: primary.as_str().to_string(),
-        suffix: NumberSuffix::Unknow,
-      },
+    | Rule::unknow_integer
     | Rule::i8_integer
     | Rule::i16_integer
     | Rule::i32_integer
@@ -120,7 +121,7 @@ pub fn parse_atom_expression(primary: Pair<Rule>) -> Expression {
     | Rule::u8_integer
     | Rule::u16_integer
     | Rule::u32_integer
-    | Rule::u64_integer => todo!("Numbers not implemented yet"),
+    | Rule::u64_integer => parse_number_literal(primary),
     Rule::identifier => ExpressionKind::Identifier(primary.as_str().to_string()),
     Rule::operator_identifier => ExpressionKind::Identifier(tokens.next().unwrap().as_str().to_string()),
     rule => unreachable!("Expected atom expression found {:?}", rule),
