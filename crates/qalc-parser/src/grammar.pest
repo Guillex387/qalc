@@ -6,11 +6,11 @@ BLOCK_COMMENT = _{ "/*" ~ (BLOCK_COMMENT | (!"*/" ~ ANY))* ~ "*/" }
 LINE_COMMENT = _{ ("//" | "#") ~ (!"\n" ~ ANY)* ~ ("\n" | EOI) }
 COMMENT = _{ LINE_COMMENT | BLOCK_COMMENT }
 
-keyword = _{ "if" | "else" | "null" | "let" | "type" | "alias" | "in" | "then" | "match" | "default" | "perform" | "linear" }
+keyword = _{ "if" | "else" | "null" | "let" | "type" | "alias" | "in" | "then" | "match" | "default" | "perform" | "linear" | "where" }
 
 // Identifiers
 
-identifier = @{ !(keyword ~ !ASCII_ALPHANUMERIC) ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
+simple_identifier = @{ !(keyword ~ !ASCII_ALPHANUMERIC) ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
 
 // Literals
 
@@ -66,15 +66,16 @@ binary_operators = _{ pipe_operator | apply_operator | logic_or_operator | logic
 // Atom expressions
 
 operator_identifier = { "`" ~ overloadable_operators ~ "`" }
+identifier = _{ simple_identifier | operator_identifier }
 
 partial_operation_left = { "(" ~ binary_operators ~ expression_atom ~ ")" }
 partial_operation_right = { "(" ~ expression_atom ~ binary_operators ~ ")" }
-call_expression = { (operator_identifier | identifier | "(" ~ expression ~ ")") ~ (lambda_expression | partial_operation_right | partial_operation_left | "(" ~ expression ~ ")" | identifier | literal | operator_identifier)+ }
+call_expression = { (identifier | "(" ~ expression ~ ")") ~ (lambda_expression | partial_operation_right | partial_operation_left | "(" ~ expression ~ ")" | identifier | literal)+ }
 lambda_expression = { "(" ~ identifier* ~ ")" ~ "=>" ~ expression }
 
 // Block expressions
 
-assigment_expression = { identifier ~ "=" ~ expression }
+assigment_expression = { simple_identifier ~ "=" ~ expression }
 
 let_block = { "let" ~ assigment_expression ~ ("," ~ assigment_expression)* ~ "in" ~ expression }
 if_else_block = { "if" ~ expression ~ "then" ~ expression ~ "else" ~ expression }
@@ -86,7 +87,7 @@ block_expression = _{ let_block | if_else_block | match_block | perform_block | 
 
 // Binary expressions
 
-expression_atom = _{ block_expression | lambda_expression | partial_operation_right | partial_operation_left | call_expression | "(" ~ expression ~ ")" | identifier | literal | operator_identifier }
+expression_atom = _{ block_expression | lambda_expression | partial_operation_right | partial_operation_left | call_expression | "(" ~ expression ~ ")" | identifier | literal }
 expression = { expression_atom ~ (binary_operators ~ expression_atom)* }
 
 // Type
@@ -94,7 +95,7 @@ expression = { expression_atom ~ (binary_operators ~ expression_atom)* }
 type_inner = { "(" ~ type ~ ")" }
 type_slice = { "["~ type ~"]" }
 type_tuple = { "(" ~ type ~ ("," ~ type)+ ~ ")" | "(" ~ ")" }
-type_atom = _{ identifier | type_slice | type_tuple | type_inner }
+type_atom = _{ simple_identifier | type_slice | type_tuple | type_inner }
 
 type = { type_atom ~ ("->" ~ type_atom)* }
 
@@ -102,11 +103,13 @@ type = { type_atom ~ ("->" ~ type_atom)* }
 
 type_function_annotation = { identifier ~ "::" ~ type }
 
-type_declaration = { "type" ~ identifier ~ "{" ~ type_function_annotation+ ~ "}" }
-function_declaration = { type_function_annotation ~ identifier+ ~ "=" ~ expression }
+type_restriction = { "linear" }
 
-statements = _{ type_declaration | function_declaration }
+type_declaration = { "type" ~ simple_identifier ~ "{" ~ type_function_annotation+ ~ "}" ~ ("where" ~ type_restriction ~ ("," ~ type_restriction)*)?  }
+function_declaration = { type_function_annotation ~ identifier ~ simple_identifier* ~ "=" ~ expression }
+
+declarations = _{ type_declaration | function_declaration }
 
 // Entry grammar production
 
-program = { SOI ~ statements* ~ EOI }
+program = { SOI ~ declarations* ~ EOI }

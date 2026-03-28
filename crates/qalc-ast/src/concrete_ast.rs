@@ -1,8 +1,25 @@
 use crate::{ BinaryOperator, NumberSuffix, Span };
 
 #[derive(Debug, Clone)]
+pub struct ConcreteAST {
+  pub declarations: Vec<Declaration>,
+}
+
+#[derive(Debug, Clone)]
 pub struct Expression {
   pub kind: ExpressionKind,
+  pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct TypeExpression {
+  pub kind: TypeExpressionKind,
+  pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct Declaration {
+  pub kind: DeclarationKind,
   pub span: Span,
 }
 
@@ -57,5 +74,31 @@ pub enum ExpressionKind {
   Assigment {
     identifier: String,
     value: Box<Expression>,
+  },
+}
+
+#[derive(Debug, Clone)]
+pub enum TypeExpressionKind {
+  Identifier(String),
+  Slice(Box<TypeExpression>),
+  Tuple(Vec<TypeExpression>),
+  Transform {
+    input_type: Box<TypeExpression>,
+    output_type: Box<TypeExpression>,
+  },
+}
+
+#[derive(Debug, Clone)]
+pub enum DeclarationKind {
+  Type {
+    identifier: String,
+    attributes: Vec<(String, TypeExpression)>,
+    linear: bool,
+  },
+  Function {
+    identifier: String,
+    type_annotation: TypeExpression,
+    params: Vec<String>,
+    body: Expression,
   },
 }
