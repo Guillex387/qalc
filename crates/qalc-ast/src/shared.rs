@@ -12,6 +12,13 @@ pub enum NumberSuffix {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FloatSuffix {
+  F32,
+  F64,
+  Unknow,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BinaryOperator {
   Apply,
   Pipe,

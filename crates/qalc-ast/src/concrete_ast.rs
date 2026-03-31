@@ -1,4 +1,4 @@
-use crate::{ BinaryOperator, NumberSuffix, Span };
+use crate::{ BinaryOperator, FloatSuffix, NumberSuffix, Span };
 
 #[derive(Debug, Clone)]
 pub struct ConcreteAST {
@@ -67,9 +67,13 @@ pub enum ExpressionKind {
     body: Box<Expression>,
   },
   Identifier(String),
-  NumberLiteral {
-    number: String,
+  IntegerLiteral {
+    number: i128,
     suffix: NumberSuffix,
+  },
+  FloatLiteral {
+    number: f64,
+    suffix: FloatSuffix,
   },
   Assigment {
     identifier: String,

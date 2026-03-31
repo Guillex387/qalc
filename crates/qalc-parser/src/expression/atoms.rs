@@ -121,7 +121,10 @@ pub fn parse_atom_expression(primary: Pair<Rule>) -> Expression {
     | Rule::u8_integer
     | Rule::u16_integer
     | Rule::u32_integer
-    | Rule::u64_integer => parse_number_literal(primary),
+    | Rule::u64_integer
+    | Rule::unknow_float
+    | Rule::f32_float
+    | Rule::f64_float => parse_number_literal(primary),
     Rule::simple_identifier => ExpressionKind::Identifier(primary.as_str().to_string()),
     Rule::operator_identifier => ExpressionKind::Identifier(tokens.next().unwrap().as_str().to_string()),
     rule => unreachable!("Expected atom expression found {:?}", rule),

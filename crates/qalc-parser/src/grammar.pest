@@ -29,7 +29,16 @@ i16_integer = @{ (hex_integer | bin_integer | dec_integer) ~ "i16" }
 i32_integer = @{ (hex_integer | bin_integer | dec_integer) ~ "i32" }
 i64_integer = @{ (hex_integer | bin_integer | dec_integer) ~ "i64" }
 
-literal = _{ u8_integer | u16_integer | u32_integer | u64_integer | i8_integer | i16_integer | i32_integer | i64_integer | unknow_integer }
+float_exponent = { ("e" | "E") ~ ("+" | "-")? ~ ASCII_DIGIT+ }
+float_decimal = { ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
+float_leading = { "." ~ ASCII_DIGIT+ }
+float_number = { float_decimal ~ float_exponent? | float_leading ~ float_exponent? | ASCII_DIGIT+ ~ float_exponent }
+
+unknow_float = @{ float_number }
+f32_float = @{ (float_number | ASCII_DIGIT+) ~ "f32" }
+f64_float = @{ (float_number | ASCII_DIGIT+) ~ "f64" }
+
+literal = _{ f32_float | f64_float | unknow_float | u8_integer | u16_integer | u32_integer | u64_integer | i8_integer | i16_integer | i32_integer | i64_integer | unknow_integer }
 
 // Operators
 
