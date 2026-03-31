@@ -80,6 +80,10 @@ pub enum ExpressionKind {
 #[derive(Debug, Clone)]
 pub enum TypeExpressionKind {
   Identifier(String),
+  IdentifierWithParams {
+    identifier: String,
+    params: Vec<TypeExpression>,
+  },
   Slice(Box<TypeExpression>),
   Tuple(Vec<TypeExpression>),
   Transform {
