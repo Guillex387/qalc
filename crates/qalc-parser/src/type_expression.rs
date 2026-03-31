@@ -1,10 +1,10 @@
 use pest::iterators::Pair;
 use qalc_ast::{ Span, concrete_ast::{ TypeExpression, TypeExpressionKind } };
 
-use crate::{ Rule, shared::token_to_span };
+use crate::{ Rule, shared::{ token_to_span, token_to_string } };
 
 fn parse_type_identifier(token: Pair<Rule>) -> TypeExpressionKind {
-  TypeExpressionKind::Identifier(token.as_str().to_owned())
+  TypeExpressionKind::Identifier(token_to_string(token))
 }
 
 fn parse_type_slice(token: Pair<Rule>) -> TypeExpressionKind {

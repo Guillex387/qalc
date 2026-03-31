@@ -95,7 +95,7 @@ expression = { expression_atom ~ (binary_operators ~ expression_atom)* }
 type_inner = { "(" ~ type ~ ")" }
 type_slice = { "["~ type ~"]" }
 type_tuple = { "(" ~ type ~ ("," ~ type)+ ~ ")" | "(" ~ ")" }
-type_with_params = { simple_identifier ~ type_atom+ } 
+type_with_params = { simple_identifier ~ "<" ~ type_atom+ ~ ">" } 
 type_atom = _{ type_with_params | simple_identifier | type_slice | type_tuple | type_inner }
 
 type = { type_atom ~ ("->" ~ type_atom)* }
