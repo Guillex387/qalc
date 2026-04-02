@@ -1,5 +1,5 @@
 use pest::iterators::Pair;
-use qalc_ast::{ FloatSuffix, NumberSuffix, concrete_ast::ExpressionKind };
+use qalc_ast::concrete_ast::{ ExpressionKind, FloatSuffix, NumberSuffix };
 
 use crate::Rule;
 
@@ -52,7 +52,9 @@ fn parse_float_value(text: &str, suffix: FloatSuffix) -> f64 {
         .map(|value| value as f64)
         .unwrap_or_else(|_| panic!("Invalid f32 literal: {}", text)),
     FloatSuffix::F64 | FloatSuffix::Unknow =>
-      normalized.parse::<f64>().unwrap_or_else(|_| panic!("Invalid f64 literal: {}", text)),
+      normalized
+        .parse::<f64>()
+        .unwrap_or_else(|_| panic!("Invalid f64 literal: {}", text)),
   }
 }
 

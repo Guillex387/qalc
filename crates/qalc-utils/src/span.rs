@@ -19,7 +19,7 @@ impl Span {
   }
 
   pub fn to_ariadne_source(&self) -> (&str, Source) {
-    let source_code = fs::read_to_string(&self.filename).unwrap();
+    let source_code = fs::read_to_string(&self.filename).unwrap() + " ";
 
     (&self.filename, Source::from(source_code))
   }

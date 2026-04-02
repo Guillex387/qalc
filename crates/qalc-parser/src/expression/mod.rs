@@ -2,7 +2,8 @@ mod atoms;
 mod numbers;
 
 use pest::{ iterators::{ Pair, Pairs }, pratt_parser::PrattParser };
-use qalc_ast::{ BinaryOperator, Span, concrete_ast::{ Expression, ExpressionKind } };
+use qalc_ast::concrete_ast::{ Expression, ExpressionKind, BinaryOperator };
+use qalc_utils::Span;
 
 use crate::{ Rule, expression::atoms::parse_atom_expression };
 
@@ -17,7 +18,11 @@ lazy_static::lazy_static! {
       .op(Op::infix(pipe_operator, Left))
       .op(Op::infix(logic_or_operator, Left))
       .op(Op::infix(logic_and_operator, Left))
-      .op(Op::infix(or_operator, Left) | Op::infix(and_operator, Left) | Op::infix(xor_operator, Left))
+      .op(
+        Op::infix(or_operator, Left) |
+          Op::infix(and_operator, Left) |
+          Op::infix(xor_operator, Left)
+      )
       .op(
         Op::infix(equal_operator, Left) |
           Op::infix(not_equal_operator, Left) |
@@ -27,7 +32,11 @@ lazy_static::lazy_static! {
           Op::infix(greater_equal_operator, Left)
       )
       .op(Op::infix(add_operator, Left) | Op::infix(subtract_operator, Left))
-      .op(Op::infix(multiply_operator, Left) | Op::infix(divide_operator, Left) | Op::infix(module_operator, Left))
+      .op(
+        Op::infix(multiply_operator, Left) |
+          Op::infix(divide_operator, Left) |
+          Op::infix(module_operator, Left)
+      )
       .op(Op::infix(raised_operator, Right))
   };
 }
@@ -57,9 +66,14 @@ fn parse_binary_operator(operator: Pair<Rule>) -> BinaryOperator {
   }
 }
 
-fn parse_binary_expression(left: Expression, operator: Pair<Rule>, right: Expression) -> Expression {
+fn parse_binary_expression(
+  filename: &str,
+  left: Expression,
+  operator: Pair<Rule>,
+  right: Expression
+) -> Expression {
   Expression {
-    span: Span::new(left.span.start, right.span.end),
+    span: Span::new(filename, left.span.start, right.span.end),
     kind: ExpressionKind::Binary {
       left: Box::new(left),
       operator: parse_binary_operator(operator),
@@ -68,10 +82,14 @@ fn parse_binary_expression(left: Expression, operator: Pair<Rule>, right: Expres
   }
 }
 
-pub fn parse_expression_pairs(pairs: Pairs<Rule>) -> Expression {
-  PRATT_PARSER.map_primary(parse_atom_expression).map_infix(parse_binary_expression).parse(pairs)
+pub fn parse_expression_pairs(filename: &str, pairs: Pairs<Rule>) -> Expression {
+  PRATT_PARSER.map_primary(|token| parse_atom_expression(filename, token))
+    .map_infix(|left, operator, right|
+      parse_binary_expression(filename, left, operator, right)
+    )
+    .parse(pairs)
 }
 
-pub fn parse_expression(token: Pair<Rule>) -> Expression {
-  parse_expression_pairs(Pairs::single(token))
+pub fn parse_expression(filename: &str, token: Pair<Rule>) -> Expression {
+  parse_expression_pairs(filename, Pairs::single(token))
 }

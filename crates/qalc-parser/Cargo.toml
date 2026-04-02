@@ -8,3 +8,4 @@ lazy_static = "1.5.0"
 pest = "2.8.6"
 pest_derive = "2.8.6"
 qalc-ast = { path = "../qalc-ast" }
+qalc-utils = { path = "../qalc-utils" }
