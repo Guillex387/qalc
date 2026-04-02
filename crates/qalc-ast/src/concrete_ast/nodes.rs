@@ -1,4 +1,6 @@
-use crate::{ BinaryOperator, FloatSuffix, NumberSuffix, Span };
+use qalc_utils::Span;
+
+use crate::concrete_ast::enum_values::*;
 
 #[derive(Debug, Clone)]
 pub struct ConcreteAST {
