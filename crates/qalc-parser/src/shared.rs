@@ -19,9 +19,9 @@ pub fn pest_error_to_diagnostic(
   let span = match error.location {
     pest::error::InputLocation::Span((start, end)) => Span::new(filename, start, end),
     pest::error::InputLocation::Pos(position) =>
-      dbg!(Span::new(filename, position, position + 1)),
+      Span::new(filename, position, position + 1),
   };
-  let message = dbg!(error.variant.message().to_string());
+  let message = error.variant.message().to_string();
 
   Diagnostic::error("Parsing error", message, span)
 }
