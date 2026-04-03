@@ -68,6 +68,7 @@ pub enum ExpressionKind {
     params: Vec<String>,
     body: Box<Expression>,
   },
+  Tuple(Vec<Expression>),
   Identifier(String),
   IntegerLiteral {
     number: i128,

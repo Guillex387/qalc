@@ -109,6 +109,10 @@ fn parse_assigment(mut tokens: TokensIter) -> ExpressionKind {
   ExpressionKind::Assigment { identifier, value }
 }
 
+fn parse_tuple_expression(tokens: TokensIter) -> ExpressionKind {
+  ExpressionKind::Tuple(tokens.map(parse_expression).collect())
+}
+
 pub fn parse_atom_expression(token: Token) -> Expression {
   let span = token.span();
   let rule = token.rule();
@@ -124,6 +128,7 @@ pub fn parse_atom_expression(token: Token) -> Expression {
     Rule::partial_operation_left => parse_partial_op_left(tokens),
     Rule::partial_operation_right => parse_partial_op_right(tokens),
     Rule::assigment_expression => parse_assigment(tokens),
+    Rule::tuple_expression => parse_tuple_expression(tokens),
     Rule::expression => parse_expression(token).kind,
     Rule::unknow_integer
     | Rule::i8_integer
