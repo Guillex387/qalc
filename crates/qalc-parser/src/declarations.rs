@@ -48,7 +48,7 @@ fn parse_function_declaration(token: Token) -> CompilerResult<DeclarationKind> {
     ));
   }
 
-  let body = parse_expression(tokens.eat());
+  let body = parse_expression(tokens.eat_back());
   let params: Vec<String> = tokens.map(|token| token.to_string()).collect();
 
   Ok(DeclarationKind::Function {
