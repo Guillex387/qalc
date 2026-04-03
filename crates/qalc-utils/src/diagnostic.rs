@@ -1,6 +1,6 @@
 use std::fmt;
 
-use ariadne::{ Color, Label, Report, ReportKind };
+use ariadne::{Color, Label, Report, ReportKind};
 
 use crate::span::Span;
 
@@ -40,11 +40,7 @@ pub struct Diagnostic {
 }
 
 impl Diagnostic {
-  pub fn note(
-    category: impl Into<String>,
-    message: impl Into<String>,
-    span: Span
-  ) -> Self {
+  pub fn note(category: impl Into<String>, message: impl Into<String>, span: Span) -> Self {
     Self {
       kind: DiagnosticKind::Note,
       category: category.into(),
@@ -53,11 +49,7 @@ impl Diagnostic {
     }
   }
 
-  pub fn warning(
-    category: impl Into<String>,
-    message: impl Into<String>,
-    span: Span
-  ) -> Self {
+  pub fn warning(category: impl Into<String>, message: impl Into<String>, span: Span) -> Self {
     Self {
       kind: DiagnosticKind::Warning,
       category: category.into(),
@@ -66,11 +58,7 @@ impl Diagnostic {
     }
   }
 
-  pub fn error(
-    category: impl Into<String>,
-    message: impl Into<String>,
-    span: Span
-  ) -> Self {
+  pub fn error(category: impl Into<String>, message: impl Into<String>, span: Span) -> Self {
     Self {
       kind: DiagnosticKind::Error,
       category: category.into(),
@@ -87,7 +75,9 @@ impl Diagnostic {
     Report::build(self.kind.into(), span.clone())
       .with_message(&self.category)
       .with_label(
-        Label::new(span).with_message(&self.message).with_color(self.kind.ariadne_color())
+        Label::new(span)
+          .with_message(&self.message)
+          .with_color(self.kind.ariadne_color()),
       )
       .finish()
       .write(source, &mut output_buffer)
