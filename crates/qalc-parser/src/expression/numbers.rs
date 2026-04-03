@@ -1,7 +1,6 @@
-use pest::iterators::Pair;
-use qalc_ast::concrete_ast::{ ExpressionKind, FloatSuffix, NumberSuffix };
+use qalc_ast::concrete_ast::{ExpressionKind, FloatSuffix, NumberSuffix};
 
-use crate::Rule;
+use crate::{Rule, Token};
 
 fn suffix_for_rule(rule: Rule) -> (NumberSuffix, Option<&'static str>) {
   match rule {
@@ -40,27 +39,29 @@ fn parse_integer_value(text: &str) -> i128 {
 }
 
 fn normalize_float_text(text: &str) -> String {
-  if text.starts_with('.') { format!("0{}", text) } else { text.to_string() }
+  if text.starts_with('.') {
+    format!("0{}", text)
+  } else {
+    text.to_string()
+  }
 }
 
 fn parse_float_value(text: &str, suffix: FloatSuffix) -> f64 {
   let normalized = normalize_float_text(text);
   match suffix {
-    FloatSuffix::F32 =>
-      normalized
-        .parse::<f32>()
-        .map(|value| value as f64)
-        .unwrap_or_else(|_| panic!("Invalid f32 literal: {}", text)),
-    FloatSuffix::F64 | FloatSuffix::Unknow =>
-      normalized
-        .parse::<f64>()
-        .unwrap_or_else(|_| panic!("Invalid f64 literal: {}", text)),
+    FloatSuffix::F32 => normalized
+      .parse::<f32>()
+      .map(|value| value as f64)
+      .unwrap_or_else(|_| panic!("Invalid f32 literal: {}", text)),
+    FloatSuffix::F64 | FloatSuffix::Unknow => normalized
+      .parse::<f64>()
+      .unwrap_or_else(|_| panic!("Invalid f64 literal: {}", text)),
   }
 }
 
-pub fn parse_number_literal(primary: Pair<Rule>) -> ExpressionKind {
-  match primary.as_rule() {
-    | Rule::unknow_integer
+pub fn parse_number_literal(token: Token) -> ExpressionKind {
+  match token.rule() {
+    Rule::unknow_integer
     | Rule::i8_integer
     | Rule::i16_integer
     | Rule::i32_integer
@@ -69,11 +70,11 @@ pub fn parse_number_literal(primary: Pair<Rule>) -> ExpressionKind {
     | Rule::u16_integer
     | Rule::u32_integer
     | Rule::u64_integer => {
-      let (suffix, suffix_text) = suffix_for_rule(primary.as_rule());
-      let raw_text = primary.as_str();
+      let (suffix, suffix_text) = suffix_for_rule(token.rule());
+      let raw_text = token.to_string();
       let number_text = match suffix_text {
-        Some(suffix_text) => raw_text.strip_suffix(suffix_text).unwrap_or(raw_text),
-        None => raw_text,
+        Some(suffix_text) => raw_text.strip_suffix(suffix_text).unwrap_or(&raw_text),
+        None => &raw_text,
       };
 
       ExpressionKind::IntegerLiteral {
@@ -82,11 +83,11 @@ pub fn parse_number_literal(primary: Pair<Rule>) -> ExpressionKind {
       }
     }
     Rule::unknow_float | Rule::f32_float | Rule::f64_float => {
-      let (suffix, suffix_text) = float_suffix_for_rule(primary.as_rule());
-      let raw_text = primary.as_str();
+      let (suffix, suffix_text) = float_suffix_for_rule(token.rule());
+      let raw_text = token.to_string();
       let number_text = match suffix_text {
-        Some(suffix_text) => raw_text.strip_suffix(suffix_text).unwrap_or(raw_text),
-        None => raw_text,
+        Some(suffix_text) => raw_text.strip_suffix(suffix_text).unwrap_or(&raw_text),
+        None => &raw_text,
       };
 
       ExpressionKind::FloatLiteral {

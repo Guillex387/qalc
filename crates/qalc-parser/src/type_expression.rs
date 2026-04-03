@@ -1,64 +1,53 @@
-use pest::iterators::Pair;
-use qalc_ast::concrete_ast::{ TypeExpression, TypeExpressionKind };
-use qalc_utils::Span;
+use qalc_ast::concrete_ast::{TypeExpression, TypeExpressionKind};
 
-use crate::{ Rule, shared::{ token_to_span, token_to_string } };
+use crate::{Rule, Token};
 
-fn parse_type_identifier(token: Pair<Rule>) -> TypeExpressionKind {
-  TypeExpressionKind::Identifier(token_to_string(token))
+fn parse_type_identifier(token: Token) -> TypeExpressionKind {
+  TypeExpressionKind::Identifier(token.to_string())
 }
 
-fn parse_type_slice(filename: &str, token: Pair<Rule>) -> TypeExpressionKind {
-  let element_type_token = token.into_inner().next().unwrap();
-  let element_type = parse_type_expression(filename, element_type_token);
+fn parse_type_slice(token: Token) -> TypeExpressionKind {
+  let element_type = parse_type_expression(token.inner().eat());
 
   TypeExpressionKind::Slice(Box::new(element_type))
 }
 
-fn parse_type_tuple(filename: &str, token: Pair<Rule>) -> TypeExpressionKind {
-  let inner_types_tokens = token.into_inner();
-  let inner_types: Vec<TypeExpression> = inner_types_tokens
-    .map(|token| parse_type_expression(filename, token))
-    .collect();
+fn parse_type_tuple(token: Token) -> TypeExpressionKind {
+  let inner_types_tokens = token.inner();
+  let inner_types: Vec<TypeExpression> = inner_types_tokens.map(parse_type_expression).collect();
 
   TypeExpressionKind::Tuple(inner_types)
 }
 
-fn parse_type_identifier_with_params(
-  filename: &str,
-  token: Pair<Rule>
-) -> TypeExpressionKind {
-  let mut tokens = token.into_inner();
-  let identifier = tokens.next().unwrap().as_str().to_owned();
-  let params: Vec<TypeExpression> = tokens
-    .map(|token| parse_type_atom_expression(filename, token))
-    .collect();
+fn parse_type_identifier_with_params(token: Token) -> TypeExpressionKind {
+  let mut tokens = token.inner();
+  let identifier = tokens.eat().to_string();
+  let params: Vec<TypeExpression> = tokens.map(parse_type_atom_expression).collect();
 
   TypeExpressionKind::IdentifierWithParams { identifier, params }
 }
 
-fn parse_type_atom_expression(filename: &str, token: Pair<Rule>) -> TypeExpression {
-  let span = token_to_span(filename, &token);
-  let kind = match token.as_rule() {
+fn parse_type_atom_expression(token: Token) -> TypeExpression {
+  let span = token.span();
+  let kind = match token.rule() {
     Rule::simple_identifier => parse_type_identifier(token),
-    Rule::type_with_params => parse_type_identifier_with_params(filename, token),
-    Rule::type_slice => parse_type_slice(filename, token),
-    Rule::type_tuple => parse_type_tuple(filename, token),
-    Rule::type_inner =>
-      parse_type_expression(filename, token.into_inner().next().unwrap()).kind,
+    Rule::type_with_params => parse_type_identifier_with_params(token),
+    Rule::type_slice => parse_type_slice(token),
+    Rule::type_tuple => parse_type_tuple(token),
+    Rule::type_inner => parse_type_expression(token.inner().eat()).kind,
     _ => unreachable!("Expected type expression rule, found {:?}", token),
   };
 
   TypeExpression { kind, span }
 }
 
-pub fn parse_type_expression(filename: &str, token: Pair<Rule>) -> TypeExpression {
+pub fn parse_type_expression(token: Token) -> TypeExpression {
   token
-    .into_inner()
-    .map(|token| parse_type_atom_expression(filename, token))
+    .inner()
+    .map(parse_type_atom_expression)
     .rev()
     .reduce(|result, input_type| TypeExpression {
-      span: Span::new(filename, input_type.span.start, result.span.end),
+      span: input_type.span.join(&result.span),
       kind: TypeExpressionKind::Transform {
         input_type: Box::new(input_type),
         output_type: Box::new(result),

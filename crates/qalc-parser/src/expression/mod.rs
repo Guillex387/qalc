@@ -1,11 +1,13 @@
 mod atoms;
 mod numbers;
 
-use pest::{ iterators::{ Pair, Pairs }, pratt_parser::PrattParser };
-use qalc_ast::concrete_ast::{ Expression, ExpressionKind, BinaryOperator };
-use qalc_utils::Span;
+use pest::{
+  iterators::{Pair, Pairs},
+  pratt_parser::PrattParser,
+};
+use qalc_ast::concrete_ast::{BinaryOperator, Expression, ExpressionKind};
 
-use crate::{ Rule, expression::atoms::parse_atom_expression };
+use crate::{Rule, Token, expression::atoms::parse_atom_expression};
 
 lazy_static::lazy_static! {
   static ref PRATT_PARSER: PrattParser<Rule> = {
@@ -41,8 +43,8 @@ lazy_static::lazy_static! {
   };
 }
 
-fn parse_binary_operator(operator: Pair<Rule>) -> BinaryOperator {
-  match operator.as_rule() {
+fn parse_binary_operator(operator: Token) -> BinaryOperator {
+  match operator.rule() {
     Rule::apply_operator => BinaryOperator::Apply,
     Rule::pipe_operator => BinaryOperator::Pipe,
     Rule::logic_or_operator => BinaryOperator::LogicOr,
@@ -66,14 +68,9 @@ fn parse_binary_operator(operator: Pair<Rule>) -> BinaryOperator {
   }
 }
 
-fn parse_binary_expression(
-  filename: &str,
-  left: Expression,
-  operator: Pair<Rule>,
-  right: Expression
-) -> Expression {
+fn parse_binary_expression(left: Expression, operator: Token, right: Expression) -> Expression {
   Expression {
-    span: Span::new(filename, left.span.start, right.span.end),
+    span: left.span.join(&right.span),
     kind: ExpressionKind::Binary {
       left: Box::new(left),
       operator: parse_binary_operator(operator),
@@ -82,14 +79,14 @@ fn parse_binary_expression(
   }
 }
 
-pub fn parse_expression_pairs(filename: &str, pairs: Pairs<Rule>) -> Expression {
-  PRATT_PARSER.map_primary(|token| parse_atom_expression(filename, token))
-    .map_infix(|left, operator, right|
-      parse_binary_expression(filename, left, operator, right)
-    )
-    .parse(pairs)
-}
+pub fn parse_expression(token: Token) -> Expression {
+  let source_file = token.source_file();
+  let raw_token_iter: Pairs<Rule> = token.inner().into();
 
-pub fn parse_expression(filename: &str, token: Pair<Rule>) -> Expression {
-  parse_expression_pairs(filename, Pairs::single(token))
+  PRATT_PARSER
+    .map_primary(|raw_token| parse_atom_expression(Token::new(raw_token, source_file)))
+    .map_infix(|left, operator, right| {
+      parse_binary_expression(left, Token::new(operator, source_file), right)
+    })
+    .parse(raw_token_iter)
 }

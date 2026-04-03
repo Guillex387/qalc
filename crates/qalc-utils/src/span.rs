@@ -1,26 +1,38 @@
-use std::{ fs, ops::Range };
+use std::{fs, ops::Range};
 
 use ariadne::Source;
 
 #[derive(Debug, Clone)]
 pub struct Span {
-  pub filename: String,
+  pub source_file: String,
   pub start: usize,
   pub end: usize,
 }
 
 impl Span {
-  pub fn new(filename: impl Into<String>, start: usize, end: usize) -> Self {
-    Span { filename: filename.into(), start, end }
+  pub fn new(source_file: impl Into<String>, start: usize, end: usize) -> Self {
+    Span {
+      source_file: source_file.into(),
+      start,
+      end,
+    }
+  }
+
+  pub fn join(&self, span: &Span) -> Span {
+    Span {
+      source_file: self.source_file.clone(),
+      start: self.start,
+      end: span.end,
+    }
   }
 
   pub fn to_ariadne_span(&self) -> (&str, Range<usize>) {
-    (&self.filename, self.start..self.end)
+    (&self.source_file, self.start..self.end)
   }
 
   pub fn to_ariadne_source(&self) -> (&str, Source) {
-    let source_code = fs::read_to_string(&self.filename).unwrap() + " ";
+    let source_code = fs::read_to_string(&self.source_file).unwrap() + " ";
 
-    (&self.filename, Source::from(source_code))
+    (&self.source_file, Source::from(source_code))
   }
 }

@@ -1,35 +1,25 @@
-use pest::iterators::Pair;
-use qalc_ast::concrete_ast::{ Declaration, DeclarationKind, TypeExpression };
-use qalc_utils::{ CompilerResult, Diagnostic };
+use qalc_ast::concrete_ast::{Declaration, DeclarationKind, TypeExpression};
+use qalc_utils::{CompilerResult, Diagnostic};
 
-use crate::{
-  Rule,
-  expression::parse_expression,
-  shared::{ token_to_span, token_to_string },
-  type_expression::parse_type_expression,
-};
+use crate::{Rule, Token, expression::parse_expression, type_expression::parse_type_expression};
 
-fn parse_function_annotation(
-  filename: &str,
-  token: Pair<Rule>
-) -> (String, TypeExpression) {
-  let mut tokens = token.into_inner();
-  let identifier = tokens.next().unwrap().as_str().to_owned();
-  let type_expression = parse_type_expression(filename, tokens.next().unwrap());
+fn parse_function_annotation(token: Token) -> (String, TypeExpression) {
+  let mut tokens = token.inner();
+  let identifier = tokens.eat().to_string();
+  let type_expression = parse_type_expression(tokens.eat());
 
   (identifier, type_expression)
 }
 
-fn parse_type_declaration(filename: &str, token: Pair<Rule>) -> DeclarationKind {
-  let mut tokens = token.into_inner();
-  let identifier = tokens.next().unwrap().as_str().to_owned();
+fn parse_type_declaration(token: Token) -> DeclarationKind {
+  let mut tokens = token.inner();
+  let identifier = tokens.eat().to_string();
   let mut attributes: Vec<(String, TypeExpression)> = Vec::new();
   let mut linear = false;
 
   for token in tokens {
-    match token.as_rule() {
-      Rule::type_function_annotation =>
-        attributes.push(parse_function_annotation(filename, token)),
+    match token.rule() {
+      Rule::type_function_annotation => attributes.push(parse_function_annotation(token)),
       Rule::type_restriction => {
         linear = true;
       }
@@ -44,30 +34,22 @@ fn parse_type_declaration(filename: &str, token: Pair<Rule>) -> DeclarationKind 
   }
 }
 
-fn parse_function_declaration(
-  filename: &str,
-  token: Pair<Rule>
-) -> CompilerResult<DeclarationKind> {
-  let mut tokens = token.into_inner();
-  let (identifier, type_annotation) = parse_function_annotation(
-    filename,
-    tokens.next().unwrap()
-  );
-  let function_identifier_token = tokens.next().unwrap();
-  let function_identifier = function_identifier_token.as_str().to_owned();
+fn parse_function_declaration(token: Token) -> CompilerResult<DeclarationKind> {
+  let mut tokens = token.inner();
+  let (identifier, type_annotation) = parse_function_annotation(tokens.eat());
+
+  let function_identifier_token = tokens.eat();
+  let function_identifier = function_identifier_token.to_string();
   if identifier != function_identifier {
-    let error_span = token_to_span(filename, &function_identifier_token);
-    return Err(
-      Diagnostic::error(
-        "Definition name mismatch",
-        format!("expected '{}'", identifier),
-        error_span
-      )
-    );
+    return Err(Diagnostic::error(
+      "Definition name mismatch",
+      format!("expected '{}'", identifier),
+      function_identifier_token.span(),
+    ));
   }
 
-  let body = parse_expression(filename, tokens.next_back().unwrap());
-  let params: Vec<String> = tokens.map(token_to_string).collect();
+  let body = parse_expression(tokens.eat());
+  let params: Vec<String> = tokens.map(|token| token.to_string()).collect();
 
   Ok(DeclarationKind::Function {
     identifier,
@@ -77,14 +59,11 @@ fn parse_function_declaration(
   })
 }
 
-pub fn parse_declaration(
-  filename: &str,
-  token: Pair<Rule>
-) -> CompilerResult<Declaration> {
-  let span = token_to_span(filename, &token);
-  let kind = match token.as_rule() {
-    Rule::function_declaration => parse_function_declaration(filename, token)?,
-    Rule::type_declaration => parse_type_declaration(filename, token),
+pub fn parse_declaration(token: Token) -> CompilerResult<Declaration> {
+  let span = token.span();
+  let kind = match token.rule() {
+    Rule::function_declaration => parse_function_declaration(token)?,
+    Rule::type_declaration => parse_type_declaration(token),
     _ => unreachable!("Expected declaration, found: {:?}", token),
   };
 
