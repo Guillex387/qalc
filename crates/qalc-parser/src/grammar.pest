@@ -83,6 +83,9 @@ partial_operation_right = { "(" ~ expression_atom ~ binary_operators ~ ")" }
 call_expression = { (identifier | "(" ~ expression ~ ")") ~ (lambda_expression | partial_operation_right | partial_operation_left | "(" ~ expression ~ ")" | identifier | literal)+ }
 lambda_expression = { "(" ~ pattern* ~ ")" ~ "=>" ~ expression }
 tuple_expression = { "(" ~ ")" | "(" ~ expression ~ ("," ~ expression)+ ~ ")" }
+slice_range_expression = { "[" ~ expression ~ ".." ~ expression ~ "]" }
+slice_items_expression = { "[" ~ (expression ~ ("," ~ expression)*)? ~ "]" }
+slice_expression = _{ slice_items_expression | slice_range_expression }
 
 // Block expressions
 
@@ -98,7 +101,7 @@ block_expression = _{ let_block | if_else_block | match_block | perform_block | 
 
 // Binary expressions
 
-expression_atom = _{ block_expression | lambda_expression | partial_operation_right | partial_operation_left | call_expression | "(" ~ expression ~ ")" | tuple_expression | identifier | literal }
+expression_atom = _{ block_expression | lambda_expression | partial_operation_right | partial_operation_left | call_expression | "(" ~ expression ~ ")" | tuple_expression | slice_expression | identifier | literal }
 expression = { expression_atom ~ (binary_operators ~ expression_atom)* }
 
 // Type

@@ -33,6 +33,12 @@ pub enum Pattern {
 }
 
 #[derive(Debug, Clone)]
+pub enum SliceExpression {
+  Items(Vec<Expression>),
+  Range(Box<Expression>, Box<Expression>),
+}
+
+#[derive(Debug, Clone)]
 pub enum ExpressionKind {
   LetBlock {
     assigments: Vec<Expression>,
@@ -76,6 +82,7 @@ pub enum ExpressionKind {
     body: Box<Expression>,
   },
   Tuple(Vec<Expression>),
+  Slice(SliceExpression),
   Identifier(String),
   IntegerLiteral {
     number: i128,

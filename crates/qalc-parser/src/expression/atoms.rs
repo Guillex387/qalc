@@ -1,4 +1,4 @@
-use qalc_ast::concrete_ast::{Expression, ExpressionKind, Pattern};
+use qalc_ast::concrete_ast::{Expression, ExpressionKind, Pattern, SliceExpression};
 
 use crate::expression::{numbers::parse_number_literal, parse_binary_operator, parse_expression};
 use crate::pattern::parse_pattern;
@@ -131,6 +131,19 @@ fn parse_tuple_expression(tokens: TokensIter) -> ExpressionKind {
   ExpressionKind::Tuple(tokens.map(parse_expression).collect())
 }
 
+fn parse_slice_items_expression(tokens: TokensIter) -> ExpressionKind {
+  ExpressionKind::Slice(SliceExpression::Items(
+    tokens.map(parse_expression).collect(),
+  ))
+}
+
+fn parse_slice_range_expression(mut tokens: TokensIter) -> ExpressionKind {
+  ExpressionKind::Slice(SliceExpression::Range(
+    consume_expression(&mut tokens),
+    consume_expression(&mut tokens),
+  ))
+}
+
 pub fn parse_atom_expression(token: Token) -> Expression {
   let span = token.span();
   let rule = token.rule();
@@ -147,6 +160,8 @@ pub fn parse_atom_expression(token: Token) -> Expression {
     Rule::partial_operation_right => parse_partial_op_right(tokens),
     Rule::assigment_expression => parse_assigment(tokens),
     Rule::tuple_expression => parse_tuple_expression(tokens),
+    Rule::slice_items_expression => parse_slice_items_expression(tokens),
+    Rule::slice_range_expression => parse_slice_range_expression(tokens),
     Rule::expression => parse_expression(token).kind,
     Rule::unknow_integer
     | Rule::i8_integer
