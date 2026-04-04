@@ -1,7 +1,9 @@
 use qalc_ast::concrete_ast::{Declaration, DeclarationKind, TypeExpression};
 use qalc_utils::{CompilerResult, Diagnostic};
 
-use crate::{Rule, Token, expression::parse_expression, type_expression::parse_type_expression};
+use crate::expression::parse_expression;
+use crate::tokenizer::{Rule, Token};
+use crate::type_expression::parse_type_expression;
 
 fn parse_function_annotation(token: Token) -> (String, TypeExpression) {
   let mut tokens = token.inner();

@@ -1,6 +1,6 @@
 use qalc_utils::{Diagnostic, Span};
 
-use crate::Rule;
+use crate::tokenizer::Rule;
 
 pub fn pest_error_to_diagnostic(filename: &str, error: pest::error::Error<Rule>) -> Diagnostic {
   let span = match error.location {

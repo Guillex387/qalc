@@ -1,6 +1,6 @@
 use qalc_ast::concrete_ast::{TypeExpression, TypeExpressionKind};
 
-use crate::{Rule, Token};
+use crate::tokenizer::{Rule, Token};
 
 fn parse_type_identifier(token: Token) -> TypeExpressionKind {
   TypeExpressionKind::Identifier(token.to_string())

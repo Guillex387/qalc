@@ -1,6 +1,6 @@
 use qalc_ast::concrete_ast::{ExpressionKind, FloatSuffix, NumberSuffix};
 
-use crate::{Rule, Token};
+use crate::tokenizer::{Rule, Token};
 
 fn suffix_for_rule(rule: Rule) -> (NumberSuffix, Option<&'static str>) {
   match rule {

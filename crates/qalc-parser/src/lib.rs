@@ -4,9 +4,6 @@ mod shared;
 mod tokenizer;
 mod type_expression;
 
-// TODO: this is for testing, remove it when you integrate the feature
-pub use tokenizer::*;
-
 use std::{error::Error, fs};
 
 use qalc_ast::concrete_ast::{ConcreteAST, Declaration};

@@ -1,8 +1,7 @@
 use qalc_ast::concrete_ast::{Expression, ExpressionKind};
 
-use crate::Rule;
 use crate::expression::{numbers::parse_number_literal, parse_binary_operator, parse_expression};
-use crate::{Token, TokensIter};
+use crate::tokenizer::{Rule, Token, TokensIter};
 
 fn consume_expression(tokens: &mut TokensIter) -> Box<Expression> {
   Box::new(parse_expression(tokens.eat()))

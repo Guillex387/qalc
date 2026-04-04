@@ -4,7 +4,8 @@ mod numbers;
 use pest::{iterators::Pairs, pratt_parser::PrattParser};
 use qalc_ast::concrete_ast::{BinaryOperator, Expression, ExpressionKind};
 
-use crate::{Rule, Token, expression::atoms::parse_atom_expression};
+use crate::expression::atoms::parse_atom_expression;
+use crate::tokenizer::{Rule, Token};
 
 lazy_static::lazy_static! {
   static ref PRATT_PARSER: PrattParser<Rule> = {
