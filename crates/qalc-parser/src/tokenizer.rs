@@ -1,25 +1,30 @@
+use std::rc::Rc;
+
 use pest::{
   Parser,
   iterators::{Pair, Pairs},
 };
 use pest_derive::Parser;
-use qalc_utils::{CompilerResult, Span};
+use qalc_utils::{CompilerResult, Source, Span};
 
 use crate::shared::pest_error_to_diagnostic;
 
 #[derive(Debug, Clone)]
 pub struct Token<'a> {
   token: Pair<'a, Rule>,
-  source_file: &'a str,
+  source: Rc<Source>,
 }
 
 impl<'a> Token<'a> {
-  pub fn new(token: Pair<'a, Rule>, source_file: &'a str) -> Token<'a> {
-    Token { token, source_file }
+  pub fn new(token: Pair<'a, Rule>, source: &Rc<Source>) -> Token<'a> {
+    Token {
+      token,
+      source: source.clone(),
+    }
   }
 
-  pub fn source_file(&self) -> &'a str {
-    self.source_file
+  pub fn source(&self) -> &Rc<Source> {
+    &self.source
   }
 
   pub fn rule(&self) -> Rule {
@@ -28,11 +33,11 @@ impl<'a> Token<'a> {
 
   pub fn span(&self) -> Span {
     let pest_span = self.token.as_span();
-    Span::new(self.source_file, pest_span.start(), pest_span.end())
+    Span::new(&self.source, pest_span.start(), pest_span.end())
   }
 
   pub fn inner(self) -> TokensIter<'a> {
-    TokensIter::new(self.token.into_inner(), self.source_file)
+    TokensIter::new(self.token.into_inner(), &self.source)
   }
 }
 
@@ -51,14 +56,14 @@ impl<'a> Into<Pair<'a, Rule>> for Token<'a> {
 #[derive(Debug)]
 pub struct TokensIter<'a> {
   tokens: Pairs<'a, Rule>,
-  source_file: &'a str,
+  source: Rc<Source>,
 }
 
 impl<'a> TokensIter<'a> {
-  fn new(tokens: Pairs<'a, Rule>, source_file: &'a str) -> Self {
+  fn new(tokens: Pairs<'a, Rule>, source: &Rc<Source>) -> Self {
     TokensIter {
       tokens,
-      source_file,
+      source: source.clone(),
     }
   }
 
@@ -78,7 +83,7 @@ impl<'a> Iterator for TokensIter<'a> {
     self
       .tokens
       .next()
-      .map(|raw_token| Token::new(raw_token, self.source_file))
+      .map(|raw_token| Token::new(raw_token, &self.source))
   }
 }
 
@@ -87,7 +92,7 @@ impl DoubleEndedIterator for TokensIter<'_> {
     self
       .tokens
       .next_back()
-      .map(|raw_token| Token::new(raw_token, self.source_file))
+      .map(|raw_token| Token::new(raw_token, &self.source))
   }
 }
 
@@ -109,14 +114,11 @@ impl<'a> Into<Pairs<'a, Rule>> for TokensIter<'a> {
 #[grammar = "grammar.pest"]
 struct QalcGrammar;
 
-pub fn tokenize_source<'a>(
-  source_file: &'a str,
-  source_code: &'a str,
-) -> CompilerResult<TokensIter<'a>> {
+pub fn tokenize(source: &Rc<Source>) -> CompilerResult<TokensIter<'_>> {
   let mut program_tokens = TokensIter::new(
-    QalcGrammar::parse(Rule::program, source_code)
-      .map_err(|error| pest_error_to_diagnostic(source_file, error))?,
-    source_file,
+    QalcGrammar::parse(Rule::program, source.content())
+      .map_err(|error| pest_error_to_diagnostic(source, error))?,
+    source,
   );
   let mut declarations_tokens = program_tokens.eat().inner();
   declarations_tokens.eat_back(); // CONSUME EOF token

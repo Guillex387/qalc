@@ -1,25 +1,13 @@
-use std::env;
-use std::fs;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::rc::Rc;
 
 use qalc_ast::concrete_ast::{DeclarationKind, ExpressionKind, FloatSuffix, NumberSuffix};
 use qalc_parser::parse_program;
-
-static FILE_COUNTER: AtomicUsize = AtomicUsize::new(0);
-
-fn write_temp_source(source: &str) -> std::path::PathBuf {
-  let id = FILE_COUNTER.fetch_add(1, Ordering::Relaxed);
-  let filename = format!("qalc_literal_test_{}_{}.qlc", std::process::id(), id);
-  let path = env::temp_dir().join(filename);
-  fs::write(&path, source).expect("write temp qalc source file");
-  path
-}
+use qalc_utils::Source;
 
 fn parse_literal_kind(literal: &str) -> ExpressionKind {
-  let source = format!("lit :: num lit = {}", literal);
-  let path = write_temp_source(&source);
-  let program = parse_program(path.to_str().expect("temp path to str")).expect("parse program");
-  let _ = fs::remove_file(&path);
+  let code = format!("lit :: num lit = {}", literal);
+  let source = Rc::new(Source::memory(code));
+  let program = parse_program(&source).expect("parse program");
 
   let declaration = program
     .declarations

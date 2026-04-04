@@ -4,16 +4,15 @@ mod shared;
 mod tokenizer;
 mod type_expression;
 
-use std::{error::Error, fs};
+use std::rc::Rc;
 
 use qalc_ast::concrete_ast::{ConcreteAST, Declaration};
-use qalc_utils::CompilerResult;
+use qalc_utils::{CompilerResult, Source};
 
-use crate::declarations::parse_declaration;
+use crate::{declarations::parse_declaration, tokenizer::tokenize};
 
-pub fn parse_program(source_file: &str) -> Result<ConcreteAST, Box<dyn Error>> {
-  let source_code = fs::read_to_string(source_file)?;
-  let declarations_tokens = tokenize_source(source_file, &source_code)?;
+pub fn parse_program(source: &Rc<Source>) -> CompilerResult<ConcreteAST> {
+  let declarations_tokens = tokenize(source)?;
 
   let declarations: Vec<Declaration> = declarations_tokens
     .map(parse_declaration)

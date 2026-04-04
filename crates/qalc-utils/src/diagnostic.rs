@@ -33,36 +33,36 @@ impl<'a> From<DiagnosticKind> for ReportKind<'a> {
 
 #[derive(Debug, Clone)]
 pub struct Diagnostic {
-  pub kind: DiagnosticKind,
-  pub category: String,
-  pub message: String,
-  pub span: Span,
+  kind: DiagnosticKind,
+  message: String,
+  label: String,
+  span: Span,
 }
 
 impl Diagnostic {
-  pub fn note(category: impl Into<String>, message: impl Into<String>, span: Span) -> Self {
+  pub fn note(message: impl Into<String>, label: impl Into<String>, span: Span) -> Self {
     Self {
       kind: DiagnosticKind::Note,
-      category: category.into(),
       message: message.into(),
+      label: label.into(),
       span,
     }
   }
 
-  pub fn warning(category: impl Into<String>, message: impl Into<String>, span: Span) -> Self {
+  pub fn warning(message: impl Into<String>, label: impl Into<String>, span: Span) -> Self {
     Self {
       kind: DiagnosticKind::Warning,
-      category: category.into(),
       message: message.into(),
+      label: label.into(),
       span,
     }
   }
 
-  pub fn error(category: impl Into<String>, message: impl Into<String>, span: Span) -> Self {
+  pub fn error(message: impl Into<String>, label: impl Into<String>, span: Span) -> Self {
     Self {
       kind: DiagnosticKind::Error,
-      category: category.into(),
       message: message.into(),
+      label: label.into(),
       span,
     }
   }
@@ -70,13 +70,13 @@ impl Diagnostic {
   fn render(&self) -> String {
     let mut output_buffer: Vec<u8> = Vec::new();
     let span = self.span.to_ariadne_span();
-    let source = self.span.to_ariadne_source();
+    let source = self.span.source().to_ariadne_source();
 
     Report::build(self.kind.into(), span.clone())
-      .with_message(&self.category)
+      .with_message(&self.message)
       .with_label(
         Label::new(span)
-          .with_message(&self.message)
+          .with_message(&self.label)
           .with_color(self.kind.ariadne_color()),
       )
       .finish()

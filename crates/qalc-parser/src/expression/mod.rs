@@ -78,13 +78,13 @@ fn parse_binary_expression(left: Expression, operator: Token, right: Expression)
 }
 
 pub fn parse_expression(token: Token) -> Expression {
-  let source_file = token.source_file();
+  let source = token.source().clone();
   let raw_token_iter: Pairs<Rule> = token.inner().into();
 
   PRATT_PARSER
-    .map_primary(|raw_token| parse_atom_expression(Token::new(raw_token, source_file)))
+    .map_primary(|raw_token| parse_atom_expression(Token::new(raw_token, &source)))
     .map_infix(|left, operator, right| {
-      parse_binary_expression(left, Token::new(operator, source_file), right)
+      parse_binary_expression(left, Token::new(operator, &source), right)
     })
     .parse(raw_token_iter)
 }
