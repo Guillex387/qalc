@@ -1,6 +1,7 @@
-use qalc_ast::concrete_ast::{Expression, ExpressionKind};
+use qalc_ast::concrete_ast::{Expression, ExpressionKind, Pattern};
 
 use crate::expression::{numbers::parse_number_literal, parse_binary_operator, parse_expression};
+use crate::pattern::parse_pattern;
 use crate::tokenizer::{Rule, Token, TokensIter};
 
 fn consume_expression(tokens: &mut TokensIter) -> Box<Expression> {
@@ -13,7 +14,7 @@ fn consume_back_expression(tokens: &mut TokensIter) -> Box<Expression> {
 
 fn parse_let_block(mut tokens: TokensIter) -> ExpressionKind {
   let value = consume_back_expression(&mut tokens);
-  let assigments: Vec<Expression> = tokens.map(parse_expression).collect();
+  let assigments: Vec<Expression> = tokens.map(parse_atom_expression).collect();
 
   ExpressionKind::LetBlock { assigments, value }
 }
@@ -63,13 +64,31 @@ fn parse_match_block(mut tokens: TokensIter) -> ExpressionKind {
 
 fn parse_perform_block(tokens: TokensIter) -> ExpressionKind {
   ExpressionKind::PerformBlock {
-    sequence: tokens.map(parse_expression).collect(),
+    sequence: tokens
+      .map(|token| match token.rule() {
+        Rule::assigment_expression => parse_atom_expression(token),
+        Rule::expression => parse_expression(token),
+        _ => unreachable!(
+          "Expected expression or assigment expression, found {:?}",
+          token.rule()
+        ),
+      })
+      .collect(),
   }
 }
 
 fn parse_linear_block(tokens: TokensIter) -> ExpressionKind {
   ExpressionKind::LinearBlock {
-    expressions: tokens.map(parse_expression).collect(),
+    expressions: tokens
+      .map(|token| match token.rule() {
+        Rule::assigment_expression => parse_atom_expression(token),
+        Rule::expression => parse_expression(token),
+        _ => unreachable!(
+          "Expected expression or assigment expression, found {:?}",
+          token.rule()
+        ),
+      })
+      .collect(),
   }
 }
 
@@ -82,7 +101,7 @@ fn parse_call_expression(mut tokens: TokensIter) -> ExpressionKind {
 
 fn parse_lambda_expression(mut tokens: TokensIter) -> ExpressionKind {
   let body = consume_back_expression(&mut tokens);
-  let params: Vec<String> = tokens.map(|token| token.to_string()).collect();
+  let params: Vec<Pattern> = tokens.map(parse_pattern).collect();
 
   ExpressionKind::Lambda { params, body }
 }
@@ -102,7 +121,7 @@ fn parse_partial_op_right(mut tokens: TokensIter) -> ExpressionKind {
 }
 
 fn parse_assigment(mut tokens: TokensIter) -> ExpressionKind {
-  let identifier = tokens.eat().to_string();
+  let identifier = parse_pattern(tokens.eat());
   let value = consume_expression(&mut tokens);
 
   ExpressionKind::Assigment { identifier, value }

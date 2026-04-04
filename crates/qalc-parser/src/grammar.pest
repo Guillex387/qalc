@@ -76,16 +76,17 @@ binary_operators = _{ pipe_operator | apply_operator | logic_or_operator | logic
 
 operator_identifier = { "`" ~ overloadable_operators ~ "`" }
 identifier = _{ simple_identifier | operator_identifier }
+pattern = { simple_identifier | "(" ~ pattern ~ ("," ~ pattern)+ ~ ")" }
 
 partial_operation_left = { "(" ~ binary_operators ~ expression_atom ~ ")" }
 partial_operation_right = { "(" ~ expression_atom ~ binary_operators ~ ")" }
 call_expression = { (identifier | "(" ~ expression ~ ")") ~ (lambda_expression | partial_operation_right | partial_operation_left | "(" ~ expression ~ ")" | identifier | literal)+ }
-lambda_expression = { "(" ~ identifier* ~ ")" ~ "=>" ~ expression }
+lambda_expression = { "(" ~ pattern* ~ ")" ~ "=>" ~ expression }
 tuple_expression = { "(" ~ ")" | "(" ~ expression ~ ("," ~ expression)+ ~ ")" }
 
 // Block expressions
 
-assigment_expression = { simple_identifier ~ "=" ~ expression }
+assigment_expression = { pattern ~ "=" ~ expression }
 
 let_block = { "let" ~ assigment_expression ~ ("," ~ assigment_expression)* ~ "in" ~ expression }
 if_else_block = { "if" ~ expression ~ "then" ~ expression ~ "else" ~ expression }
@@ -117,7 +118,7 @@ type_function_annotation = { identifier ~ "::" ~ type }
 type_restriction = { "linear" }
 
 type_declaration = { "type" ~ simple_identifier ~ "{" ~ type_function_annotation+ ~ "}" ~ ("where" ~ type_restriction ~ ("," ~ type_restriction)*)?  }
-function_declaration = { type_function_annotation ~ identifier ~ simple_identifier* ~ "=" ~ expression }
+function_declaration = { type_function_annotation ~ identifier ~ pattern* ~ "=" ~ expression }
 
 declarations = _{ type_declaration | function_declaration }
 

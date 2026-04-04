@@ -26,6 +26,13 @@ pub struct Declaration {
 }
 
 #[derive(Debug, Clone)]
+pub enum Pattern {
+  Variable(String),
+  Tuple(Vec<Pattern>),
+  Wildcard,
+}
+
+#[derive(Debug, Clone)]
 pub enum ExpressionKind {
   LetBlock {
     assigments: Vec<Expression>,
@@ -65,7 +72,7 @@ pub enum ExpressionKind {
     params: Vec<Expression>,
   },
   Lambda {
-    params: Vec<String>,
+    params: Vec<Pattern>,
     body: Box<Expression>,
   },
   Tuple(Vec<Expression>),
@@ -79,7 +86,7 @@ pub enum ExpressionKind {
     suffix: FloatSuffix,
   },
   Assigment {
-    identifier: String,
+    identifier: Pattern,
     value: Box<Expression>,
   },
 }
@@ -109,7 +116,7 @@ pub enum DeclarationKind {
   Function {
     identifier: String,
     type_annotation: TypeExpression,
-    params: Vec<String>,
+    params: Vec<Pattern>,
     body: Expression,
   },
 }

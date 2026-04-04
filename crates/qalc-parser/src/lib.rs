@@ -1,5 +1,6 @@
 mod declarations;
 mod expression;
+mod pattern;
 mod shared;
 mod tokenizer;
 mod type_expression;

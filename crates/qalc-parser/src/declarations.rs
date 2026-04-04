@@ -1,7 +1,8 @@
-use qalc_ast::concrete_ast::{Declaration, DeclarationKind, TypeExpression};
+use qalc_ast::concrete_ast::{Declaration, DeclarationKind, Pattern, TypeExpression};
 use qalc_utils::{CompilerResult, Diagnostic};
 
 use crate::expression::parse_expression;
+use crate::pattern::parse_pattern;
 use crate::tokenizer::{Rule, Token};
 use crate::type_expression::parse_type_expression;
 
@@ -51,7 +52,7 @@ fn parse_function_declaration(token: Token) -> CompilerResult<DeclarationKind> {
   }
 
   let body = parse_expression(tokens.eat_back());
-  let params: Vec<String> = tokens.map(|token| token.to_string()).collect();
+  let params: Vec<Pattern> = tokens.map(parse_pattern).collect();
 
   Ok(DeclarationKind::Function {
     identifier,
