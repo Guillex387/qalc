@@ -6,7 +6,7 @@ BLOCK_COMMENT = _{ "/*" ~ (BLOCK_COMMENT | (!"*/" ~ ANY))* ~ "*/" }
 LINE_COMMENT = _{ ("//" | "#") ~ (!"\n" ~ ANY)* ~ ("\n" | EOI) }
 COMMENT = _{ LINE_COMMENT | BLOCK_COMMENT }
 
-keyword = _{ "if" | "else" | "null" | "let" | "type" | "alias" | "in" | "then" | "match" | "default" | "perform" | "linear" | "where" }
+keyword = _{ "if" | "else" | "let" | "type" | "in" | "then" | "match" | "perform" | "linear" | "where" }
 
 // Identifiers
 
