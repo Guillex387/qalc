@@ -1,8 +1,10 @@
+use derive_more::Debug;
 use std::{ops::Range, rc::Rc};
 
 use crate::source::Source;
 
 #[derive(Debug, Clone)]
+#[debug("{start}..{end}:{source:?}")]
 pub struct Span {
   source: Rc<Source>,
   pub start: usize,

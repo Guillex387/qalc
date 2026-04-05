@@ -1,7 +1,9 @@
 use ariadne;
+use derive_more::Debug;
 use std::{fs, io};
 
 #[derive(Debug)]
+#[debug("{name}")]
 pub struct Source {
   name: String,
   content: String,
