@@ -93,7 +93,7 @@ assigment_expression = { pattern ~ "=" ~ expression }
 
 let_block = { "let" ~ assigment_expression ~ ("," ~ assigment_expression)* ~ "in" ~ expression }
 if_else_block = { "if" ~ expression ~ "then" ~ expression ~ "else" ~ expression }
-match_block = { "match" ~ expression ~ "{" ~ (expression ~ "->" ~ expression) ~ ("," ~ expression ~ "->" ~ expression)* ~ ("," ~ "default" ~ "->" ~ expression)? ~ "}" }
+match_block = { "match" ~ expression ~ "{" ~ (expression ~ "->" ~ expression) ~ ("," ~ expression ~ "->" ~ expression)* ~ "}" }
 perform_block = { "perform" ~ "{" ~ (assigment_expression | expression) ~ ("," ~ (assigment_expression | expression))* ~ "}" }
 linear_block = { "linear" ~ "{" ~ (assigment_expression | expression) ~ ("," ~ (assigment_expression | expression))* ~ "}" }
 

@@ -36,12 +36,6 @@ pub fn parse_if_else_block(mut tokens: TokensIter) -> ExpressionKind {
 
 pub fn parse_match_block(mut tokens: TokensIter) -> ExpressionKind {
   let value = consume_expression(&mut tokens);
-  let has_default = tokens.len() % 2 != 0;
-  let default: Option<Box<Expression>> = if has_default {
-    Some(consume_back_expression(&mut tokens))
-  } else {
-    None
-  };
 
   let cases: Vec<(Expression, Expression)> = tokens
     .collect::<Vec<Token>>()
@@ -57,6 +51,23 @@ pub fn parse_match_block(mut tokens: TokensIter) -> ExpressionKind {
       }
     })
     .collect();
+
+  let (default_cases, cases): (Vec<(Expression, Expression)>, Vec<(Expression, Expression)>) =
+    cases.iter().cloned().partition(|(predicate, _)| {
+      if let ExpressionKind::Identifier(identifier) = &predicate.kind {
+        identifier == "_"
+      } else {
+        false
+      }
+    });
+
+  if default_cases.len() > 1 {
+    todo!("Puts an error with multiple labels here");
+  }
+
+  let default = default_cases
+    .first()
+    .map(|(_, value)| Box::new(value.clone()));
 
   ExpressionKind::MatchBlock {
     value,
