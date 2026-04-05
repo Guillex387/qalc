@@ -71,7 +71,7 @@ fn parse_call_expression() {
 
 #[test]
 fn parse_lambda_expression() {
-  let kind = parse_expression_kind("(x y) => x");
+  let kind = parse_expression_kind("(x y) -> x");
 
   match kind {
     ExpressionKind::Lambda { params, body } => {
