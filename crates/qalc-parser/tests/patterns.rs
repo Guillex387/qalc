@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use qalc_ast::concrete_ast::{DeclarationKind, Pattern};
+use qalc_ast::concrete_ast::{DeclarationKind, Pattern, PatternKind};
 use qalc_parser::parse_program;
 use qalc_utils::Source;
 
@@ -21,13 +21,20 @@ fn parse_params(params: &str) -> Vec<Pattern> {
   }
 }
 
-fn assert_pattern_eq(actual: &Pattern, expected: &Pattern) {
-  match (actual, expected) {
-    (Pattern::Wildcard, Pattern::Wildcard) => {}
-    (Pattern::Variable(actual_name), Pattern::Variable(expected_name)) => {
+#[derive(Debug, Clone)]
+enum PatternShape {
+  Variable(String),
+  Tuple(Vec<PatternShape>),
+  Wildcard,
+}
+
+fn assert_pattern_eq(actual: &Pattern, expected: &PatternShape) {
+  match (&actual.kind, expected) {
+    (PatternKind::Wildcard, PatternShape::Wildcard) => {}
+    (PatternKind::Variable(actual_name), PatternShape::Variable(expected_name)) => {
       assert_eq!(actual_name, expected_name, "variable pattern");
     }
-    (Pattern::Tuple(actual_items), Pattern::Tuple(expected_items)) => {
+    (PatternKind::Tuple(actual_items), PatternShape::Tuple(expected_items)) => {
       assert_eq!(
         actual_items.len(),
         expected_items.len(),
@@ -38,7 +45,7 @@ fn assert_pattern_eq(actual: &Pattern, expected: &Pattern) {
         assert_pattern_eq(actual_item, expected_item);
       }
     }
-    _ => panic!("expected {:?}, got {:?}", expected, actual),
+    _ => panic!("expected {:?}, got {:?}", expected, actual.kind),
   }
 }
 
@@ -47,8 +54,8 @@ fn parse_variable_and_wildcard_patterns() {
   let params = parse_params("_ x");
   assert_eq!(params.len(), 2, "params length");
 
-  assert_pattern_eq(&params[0], &Pattern::Wildcard);
-  assert_pattern_eq(&params[1], &Pattern::Variable("x".to_string()));
+  assert_pattern_eq(&params[0], &PatternShape::Wildcard);
+  assert_pattern_eq(&params[1], &PatternShape::Variable("x".to_string()));
 }
 
 #[test]
@@ -56,9 +63,9 @@ fn parse_tuple_pattern() {
   let params = parse_params("(a, b)");
   assert_eq!(params.len(), 1, "params length");
 
-  let expected = Pattern::Tuple(vec![
-    Pattern::Variable("a".to_string()),
-    Pattern::Variable("b".to_string()),
+  let expected = PatternShape::Tuple(vec![
+    PatternShape::Variable("a".to_string()),
+    PatternShape::Variable("b".to_string()),
   ]);
 
   assert_pattern_eq(&params[0], &expected);
@@ -69,13 +76,16 @@ fn parse_nested_tuple_patterns() {
   let params = parse_params("((a, _), (b, (c, d)))");
   assert_eq!(params.len(), 1, "params length");
 
-  let expected = Pattern::Tuple(vec![
-    Pattern::Tuple(vec![Pattern::Variable("a".to_string()), Pattern::Wildcard]),
-    Pattern::Tuple(vec![
-      Pattern::Variable("b".to_string()),
-      Pattern::Tuple(vec![
-        Pattern::Variable("c".to_string()),
-        Pattern::Variable("d".to_string()),
+  let expected = PatternShape::Tuple(vec![
+    PatternShape::Tuple(vec![
+      PatternShape::Variable("a".to_string()),
+      PatternShape::Wildcard,
+    ]),
+    PatternShape::Tuple(vec![
+      PatternShape::Variable("b".to_string()),
+      PatternShape::Tuple(vec![
+        PatternShape::Variable("c".to_string()),
+        PatternShape::Variable("d".to_string()),
       ]),
     ]),
   ]);

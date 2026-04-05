@@ -26,7 +26,13 @@ pub struct Declaration {
 }
 
 #[derive(Debug, Clone)]
-pub enum Pattern {
+pub struct Pattern {
+  pub kind: PatternKind,
+  pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub enum PatternKind {
   Variable(String),
   Tuple(Vec<Pattern>),
   Wildcard,
