@@ -5,6 +5,7 @@ mod utils;
 
 use pest::{iterators::Pairs, pratt_parser::PrattParser};
 use qalc_ast::concrete_ast::{BinaryOperator, Expression, ExpressionKind};
+use qalc_utils::CompilerResult;
 
 use crate::expression::atoms::parse_atom_expression;
 use crate::tokenizer::{Rule, Token};
@@ -68,25 +69,29 @@ fn parse_binary_operator(operator: Token) -> BinaryOperator {
   }
 }
 
-fn parse_binary_expression(left: Expression, operator: Token, right: Expression) -> Expression {
-  Expression {
+fn parse_binary_expression(
+  left: Expression,
+  operator: Token,
+  right: Expression,
+) -> CompilerResult<Expression> {
+  Ok(Expression {
     span: left.span.join(&right.span),
     kind: ExpressionKind::Binary {
       left: Box::new(left),
       operator: parse_binary_operator(operator),
       right: Box::new(right),
     },
-  }
+  })
 }
 
-pub fn parse_expression(token: Token) -> Expression {
+pub fn parse_expression(token: Token) -> CompilerResult<Expression> {
   let source = token.source().clone();
   let raw_token_iter: Pairs<Rule> = token.inner().into();
 
   PRATT_PARSER
     .map_primary(|raw_token| parse_atom_expression(Token::new(raw_token, &source)))
     .map_infix(|left, operator, right| {
-      parse_binary_expression(left, Token::new(operator, &source), right)
+      parse_binary_expression(left?, Token::new(operator, &source), right?)
     })
     .parse(raw_token_iter)
 }

@@ -1,4 +1,5 @@
 use qalc_ast::concrete_ast::{Expression, ExpressionKind, Pattern, SliceExpression};
+use qalc_utils::CompilerResult;
 
 use crate::expression::blocks::{
   parse_if_else_block, parse_let_block, parse_linear_block, parse_match_block, parse_perform_block,
@@ -8,69 +9,77 @@ use crate::expression::{numbers::parse_number_literal, parse_binary_operator, pa
 use crate::pattern::parse_pattern;
 use crate::tokenizer::{Rule, Token, TokensIter};
 
-fn parse_call_expression(mut tokens: TokensIter) -> ExpressionKind {
-  let callee = consume_atom(&mut tokens);
-  let params: Vec<Expression> = tokens.map(parse_atom_expression).collect();
+fn parse_call_expression(mut tokens: TokensIter) -> CompilerResult<ExpressionKind> {
+  let callee = consume_atom(&mut tokens)?;
+  let params = tokens
+    .map(parse_atom_expression)
+    .collect::<CompilerResult<Vec<Expression>>>()?;
 
-  ExpressionKind::Call { callee, params }
+  Ok(ExpressionKind::Call { callee, params })
 }
 
-fn parse_lambda_expression(mut tokens: TokensIter) -> ExpressionKind {
-  let body = consume_back_expression(&mut tokens);
+fn parse_lambda_expression(mut tokens: TokensIter) -> CompilerResult<ExpressionKind> {
+  let body = consume_back_expression(&mut tokens)?;
   let params: Vec<Pattern> = tokens.map(parse_pattern).collect();
 
-  ExpressionKind::Lambda { params, body }
+  Ok(ExpressionKind::Lambda { params, body })
 }
 
-fn parse_partial_op_left(mut tokens: TokensIter) -> ExpressionKind {
+fn parse_partial_op_left(mut tokens: TokensIter) -> CompilerResult<ExpressionKind> {
   let operator = parse_binary_operator(tokens.eat());
-  let right = consume_atom(&mut tokens);
+  let right = consume_atom(&mut tokens)?;
 
-  ExpressionKind::PartialLeftBinary { operator, right }
+  Ok(ExpressionKind::PartialLeftBinary { operator, right })
 }
 
-fn parse_partial_op_right(mut tokens: TokensIter) -> ExpressionKind {
-  let left = consume_atom(&mut tokens);
+fn parse_partial_op_right(mut tokens: TokensIter) -> CompilerResult<ExpressionKind> {
+  let left = consume_atom(&mut tokens)?;
   let operator = parse_binary_operator(tokens.eat());
 
-  ExpressionKind::PartialRightBinary { left, operator }
+  Ok(ExpressionKind::PartialRightBinary { left, operator })
 }
 
-fn parse_tuple_expression(tokens: TokensIter) -> ExpressionKind {
-  ExpressionKind::Tuple(tokens.map(parse_expression).collect())
-}
-
-fn parse_slice_items_expression(tokens: TokensIter) -> ExpressionKind {
-  ExpressionKind::Slice(SliceExpression::Items(
-    tokens.map(parse_expression).collect(),
+fn parse_tuple_expression(tokens: TokensIter) -> CompilerResult<ExpressionKind> {
+  Ok(ExpressionKind::Tuple(
+    tokens
+      .map(parse_expression)
+      .collect::<CompilerResult<Vec<Expression>>>()?,
   ))
 }
 
-fn parse_slice_range_expression(mut tokens: TokensIter) -> ExpressionKind {
-  ExpressionKind::Slice(SliceExpression::Range(
-    consume_expression(&mut tokens),
-    consume_expression(&mut tokens),
-  ))
+fn parse_slice_items_expression(tokens: TokensIter) -> CompilerResult<ExpressionKind> {
+  Ok(ExpressionKind::Slice(SliceExpression::Items(
+    tokens
+      .map(parse_expression)
+      .collect::<CompilerResult<Vec<Expression>>>()?,
+  )))
 }
 
-pub fn parse_atom_expression(token: Token) -> Expression {
+fn parse_slice_range_expression(mut tokens: TokensIter) -> CompilerResult<ExpressionKind> {
+  Ok(ExpressionKind::Slice(SliceExpression::Range(
+    consume_expression(&mut tokens)?,
+    consume_expression(&mut tokens)?,
+  )))
+}
+
+pub fn parse_atom_expression(token: Token) -> CompilerResult<Expression> {
   let span = token.span();
   let rule = token.rule();
   let mut tokens = token.clone().inner();
   let kind = match rule {
-    Rule::let_block => parse_let_block(tokens),
-    Rule::if_else_block => parse_if_else_block(tokens),
-    Rule::match_block => parse_match_block(tokens),
-    Rule::perform_block => parse_perform_block(tokens),
-    Rule::linear_block => parse_linear_block(tokens),
-    Rule::call_expression => parse_call_expression(tokens),
-    Rule::lambda_expression => parse_lambda_expression(tokens),
-    Rule::partial_operation_left => parse_partial_op_left(tokens),
-    Rule::partial_operation_right => parse_partial_op_right(tokens),
-    Rule::tuple_expression => parse_tuple_expression(tokens),
-    Rule::slice_items_expression => parse_slice_items_expression(tokens),
-    Rule::slice_range_expression => parse_slice_range_expression(tokens),
-    Rule::expression => parse_expression(token).kind,
+    Rule::let_block => parse_let_block(tokens)?,
+    Rule::if_else_block => parse_if_else_block(tokens)?,
+    Rule::match_block => parse_match_block(tokens)?,
+    Rule::perform_block => parse_perform_block(tokens)?,
+    Rule::linear_block => parse_linear_block(tokens)?,
+    Rule::call_expression => parse_call_expression(tokens)?,
+    Rule::lambda_expression => parse_lambda_expression(tokens)?,
+    Rule::partial_operation_left => parse_partial_op_left(tokens)?,
+    Rule::partial_operation_right => parse_partial_op_right(tokens)?,
+    Rule::tuple_expression => parse_tuple_expression(tokens)?,
+    Rule::slice_items_expression => parse_slice_items_expression(tokens)?,
+    Rule::slice_range_expression => parse_slice_range_expression(tokens)?,
+    Rule::expression => parse_expression(token)?.kind,
     Rule::unknow_integer
     | Rule::i8_integer
     | Rule::i16_integer
@@ -88,5 +97,5 @@ pub fn parse_atom_expression(token: Token) -> Expression {
     rule => unreachable!("Expected atom expression found {:?}", rule),
   };
 
-  Expression { kind, span }
+  Ok(Expression { kind, span })
 }

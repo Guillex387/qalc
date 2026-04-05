@@ -1,56 +1,59 @@
 use qalc_ast::concrete_ast::{Expression, ExpressionKind};
+use qalc_utils::CompilerResult;
 
 use crate::expression::parse_expression;
 use crate::expression::utils::{consume_back_expression, consume_expression};
 use crate::pattern::parse_pattern;
 use crate::tokenizer::{Rule, Token, TokensIter};
 
-fn parse_assigment(token: Token) -> Expression {
+fn parse_assigment(token: Token) -> CompilerResult<Expression> {
   let span = token.span();
   let mut tokens = token.inner();
   let identifier = parse_pattern(tokens.eat());
-  let value = consume_expression(&mut tokens);
+  let value = consume_expression(&mut tokens)?;
   let kind = ExpressionKind::Assigment { identifier, value };
 
-  Expression { kind, span }
+  Ok(Expression { kind, span })
 }
 
-pub fn parse_let_block(mut tokens: TokensIter) -> ExpressionKind {
-  let value = consume_back_expression(&mut tokens);
-  let assigments: Vec<Expression> = tokens.map(parse_assigment).collect();
+pub fn parse_let_block(mut tokens: TokensIter) -> CompilerResult<ExpressionKind> {
+  let value = consume_back_expression(&mut tokens)?;
+  let assigments = tokens
+    .map(parse_assigment)
+    .collect::<CompilerResult<Vec<Expression>>>()?;
 
-  ExpressionKind::LetBlock { assigments, value }
+  Ok(ExpressionKind::LetBlock { assigments, value })
 }
 
-pub fn parse_if_else_block(mut tokens: TokensIter) -> ExpressionKind {
-  let test = consume_expression(&mut tokens);
-  let consequent = consume_expression(&mut tokens);
-  let alternative = consume_expression(&mut tokens);
+pub fn parse_if_else_block(mut tokens: TokensIter) -> CompilerResult<ExpressionKind> {
+  let test = consume_expression(&mut tokens)?;
+  let consequent = consume_expression(&mut tokens)?;
+  let alternative = consume_expression(&mut tokens)?;
 
-  ExpressionKind::IfElseBlock {
+  Ok(ExpressionKind::IfElseBlock {
     test,
     consequent,
     alternative,
-  }
+  })
 }
 
-pub fn parse_match_block(mut tokens: TokensIter) -> ExpressionKind {
-  let value = consume_expression(&mut tokens);
+pub fn parse_match_block(mut tokens: TokensIter) -> CompilerResult<ExpressionKind> {
+  let value = consume_expression(&mut tokens)?;
 
-  let cases: Vec<(Expression, Expression)> = tokens
+  let cases = tokens
     .collect::<Vec<Token>>()
     .chunks(2)
-    .filter_map(|tokens| {
+    .map(|tokens| {
       if let [case, value] = tokens {
-        Some((
-          parse_expression(case.clone()),
-          parse_expression(value.clone()),
+        Ok((
+          parse_expression(case.clone())?,
+          parse_expression(value.clone())?,
         ))
       } else {
-        None
+        unreachable!("Expected case-value format, found {:?}", tokens)
       }
     })
-    .collect();
+    .collect::<CompilerResult<Vec<(Expression, Expression)>>>()?;
 
   let (default_cases, cases): (Vec<(Expression, Expression)>, Vec<(Expression, Expression)>) =
     cases.iter().cloned().partition(|(predicate, _)| {
@@ -69,15 +72,15 @@ pub fn parse_match_block(mut tokens: TokensIter) -> ExpressionKind {
     .first()
     .map(|(_, value)| Box::new(value.clone()));
 
-  ExpressionKind::MatchBlock {
+  Ok(ExpressionKind::MatchBlock {
     value,
     cases,
     default,
-  }
+  })
 }
 
-pub fn parse_perform_block(tokens: TokensIter) -> ExpressionKind {
-  ExpressionKind::PerformBlock {
+pub fn parse_perform_block(tokens: TokensIter) -> CompilerResult<ExpressionKind> {
+  Ok(ExpressionKind::PerformBlock {
     sequence: tokens
       .map(|token| match token.rule() {
         Rule::assigment_expression => parse_assigment(token),
@@ -87,12 +90,12 @@ pub fn parse_perform_block(tokens: TokensIter) -> ExpressionKind {
           token.rule()
         ),
       })
-      .collect(),
-  }
+      .collect::<CompilerResult<Vec<Expression>>>()?,
+  })
 }
 
-pub fn parse_linear_block(tokens: TokensIter) -> ExpressionKind {
-  ExpressionKind::LinearBlock {
+pub fn parse_linear_block(tokens: TokensIter) -> CompilerResult<ExpressionKind> {
+  Ok(ExpressionKind::LinearBlock {
     expressions: tokens
       .map(|token| match token.rule() {
         Rule::assigment_expression => parse_assigment(token),
@@ -102,6 +105,6 @@ pub fn parse_linear_block(tokens: TokensIter) -> ExpressionKind {
           token.rule()
         ),
       })
-      .collect(),
-  }
+      .collect::<CompilerResult<Vec<Expression>>>()?,
+  })
 }
