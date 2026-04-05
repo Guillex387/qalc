@@ -1,5 +1,7 @@
 mod atoms;
+mod blocks;
 mod numbers;
+mod utils;
 
 use pest::{iterators::Pairs, pratt_parser::PrattParser};
 use qalc_ast::concrete_ast::{BinaryOperator, Expression, ExpressionKind};
