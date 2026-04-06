@@ -6,7 +6,7 @@ BLOCK_COMMENT = _{ "/*" ~ (BLOCK_COMMENT | (!"*/" ~ ANY))* ~ "*/" }
 LINE_COMMENT = _{ ("//" | "#") ~ (!"\n" ~ ANY)* ~ ("\n" | EOI) }
 COMMENT = _{ LINE_COMMENT | BLOCK_COMMENT }
 
-keyword = _{ "if" | "else" | "let" | "type" | "in" | "then" | "match" | "perform" | "linear" | "where" }
+keyword = _{ "if" | "else" | "let" | "type" | "in" | "then" | "match" | "perform" | "linear" | "where" | "return" }
 
 // Identifiers
 
@@ -94,8 +94,12 @@ assigment_expression = { pattern ~ "=" ~ expression }
 let_block = { "let" ~ assigment_expression ~ ("," ~ assigment_expression)* ~ "in" ~ expression }
 if_else_block = { "if" ~ expression ~ "then" ~ expression ~ "else" ~ expression }
 match_block = { "match" ~ expression ~ "{" ~ (expression ~ "->" ~ expression) ~ ("," ~ expression ~ "->" ~ expression)* ~ "}" }
-perform_block = { "perform" ~ "{" ~ (assigment_expression | expression) ~ ("," ~ (assigment_expression | expression))* ~ "}" }
-linear_block = { "linear" ~ "{" ~ (assigment_expression | expression) ~ ("," ~ (assigment_expression | expression))* ~ "}" }
+
+return_expression = { "return" ~ expression }
+
+monadic_block = _{ "{" ~ (assigment_expression | expression) ~ ("," ~ (assigment_expression | expression))* ~ ("," ~ return_expression)? ~ "}" }
+perform_block = { "perform" ~ monadic_block }
+linear_block = { "linear" ~ monadic_block }
 
 block_expression = _{ let_block | if_else_block | match_block | perform_block | linear_block }
 

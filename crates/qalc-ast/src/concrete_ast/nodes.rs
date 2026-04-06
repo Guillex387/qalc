@@ -62,9 +62,11 @@ pub enum ExpressionKind {
   },
   PerformBlock {
     sequence: Vec<Expression>,
+    value: Option<Box<Expression>>,
   },
   LinearBlock {
-    expressions: Vec<Expression>,
+    sequence: Vec<Expression>,
+    value: Option<Box<Expression>>,
   },
   Binary {
     left: Box<Expression>,

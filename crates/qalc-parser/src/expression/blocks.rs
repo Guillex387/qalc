@@ -86,32 +86,40 @@ pub fn parse_match_block(mut tokens: TokensIter) -> CompilerResult<ExpressionKin
   })
 }
 
+fn parse_monadic_block(
+  tokens: TokensIter,
+) -> CompilerResult<(Vec<Expression>, Option<Box<Expression>>)> {
+  let (sequence_tokens, return_token): (Vec<Token>, Vec<Token>) =
+    tokens.partition(|token| token.rule() != Rule::return_expression);
+  let return_token = return_token.first().map(ToOwned::to_owned);
+
+  let sequence = sequence_tokens
+    .into_iter()
+    .map(|token| match token.rule() {
+      Rule::assigment_expression => parse_assigment(token),
+      Rule::expression => parse_expression(token),
+      _ => unreachable!(
+        "Expected expression or assigment expression, found {:?}",
+        token.rule()
+      ),
+    })
+    .collect::<CompilerResult<Vec<Expression>>>()?;
+  let value = return_token
+    .map(|token| parse_expression(token.inner().eat()))
+    .transpose()?
+    .map(Box::new);
+
+  Ok((sequence, value))
+}
+
 pub fn parse_perform_block(tokens: TokensIter) -> CompilerResult<ExpressionKind> {
-  Ok(ExpressionKind::PerformBlock {
-    sequence: tokens
-      .map(|token| match token.rule() {
-        Rule::assigment_expression => parse_assigment(token),
-        Rule::expression => parse_expression(token),
-        _ => unreachable!(
-          "Expected expression or assigment expression, found {:?}",
-          token.rule()
-        ),
-      })
-      .collect::<CompilerResult<Vec<Expression>>>()?,
-  })
+  let (sequence, value) = parse_monadic_block(tokens)?;
+
+  Ok(ExpressionKind::PerformBlock { sequence, value })
 }
 
 pub fn parse_linear_block(tokens: TokensIter) -> CompilerResult<ExpressionKind> {
-  Ok(ExpressionKind::LinearBlock {
-    expressions: tokens
-      .map(|token| match token.rule() {
-        Rule::assigment_expression => parse_assigment(token),
-        Rule::expression => parse_expression(token),
-        _ => unreachable!(
-          "Expected expression or assigment expression, found {:?}",
-          token.rule()
-        ),
-      })
-      .collect::<CompilerResult<Vec<Expression>>>()?,
-  })
+  let (sequence, value) = parse_monadic_block(tokens)?;
+
+  Ok(ExpressionKind::LinearBlock { sequence, value })
 }
