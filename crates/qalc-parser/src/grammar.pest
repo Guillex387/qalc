@@ -80,7 +80,7 @@ pattern = { simple_identifier | "(" ~ pattern ~ ("," ~ pattern)+ ~ ")" }
 
 partial_operation_left = { "(" ~ binary_operators ~ expression_atom ~ ")" }
 partial_operation_right = { "(" ~ expression_atom ~ binary_operators ~ ")" }
-call_expression = { (identifier | "(" ~ expression ~ ")") ~ (lambda_expression | partial_operation_right | partial_operation_left | "(" ~ expression ~ ")" | identifier | literal)+ }
+call_expression = { (identifier | "(" ~ expression ~ ")") ~ expression_atom+ }
 lambda_expression = { "(" ~ pattern* ~ ")" ~ "->" ~ expression }
 tuple_expression = { "(" ~ ")" | "(" ~ expression ~ ("," ~ expression)+ ~ ")" }
 slice_range_expression = { "[" ~ expression ~ ".." ~ expression ~ "]" }
