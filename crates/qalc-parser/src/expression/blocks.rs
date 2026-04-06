@@ -1,5 +1,5 @@
 use qalc_ast::concrete_ast::{Expression, ExpressionKind};
-use qalc_utils::CompilerResult;
+use qalc_utils::{CompilerResult, Diagnostic};
 
 use crate::expression::parse_expression;
 use crate::expression::utils::{consume_back_expression, consume_expression};
@@ -65,7 +65,14 @@ pub fn parse_match_block(mut tokens: TokensIter) -> CompilerResult<ExpressionKin
     });
 
   if default_cases.len() > 1 {
-    todo!("Puts an error with multiple labels here");
+    let first_default_span = &default_cases.first().unwrap().0.span;
+    let last_default_span = &default_cases.last().unwrap().1.span;
+
+    return Err(Diagnostic::error(
+      "multiple default cases in match",
+      "multiple default cases found here",
+      first_default_span.join(&last_default_span),
+    ));
   }
 
   let default = default_cases
