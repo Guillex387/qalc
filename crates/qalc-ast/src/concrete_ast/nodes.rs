@@ -103,6 +103,7 @@ pub enum ExpressionKind {
   Assigment {
     identifier: Pattern,
     value: Box<Expression>,
+    monadic: bool,
   },
 }
 

@@ -96,8 +96,9 @@ if_else_block = { "if" ~ expression ~ "then" ~ expression ~ "else" ~ expression 
 match_block = { "match" ~ expression ~ "{" ~ (expression ~ "->" ~ expression) ~ ("," ~ expression ~ "->" ~ expression)* ~ "}" }
 
 return_expression = { "return" ~ expression }
+monadic_assigment = { pattern ~ "<-" ~ expression }
 
-monadic_block = _{ "{" ~ (assigment_expression | expression) ~ ("," ~ (assigment_expression | expression))* ~ ("," ~ return_expression)? ~ "}" }
+monadic_block = _{ "{" ~ (assigment_expression | monadic_assigment | expression) ~ ("," ~ (assigment_expression | monadic_assigment | expression))* ~ ("," ~ return_expression)? ~ "}" }
 perform_block = { "perform" ~ monadic_block }
 linear_block = { "linear" ~ monadic_block }
 

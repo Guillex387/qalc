@@ -8,10 +8,17 @@ use crate::tokenizer::{Rule, Token, TokensIter};
 
 fn parse_assigment(token: Token) -> CompilerResult<Expression> {
   let span = token.span();
+  let rule = token.rule();
   let mut tokens = token.inner();
+
   let identifier = parse_pattern(tokens.eat());
   let value = consume_expression(&mut tokens)?;
-  let kind = ExpressionKind::Assigment { identifier, value };
+  let monadic = rule == Rule::monadic_assigment;
+  let kind = ExpressionKind::Assigment {
+    identifier,
+    value,
+    monadic,
+  };
 
   Ok(Expression { kind, span })
 }
@@ -96,7 +103,7 @@ fn parse_monadic_block(
   let sequence = sequence_tokens
     .into_iter()
     .map(|token| match token.rule() {
-      Rule::assigment_expression => parse_assigment(token),
+      Rule::monadic_assigment | Rule::assigment_expression => parse_assigment(token),
       Rule::expression => parse_expression(token),
       _ => unreachable!(
         "Expected expression or assigment expression, found {:?}",
