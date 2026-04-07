@@ -1,25 +1,71 @@
 use qalc_ast::{
   ASTTransform,
   concrete_ast::{
-    ConcreteAST, Declaration as CDecl, DeclarationKind as CDeclKind, Expression as CExpr,
+    self, ConcreteAST, Declaration as CDecl, DeclarationKind as CDeclKind, Expression as CExpr,
     ExpressionKind as CExprKind, Pattern, TypeExpression,
   },
   normalized_ast::{
-    Declaration as NDecl, DeclarationKind as NDeclKind, Expression as NExpr,
+    self, Declaration as NDecl, DeclarationKind as NDeclKind, Expression as NExpr,
     ExpressionKind as NExprKind, NormalizedAST,
   },
 };
 use qalc_utils::{CompilerResult, Diagnostic};
 
+fn transform_let_expression(assigments: Vec<CExpr>, value: Box<CExpr>) -> NExprKind {
+  let assigments = assigments
+    .into_iter()
+    .map(|assigment| {
+      if let CExprKind::Assigment {
+        identifier, value, ..
+      } = assigment.kind
+      {
+        let value = transform_expression(*value);
+        (identifier, value)
+      } else {
+        unreachable!();
+      }
+    })
+    .collect();
+  let value = Box::new(transform_expression(*value));
+
+  NExprKind::LetBlock { assigments, value }
+}
+
+fn transform_slice(slice: concrete_ast::SliceExpression) -> NExprKind {
+  let slice_expr = match slice {
+    concrete_ast::SliceExpression::Items(items) => {
+      normalized_ast::SliceExpression::Items(items.into_iter().map(transform_expression).collect())
+    }
+    concrete_ast::SliceExpression::Range(start, end) => {
+      let start = Box::new(transform_expression(*start));
+      let end = Box::new(transform_expression(*end));
+
+      normalized_ast::SliceExpression::Range(start, end)
+    }
+  };
+
+  NExprKind::Slice(slice_expr)
+}
+
 fn transform_expression(expression: CExpr) -> NExpr {
   let span = expression.span;
   let kind = match expression.kind {
-    CExprKind::LetBlock { assigments, value } => todo!(),
+    CExprKind::LetBlock { assigments, value } => transform_let_expression(assigments, value),
     CExprKind::IfElseBlock {
       test,
       consequent,
       alternative,
-    } => todo!(),
+    } => {
+      let test = Box::new(transform_expression(*test));
+      let consequent = Box::new(transform_expression(*consequent));
+      let alternative = Box::new(transform_expression(*alternative));
+
+      NExprKind::IfElseBlock {
+        test,
+        consequent,
+        alternative,
+      }
+    }
     CExprKind::MatchBlock {
       value,
       cases,
@@ -34,7 +80,12 @@ fn transform_expression(expression: CExpr) -> NExpr {
     } => todo!(),
     CExprKind::PartialLeftBinary { operator, right } => todo!(),
     CExprKind::PartialRightBinary { left, operator } => todo!(),
-    CExprKind::Call { callee, params } => todo!(),
+    CExprKind::Call { callee, params } => {
+      let callee = Box::new(transform_expression(*callee));
+      let params = params.into_iter().map(transform_expression).collect();
+
+      NExprKind::Call { callee, params }
+    }
     CExprKind::Lambda { params, body } => {
       let (params, body) = transform_params_pattern_to_let(params, *body);
 
@@ -46,7 +97,7 @@ fn transform_expression(expression: CExpr) -> NExpr {
     CExprKind::Tuple(tuple) => {
       NExprKind::Tuple(tuple.into_iter().map(transform_expression).collect())
     }
-    CExprKind::Slice(slice) => todo!(),
+    CExprKind::Slice(slice) => transform_slice(slice),
     CExprKind::Identifier(identifier) => NExprKind::Identifier(identifier),
     CExprKind::IntegerLiteral { number, suffix } => NExprKind::IntegerLiteral { number, suffix },
     CExprKind::FloatLiteral { number, suffix } => NExprKind::FloatLiteral { number, suffix },
