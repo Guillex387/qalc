@@ -35,7 +35,14 @@ fn transform_expression(expression: CExpr) -> NExpr {
     CExprKind::PartialLeftBinary { operator, right } => todo!(),
     CExprKind::PartialRightBinary { left, operator } => todo!(),
     CExprKind::Call { callee, params } => todo!(),
-    CExprKind::Lambda { params, body } => todo!(),
+    CExprKind::Lambda { params, body } => {
+      let (params, body) = transform_params_pattern_to_let(params, *body);
+
+      NExprKind::Lambda {
+        params,
+        body: Box::new(body),
+      }
+    }
     CExprKind::Tuple(tuple) => {
       NExprKind::Tuple(tuple.into_iter().map(transform_expression).collect())
     }
