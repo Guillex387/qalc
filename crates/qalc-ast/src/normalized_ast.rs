@@ -1,6 +1,6 @@
 use qalc_utils::Span;
 
-use crate::concrete_ast::{FloatSuffix, NumberSuffix, Pattern, SliceExpression, TypeExpression};
+use crate::concrete_ast::{FloatSuffix, NumberSuffix, Pattern, TypeExpression};
 
 #[derive(Debug, Clone)]
 pub struct NormalizedAST {
@@ -32,6 +32,12 @@ pub enum DeclarationKind {
     params: Vec<String>,
     body: Expression,
   },
+}
+
+#[derive(Debug, Clone)]
+pub enum SliceExpression {
+  Items(Vec<Expression>),
+  Range(Box<Expression>, Box<Expression>),
 }
 
 #[derive(Debug, Clone)]

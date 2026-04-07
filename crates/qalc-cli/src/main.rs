@@ -1,7 +1,10 @@
 use std::{env::args, rc::Rc};
 
+use qalc_analysis::Normalizer;
+
+use qalc_ast::ASTTransform;
 use qalc_parser::parse_program;
-use qalc_utils::Source;
+use qalc_utils::{Diagnostic, Source};
 
 fn main() {
   let filename = args().nth(1).expect("1 argument required");
@@ -13,5 +16,15 @@ fn main() {
       return;
     }
   };
-  println!("AST: {:#?}", concrete_ast);
+  println!("Concrete AST: {:#?}", concrete_ast);
+  let normalizer = Normalizer::default();
+  let mut diagnostics: Vec<Diagnostic> = Vec::new();
+  let normalized_ast = match normalizer.transform(concrete_ast, &mut diagnostics) {
+    Ok(ast) => ast,
+    Err(error) => {
+      eprintln!("{}", error);
+      return;
+    }
+  };
+  println!("Normalized AST: {:#?}", normalized_ast);
 }

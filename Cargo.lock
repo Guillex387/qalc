@@ -203,6 +203,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "qalc-analysis"
+version = "0.1.0"
+dependencies = [
+ "qalc-ast",
+ "qalc-utils",
+]
+
+[[package]]
 name = "qalc-ast"
 version = "0.1.0"
 dependencies = [
@@ -213,6 +221,8 @@ dependencies = [
 name = "qalc-cli"
 version = "0.1.0"
 dependencies = [
+ "qalc-analysis",
+ "qalc-ast",
  "qalc-parser",
  "qalc-utils",
 ]
