@@ -1,8 +1,9 @@
 use qalc_ast::{
   ASTTransform,
   concrete_ast::{
-    self, ConcreteAST, Declaration as CDecl, DeclarationKind as CDeclKind, Expression as CExpr,
-    ExpressionKind as CExprKind, Pattern, TypeExpression,
+    self, BinaryOperator, BinaryOperatorKind, ConcreteAST, Declaration as CDecl,
+    DeclarationKind as CDeclKind, Expression as CExpr, ExpressionKind as CExprKind, Pattern,
+    TypeExpression,
   },
   normalized_ast::{
     self, Declaration as NDecl, DeclarationKind as NDeclKind, Expression as NExpr,
@@ -74,6 +75,36 @@ fn transform_match(
   if_block.kind
 }
 
+fn operator_to_identifier(operator: BinaryOperator) -> NExpr {
+  let ident = match &operator.kind {
+    BinaryOperatorKind::Apply => "$",
+    BinaryOperatorKind::Pipe => "|>",
+    BinaryOperatorKind::LogicOr => "||",
+    BinaryOperatorKind::LogicAnd => "&&",
+    BinaryOperatorKind::Or => "|",
+    BinaryOperatorKind::And => "&",
+    BinaryOperatorKind::Xor => "^",
+    BinaryOperatorKind::Equal => "==",
+    BinaryOperatorKind::NotEqual => "!=",
+    BinaryOperatorKind::LessEqual => "<=",
+    BinaryOperatorKind::GreaterEqual => ">=",
+    BinaryOperatorKind::Less => "<",
+    BinaryOperatorKind::Greater => ">",
+    BinaryOperatorKind::Add => "+",
+    BinaryOperatorKind::Subtract => "-",
+    BinaryOperatorKind::Multiply => "*",
+    BinaryOperatorKind::Divide => "/",
+    BinaryOperatorKind::Module => "%",
+    BinaryOperatorKind::Raised => "**",
+  }
+  .to_string();
+
+  NExpr {
+    kind: NExprKind::Identifier(ident),
+    span: operator.span,
+  }
+}
+
 fn transform_slice(slice: concrete_ast::SliceExpression) -> NExprKind {
   let slice_expr = match slice {
     concrete_ast::SliceExpression::Items(items) => {
@@ -120,7 +151,10 @@ fn transform_expression(expression: CExpr) -> NExpr {
       left,
       operator,
       right,
-    } => todo!(),
+    } => NExprKind::Call {
+      callee: Box::new(operator_to_identifier(operator)),
+      params: vec![transform_expression(*left), transform_expression(*right)],
+    },
     CExprKind::PartialLeftBinary { operator, right } => todo!(),
     CExprKind::PartialRightBinary { left, operator } => todo!(),
     CExprKind::Call { callee, params } => {
