@@ -32,6 +32,12 @@ pub struct Pattern {
 }
 
 #[derive(Debug, Clone)]
+pub struct BinaryOperator {
+  pub kind: BinaryOperatorKind,
+  pub span: Span,
+}
+
+#[derive(Debug, Clone)]
 pub enum PatternKind {
   Variable(String),
   Tuple(Vec<Pattern>),

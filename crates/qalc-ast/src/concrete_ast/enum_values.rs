@@ -19,7 +19,7 @@ pub enum FloatSuffix {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum BinaryOperator {
+pub enum BinaryOperatorKind {
   Apply,
   Pipe,
   LogicOr,

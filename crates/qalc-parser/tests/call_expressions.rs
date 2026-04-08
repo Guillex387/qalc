@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use qalc_ast::concrete_ast::{
-  BinaryOperator, DeclarationKind, ExpressionKind, Pattern, PatternKind,
+  BinaryOperatorKind, DeclarationKind, ExpressionKind, Pattern, PatternKind,
 };
 use qalc_parser::parse_program;
 use qalc_utils::Source;
@@ -61,7 +61,7 @@ fn assert_binary_add(kind: &ExpressionKind, left: i128, right: i128) {
       operator,
       right: right_expr,
     } => {
-      assert_eq!(*operator, BinaryOperator::Add, "binary operator");
+      assert_eq!(operator.kind, BinaryOperatorKind::Add, "binary operator");
       assert_integer_literal(&left_expr.kind, left);
       assert_integer_literal(&right_expr.kind, right);
     }
@@ -92,7 +92,7 @@ fn parse_call_expression_with_partial_op_callee() {
     ExpressionKind::Call { callee, params } => {
       match callee.kind {
         ExpressionKind::PartialLeftBinary { operator, right } => {
-          assert_eq!(operator, BinaryOperator::Add, "callee operator");
+          assert_eq!(operator.kind, BinaryOperatorKind::Add, "callee operator");
           assert_integer_literal(&right.kind, 1);
         }
         other => panic!("expected partial left binary callee, got {:?}", other),

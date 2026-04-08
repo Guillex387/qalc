@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use qalc_ast::concrete_ast::{BinaryOperator, DeclarationKind, ExpressionKind};
+use qalc_ast::concrete_ast::{BinaryOperatorKind, DeclarationKind, ExpressionKind};
 use qalc_parser::parse_program;
 use qalc_utils::Source;
 
@@ -45,7 +45,7 @@ fn parse_partial_op_left() {
 
   match kind {
     ExpressionKind::PartialLeftBinary { operator, right } => {
-      assert_eq!(operator, BinaryOperator::Add, "operator");
+      assert_eq!(operator.kind, BinaryOperatorKind::Add, "operator");
       assert_integer_literal(&right.kind, 1);
     }
     other => panic!("expected partial left binary, got {:?}", other),
@@ -58,7 +58,7 @@ fn parse_partial_op_left_with_multiply() {
 
   match kind {
     ExpressionKind::PartialLeftBinary { operator, right } => {
-      assert_eq!(operator, BinaryOperator::Multiply, "operator");
+      assert_eq!(operator.kind, BinaryOperatorKind::Multiply, "operator");
       assert_integer_literal(&right.kind, 2);
     }
     other => panic!("expected partial left binary, got {:?}", other),
@@ -71,7 +71,7 @@ fn parse_partial_op_right() {
 
   match kind {
     ExpressionKind::PartialRightBinary { left, operator } => {
-      assert_eq!(operator, BinaryOperator::Add, "operator");
+      assert_eq!(operator.kind, BinaryOperatorKind::Add, "operator");
       assert_integer_literal(&left.kind, 1);
     }
     other => panic!("expected partial right binary, got {:?}", other),
@@ -84,7 +84,7 @@ fn parse_partial_op_right_with_raised() {
 
   match kind {
     ExpressionKind::PartialRightBinary { left, operator } => {
-      assert_eq!(operator, BinaryOperator::Raised, "operator");
+      assert_eq!(operator.kind, BinaryOperatorKind::Raised, "operator");
       assert_integer_literal(&left.kind, 2);
     }
     other => panic!("expected partial right binary, got {:?}", other),
@@ -97,7 +97,7 @@ fn parse_partial_op_right_with_identifier() {
 
   match kind {
     ExpressionKind::PartialRightBinary { left, operator } => {
-      assert_eq!(operator, BinaryOperator::Subtract, "operator");
+      assert_eq!(operator.kind, BinaryOperatorKind::Subtract, "operator");
       assert_identifier(&left.kind, "x");
     }
     other => panic!("expected partial right binary, got {:?}", other),

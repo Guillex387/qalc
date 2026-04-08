@@ -4,7 +4,7 @@ mod numbers;
 mod utils;
 
 use pest::{iterators::Pairs, pratt_parser::PrattParser};
-use qalc_ast::concrete_ast::{BinaryOperator, Expression, ExpressionKind};
+use qalc_ast::concrete_ast::{BinaryOperator, BinaryOperatorKind, Expression, ExpressionKind};
 use qalc_utils::CompilerResult;
 
 use crate::expression::atoms::parse_atom_expression;
@@ -45,27 +45,32 @@ lazy_static::lazy_static! {
 }
 
 fn parse_binary_operator(operator: Token) -> BinaryOperator {
-  match operator.rule() {
-    Rule::apply_operator => BinaryOperator::Apply,
-    Rule::pipe_operator => BinaryOperator::Pipe,
-    Rule::logic_or_operator => BinaryOperator::LogicOr,
-    Rule::logic_and_operator => BinaryOperator::LogicAnd,
-    Rule::or_operator => BinaryOperator::Or,
-    Rule::and_operator => BinaryOperator::And,
-    Rule::xor_operator => BinaryOperator::Xor,
-    Rule::equal_operator => BinaryOperator::Equal,
-    Rule::not_equal_operator => BinaryOperator::NotEqual,
-    Rule::less_equal_operator => BinaryOperator::LessEqual,
-    Rule::greater_equal_operator => BinaryOperator::GreaterEqual,
-    Rule::less_operator => BinaryOperator::Less,
-    Rule::greater_operator => BinaryOperator::Greater,
-    Rule::add_operator => BinaryOperator::Add,
-    Rule::subtract_operator => BinaryOperator::Subtract,
-    Rule::multiply_operator => BinaryOperator::Multiply,
-    Rule::divide_operator => BinaryOperator::Divide,
-    Rule::module_operator => BinaryOperator::Module,
-    Rule::raised_operator => BinaryOperator::Raised,
+  let kind = match operator.rule() {
+    Rule::apply_operator => BinaryOperatorKind::Apply,
+    Rule::pipe_operator => BinaryOperatorKind::Pipe,
+    Rule::logic_or_operator => BinaryOperatorKind::LogicOr,
+    Rule::logic_and_operator => BinaryOperatorKind::LogicAnd,
+    Rule::or_operator => BinaryOperatorKind::Or,
+    Rule::and_operator => BinaryOperatorKind::And,
+    Rule::xor_operator => BinaryOperatorKind::Xor,
+    Rule::equal_operator => BinaryOperatorKind::Equal,
+    Rule::not_equal_operator => BinaryOperatorKind::NotEqual,
+    Rule::less_equal_operator => BinaryOperatorKind::LessEqual,
+    Rule::greater_equal_operator => BinaryOperatorKind::GreaterEqual,
+    Rule::less_operator => BinaryOperatorKind::Less,
+    Rule::greater_operator => BinaryOperatorKind::Greater,
+    Rule::add_operator => BinaryOperatorKind::Add,
+    Rule::subtract_operator => BinaryOperatorKind::Subtract,
+    Rule::multiply_operator => BinaryOperatorKind::Multiply,
+    Rule::divide_operator => BinaryOperatorKind::Divide,
+    Rule::module_operator => BinaryOperatorKind::Module,
+    Rule::raised_operator => BinaryOperatorKind::Raised,
     rule => unreachable!("Expected binary operator, found {:?}", rule),
+  };
+
+  BinaryOperator {
+    kind,
+    span: operator.span(),
   }
 }
 
