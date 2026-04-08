@@ -9,7 +9,7 @@ use qalc_ast::{
     ExpressionKind as NExprKind, NormalizedAST,
   },
 };
-use qalc_utils::{CompilerResult, Diagnostic};
+use qalc_utils::{CompilerResult, Diagnostic, Span};
 
 fn transform_let_expression(assigments: Vec<CExpr>, value: Box<CExpr>) -> NExprKind {
   let assigments = assigments
@@ -29,6 +29,49 @@ fn transform_let_expression(assigments: Vec<CExpr>, value: Box<CExpr>) -> NExprK
   let value = Box::new(transform_expression(*value));
 
   NExprKind::LetBlock { assigments, value }
+}
+
+fn transform_match(
+  value: Box<CExpr>,
+  cases: Vec<(CExpr, CExpr)>,
+  default: Option<Box<CExpr>>,
+  span: Span,
+) -> NExprKind {
+  let value = Box::new(transform_expression(*value));
+  let mut if_block = default
+    .map(|expr| Box::new(transform_expression(*expr)))
+    .unwrap_or(Box::new(NExpr {
+      kind: NExprKind::Tuple(Vec::new()),
+      span,
+    }));
+
+  for (check_value, return_value) in cases {
+    let check_value = transform_expression(check_value);
+    let return_value = transform_expression(return_value);
+
+    let case_span = check_value.span.join(&return_value.span);
+    let eq_call = NExpr {
+      span: case_span.clone(),
+      kind: NExprKind::Call {
+        callee: Box::new(NExpr {
+          kind: NExprKind::Identifier("==".to_string()),
+          span: case_span.clone(),
+        }),
+        params: vec![*value.clone(), check_value],
+      },
+    };
+
+    if_block = Box::new(NExpr {
+      span: case_span,
+      kind: NExprKind::IfElseBlock {
+        test: Box::new(eq_call),
+        consequent: Box::new(return_value),
+        alternative: if_block,
+      },
+    })
+  }
+
+  if_block.kind
 }
 
 fn transform_slice(slice: concrete_ast::SliceExpression) -> NExprKind {
@@ -70,7 +113,7 @@ fn transform_expression(expression: CExpr) -> NExpr {
       value,
       cases,
       default,
-    } => todo!(),
+    } => transform_match(value, cases, default, span.clone()),
     CExprKind::PerformBlock { sequence, value } => todo!(),
     CExprKind::LinearBlock { sequence, value } => todo!(),
     CExprKind::Binary {
