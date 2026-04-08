@@ -32,6 +32,10 @@ fn transform_let_expression(assigments: Vec<CExpr>, value: Box<CExpr>) -> NExprK
   NExprKind::LetBlock { assigments, value }
 }
 
+// Example (source):
+//   match x { 1 -> 10, 2 -> 20 }
+// Example (normalized):
+//   if x == 1 then 10 else if x == 2 then 20 else ()
 fn transform_match(
   value: Box<CExpr>,
   cases: Vec<(CExpr, CExpr)>,
@@ -105,6 +109,10 @@ fn operator_to_identifier(operator: BinaryOperator) -> NExpr {
   }
 }
 
+// Example (source):
+//   (+ 1)
+// Example (normalized):
+//   (a) -> (+ a 1)
 fn transform_partial_left(operator: BinaryOperator, right: Box<CExpr>, span: Span) -> NExprKind {
   let callee = Box::new(operator_to_identifier(operator));
   let second_arg = transform_expression(*right);
@@ -211,6 +219,16 @@ fn transform_expression(expression: CExpr) -> NExpr {
   NExpr { kind, span }
 }
 
+// Example (source):
+//   ((x, y)) -> x
+// Example (normalized):
+//   (p0) -> let (x, y) = p0 in x
+// Example (source, function declaration):
+//   add :: (i32, i32) -> i32
+//   add (x, y) = x
+// Example (normalized):
+//   add :: (i32, i32) -> i32
+//   add p0 = let (x, y) = p0 in x
 fn transform_params_pattern_to_let(params: Vec<Pattern>, body: CExpr) -> (Vec<String>, NExpr) {
   let norm_params: Vec<String> = params
     .iter()
