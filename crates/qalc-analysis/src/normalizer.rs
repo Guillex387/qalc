@@ -105,6 +105,28 @@ fn operator_to_identifier(operator: BinaryOperator) -> NExpr {
   }
 }
 
+fn transform_partial_left(operator: BinaryOperator, right: Box<CExpr>, span: Span) -> NExprKind {
+  let callee = Box::new(operator_to_identifier(operator));
+  let second_arg = transform_expression(*right);
+
+  NExprKind::Lambda {
+    params: vec!["a".to_string()],
+    body: Box::new(NExpr {
+      kind: NExprKind::Call {
+        callee,
+        params: vec![
+          NExpr {
+            kind: NExprKind::Identifier("a".to_string()),
+            span: span.clone(),
+          },
+          second_arg,
+        ],
+      },
+      span: span.clone(),
+    }),
+  }
+}
+
 fn transform_slice(slice: concrete_ast::SliceExpression) -> NExprKind {
   let slice_expr = match slice {
     concrete_ast::SliceExpression::Items(items) => {
@@ -155,8 +177,13 @@ fn transform_expression(expression: CExpr) -> NExpr {
       callee: Box::new(operator_to_identifier(operator)),
       params: vec![transform_expression(*left), transform_expression(*right)],
     },
-    CExprKind::PartialLeftBinary { operator, right } => todo!(),
-    CExprKind::PartialRightBinary { left, operator } => todo!(),
+    CExprKind::PartialLeftBinary { operator, right } => {
+      transform_partial_left(operator, right, span.clone())
+    }
+    CExprKind::PartialRightBinary { left, operator } => NExprKind::Call {
+      callee: Box::new(operator_to_identifier(operator)),
+      params: vec![transform_expression(*left)],
+    },
     CExprKind::Call { callee, params } => {
       let callee = Box::new(transform_expression(*callee));
       let params = params.into_iter().map(transform_expression).collect();
