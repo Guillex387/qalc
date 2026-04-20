@@ -3,8 +3,9 @@ use qalc_ast::normalized_ast::{Expression as NExpr, ExpressionKind as NExprKind}
 
 use crate::normalizer::adapters::{adapt_ifelse_block, adapt_let_expression, adapt_slice};
 use crate::normalizer::desugar::{
-  transform_binary, transform_linear_block, transform_match, transform_params_pattern_to_let,
-  transform_partial_left, transform_partial_right, transform_perform_block,
+  transform_binary, transform_call, transform_linear_block, transform_match,
+  transform_params_pattern_to_let, transform_partial_left, transform_partial_right,
+  transform_perform_block,
 };
 
 pub fn transform_expression(expression: CExpr) -> NExpr {
@@ -32,12 +33,7 @@ pub fn transform_expression(expression: CExpr) -> NExpr {
       transform_partial_left(operator, right, span.clone())
     }
     CExprKind::PartialRightBinary { left, operator } => transform_partial_right(left, operator),
-    CExprKind::Call { callee, params } => {
-      let callee = Box::new(transform_expression(*callee));
-      let params = params.into_iter().map(transform_expression).collect();
-
-      NExprKind::Call { callee, params }
-    }
+    CExprKind::Call { callee, params } => transform_call(callee, params),
     CExprKind::Lambda { params, body } => {
       let (params, body) = transform_params_pattern_to_let(params, *body);
 

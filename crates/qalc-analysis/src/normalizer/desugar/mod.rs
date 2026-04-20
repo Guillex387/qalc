@@ -37,12 +37,18 @@ pub fn transform_match(
     let case_span = check_value.span.join(&return_value.span);
     let eq_call = NExpr {
       span: case_span.clone(),
-      kind: NExprKind::Call {
+      kind: NExprKind::Transform {
         callee: Box::new(NExpr {
-          kind: NExprKind::Identifier("==".to_string()),
+          kind: NExprKind::Transform {
+            callee: Box::new(NExpr {
+              kind: NExprKind::Identifier("==".to_string()),
+              span: case_span.clone(),
+            }),
+            param: value.clone(),
+          },
           span: case_span.clone(),
         }),
-        params: vec![*value.clone(), check_value],
+        param: Box::new(check_value),
       },
     };
 
@@ -102,4 +108,8 @@ pub fn transform_params_pattern_to_let(params: Vec<Pattern>, body: CExpr) -> (Ve
   };
 
   (norm_params, new_body)
+}
+
+pub fn transform_call(callee: Box<CExpr>, params: Vec<CExpr>) -> NExprKind {
+  todo!()
 }

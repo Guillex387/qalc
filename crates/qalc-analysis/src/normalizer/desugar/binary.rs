@@ -43,20 +43,24 @@ pub fn transform_partial_left(
   span: Span,
 ) -> NExprKind {
   let callee = Box::new(operator_to_identifier(operator));
+  let operator_span = callee.span.clone();
   let second_arg = transform_expression(*right);
 
   NExprKind::Lambda {
     params: vec!["a".to_string()],
     body: Box::new(NExpr {
-      kind: NExprKind::Call {
-        callee,
-        params: vec![
-          NExpr {
-            kind: NExprKind::Identifier("a".to_string()),
-            span: span.clone(),
+      kind: NExprKind::Transform {
+        callee: Box::new(NExpr {
+          kind: NExprKind::Transform {
+            callee,
+            param: Box::new(NExpr {
+              kind: NExprKind::Identifier("a".to_string()),
+              span: operator_span,
+            }),
           },
-          second_arg,
-        ],
+          span: span.clone(),
+        }),
+        param: Box::new(second_arg),
       },
       span: span.clone(),
     }),
@@ -68,9 +72,9 @@ pub fn transform_partial_left(
 // Example (normalized):
 //   `+` 2
 pub fn transform_partial_right(left: Box<CExpr>, operator: BinaryOperator) -> NExprKind {
-  NExprKind::Call {
+  NExprKind::Transform {
     callee: Box::new(operator_to_identifier(operator)),
-    params: vec![transform_expression(*left)],
+    param: Box::new(transform_expression(*left)),
   }
 }
 
@@ -79,5 +83,20 @@ pub fn transform_binary(
   operator: BinaryOperator,
   right: Box<CExpr>,
 ) -> NExprKind {
+  if let BinaryOperatorKind::Pipe = operator.kind {
+    return transform_binary_pipe(left, right);
+  }
+  if let BinaryOperatorKind::Apply = operator.kind {
+    return transform_binary_apply(left, right);
+  }
+
+  todo!()
+}
+
+fn transform_binary_pipe(left: Box<CExpr>, right: Box<CExpr>) -> NExprKind {
+  todo!()
+}
+
+fn transform_binary_apply(left: Box<CExpr>, right: Box<CExpr>) -> NExprKind {
   todo!()
 }

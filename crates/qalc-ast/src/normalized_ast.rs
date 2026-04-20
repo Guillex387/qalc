@@ -51,9 +51,9 @@ pub enum ExpressionKind {
     consequent: Box<Expression>,
     alternative: Box<Expression>,
   },
-  Call {
+  Transform {
     callee: Box<Expression>,
-    params: Vec<Expression>,
+    param: Box<Expression>,
   },
   Lambda {
     params: Vec<String>,
