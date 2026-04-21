@@ -94,9 +94,15 @@ pub fn transform_binary(
 }
 
 fn transform_binary_pipe(left: Box<CExpr>, right: Box<CExpr>) -> NExprKind {
-  todo!()
+  NExprKind::Transform {
+    callee: Box::new(transform_expression(*right)),
+    param: Box::new(transform_expression(*left)),
+  }
 }
 
 fn transform_binary_apply(left: Box<CExpr>, right: Box<CExpr>) -> NExprKind {
-  todo!()
+  NExprKind::Transform {
+    callee: Box::new(transform_expression(*left)),
+    param: Box::new(transform_expression(*right)),
+  }
 }
