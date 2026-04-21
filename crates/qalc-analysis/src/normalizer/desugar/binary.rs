@@ -90,7 +90,16 @@ pub fn transform_binary(
     return transform_binary_apply(left, right);
   }
 
-  todo!()
+  NExprKind::Transform {
+    callee: Box::new(NExpr {
+      span: left.span.join(&operator.span),
+      kind: NExprKind::Transform {
+        callee: Box::new(operator_to_identifier(operator)),
+        param: Box::new(transform_expression(*left)),
+      },
+    }),
+    param: Box::new(transform_expression(*right)),
+  }
 }
 
 fn transform_binary_pipe(left: Box<CExpr>, right: Box<CExpr>) -> NExprKind {
