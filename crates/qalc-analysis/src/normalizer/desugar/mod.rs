@@ -110,6 +110,19 @@ pub fn transform_params_pattern_to_let(params: Vec<Pattern>, body: CExpr) -> (Ve
   (norm_params, new_body)
 }
 
+// Example (source):
+//   someFunc a b c
+// Example (normalized):
+//   (((someFunc a) b) c)
 pub fn transform_call(callee: Box<CExpr>, params: Vec<CExpr>) -> NExprKind {
-  todo!()
+  params
+    .into_iter()
+    .fold(transform_expression(*callee), |result, param| NExpr {
+      span: result.span.join(&param.span),
+      kind: NExprKind::Transform {
+        callee: Box::new(result),
+        param: Box::new(transform_expression(param)),
+      },
+    })
+    .kind
 }
