@@ -23,46 +23,47 @@ pub fn transform_match(
   span: Span,
 ) -> NExprKind {
   let value = Box::new(transform_expression(*value));
-  let mut if_block = default
+  let default_case = default
     .map(|expr| Box::new(transform_expression(*expr)))
     .unwrap_or(Box::new(NExpr {
       kind: NExprKind::Tuple(Vec::new()),
       span,
     }));
 
-  for (check_value, return_value) in cases {
-    let check_value = transform_expression(check_value);
-    let return_value = transform_expression(return_value);
+  cases
+    .into_iter()
+    .fold(default_case, |if_block, (check_value, return_value)| {
+      let check_value = transform_expression(check_value);
+      let return_value = transform_expression(return_value);
 
-    let case_span = check_value.span.join(&return_value.span);
-    let eq_call = NExpr {
-      span: case_span.clone(),
-      kind: NExprKind::Transform {
-        callee: Box::new(NExpr {
-          kind: NExprKind::Transform {
-            callee: Box::new(NExpr {
-              kind: NExprKind::Identifier("==".to_string()),
-              span: case_span.clone(),
-            }),
-            param: value.clone(),
-          },
-          span: case_span.clone(),
-        }),
-        param: Box::new(check_value),
-      },
-    };
+      let case_span = check_value.span.join(&return_value.span);
+      let eq_call = NExpr {
+        span: case_span.clone(),
+        kind: NExprKind::Transform {
+          callee: Box::new(NExpr {
+            kind: NExprKind::Transform {
+              callee: Box::new(NExpr {
+                kind: NExprKind::Identifier("==".to_string()),
+                span: case_span.clone(),
+              }),
+              param: value.clone(),
+            },
+            span: case_span.clone(),
+          }),
+          param: Box::new(check_value),
+        },
+      };
 
-    if_block = Box::new(NExpr {
-      span: case_span,
-      kind: NExprKind::IfElseBlock {
-        test: Box::new(eq_call),
-        consequent: Box::new(return_value),
-        alternative: if_block,
-      },
+      Box::new(NExpr {
+        span: case_span,
+        kind: NExprKind::IfElseBlock {
+          test: Box::new(eq_call),
+          consequent: Box::new(return_value),
+          alternative: if_block,
+        },
+      })
     })
-  }
-
-  if_block.kind
+    .kind
 }
 
 // Example (source):
