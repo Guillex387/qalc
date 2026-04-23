@@ -20,7 +20,11 @@ pub fn adapt_let_expression(assigments: Vec<CExpr>, value: Box<CExpr>) -> NExprK
     .collect();
   let value = Box::new(transform_expression(*value));
 
-  NExprKind::LetBlock { assigments, value }
+  NExprKind::LetBlock {
+    strict: false,
+    assigments,
+    value,
+  }
 }
 
 pub fn adapt_ifelse_block(

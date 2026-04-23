@@ -43,6 +43,7 @@ pub enum SliceExpression {
 #[derive(Debug, Clone)]
 pub enum ExpressionKind {
   LetBlock {
+    strict: bool,
     assigments: Vec<(Pattern, Expression)>,
     value: Box<Expression>,
   },

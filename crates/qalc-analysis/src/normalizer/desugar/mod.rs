@@ -90,6 +90,7 @@ pub fn transform_params_pattern_to_let(params: Vec<Pattern>, body: CExpr) -> (Ve
 
   let new_body = NExpr {
     kind: NExprKind::LetBlock {
+      strict: false,
       assigments: params
         .into_iter()
         .zip(norm_params.clone())
