@@ -4,7 +4,7 @@ mod perform;
 
 use qalc_ast::concrete_ast::{Expression as CExpr, Pattern};
 use qalc_ast::normalized_ast::{Expression as NExpr, ExpressionKind as NExprKind};
-use qalc_utils::Span;
+use qalc_utils::{CompilerResult, Span};
 
 use crate::normalizer::expr::transform_expression;
 
@@ -21,49 +21,52 @@ pub fn transform_match(
   cases: Vec<(CExpr, CExpr)>,
   default: Option<Box<CExpr>>,
   span: Span,
-) -> NExprKind {
-  let value = Box::new(transform_expression(*value));
-  let default_case = default
-    .map(|expr| Box::new(transform_expression(*expr)))
-    .unwrap_or(Box::new(NExpr {
+) -> CompilerResult<NExprKind> {
+  let value = Box::new(transform_expression(*value)?);
+  let default_case = match default {
+    Some(concrete_expr) => Box::new(transform_expression(*concrete_expr)?),
+    None => Box::new(NExpr {
       kind: NExprKind::Tuple(Vec::new()),
       span,
-    }));
+    }),
+  };
 
-  cases
-    .into_iter()
-    .fold(default_case, |if_block, (check_value, return_value)| {
-      let check_value = transform_expression(check_value);
-      let return_value = transform_expression(return_value);
+  Ok(
+    cases
+      .into_iter()
+      .try_fold(default_case, |if_block, (check_value, return_value)| {
+        let check_value = transform_expression(check_value)?;
+        let return_value = transform_expression(return_value)?;
 
-      let case_span = check_value.span.join(&return_value.span);
-      let eq_call = NExpr {
-        span: case_span.clone(),
-        kind: NExprKind::Transform {
-          callee: Box::new(NExpr {
-            kind: NExprKind::Transform {
-              callee: Box::new(NExpr {
-                kind: NExprKind::Identifier("==".to_string()),
-                span: case_span.clone(),
-              }),
-              param: value.clone(),
-            },
-            span: case_span.clone(),
-          }),
-          param: Box::new(check_value),
-        },
-      };
+        let case_span = check_value.span.join(&return_value.span);
+        let eq_call = NExpr {
+          span: case_span.clone(),
+          kind: NExprKind::Transform {
+            callee: Box::new(NExpr {
+              kind: NExprKind::Transform {
+                callee: Box::new(NExpr {
+                  kind: NExprKind::Identifier("==".to_string()),
+                  span: case_span.clone(),
+                }),
+                param: value.clone(),
+              },
+              span: case_span.clone(),
+            }),
+            param: Box::new(check_value),
+          },
+        };
 
-      Box::new(NExpr {
-        span: case_span,
-        kind: NExprKind::IfElseBlock {
-          test: Box::new(eq_call),
-          consequent: Box::new(return_value),
-          alternative: if_block,
-        },
-      })
-    })
-    .kind
+        Ok(Box::new(NExpr {
+          span: case_span,
+          kind: NExprKind::IfElseBlock {
+            test: Box::new(eq_call),
+            consequent: Box::new(return_value),
+            alternative: if_block,
+          },
+        }))
+      })?
+      .kind,
+  )
 }
 
 // Example (source):
@@ -76,7 +79,10 @@ pub fn transform_match(
 // Example (normalized):
 //   add :: (i32, i32) -> i32
 //   add p0 = let (x, y) = p0 in x
-pub fn transform_params_pattern_to_let(params: Vec<Pattern>, body: CExpr) -> (Vec<String>, NExpr) {
+pub fn transform_params_pattern_to_let(
+  params: Vec<Pattern>,
+  body: CExpr,
+) -> CompilerResult<(Vec<String>, NExpr)> {
   let norm_params: Vec<String> = params
     .iter()
     .enumerate()
@@ -104,27 +110,31 @@ pub fn transform_params_pattern_to_let(params: Vec<Pattern>, body: CExpr) -> (Ve
           )
         })
         .collect(),
-      value: Box::new(transform_expression(body)),
+      value: Box::new(transform_expression(body)?),
     },
     span,
   };
 
-  (norm_params, new_body)
+  Ok((norm_params, new_body))
 }
 
 // Example (source):
 //   someFunc a b c
 // Example (normalized):
 //   (((someFunc a) b) c)
-pub fn transform_call(callee: Box<CExpr>, params: Vec<CExpr>) -> NExprKind {
-  params
-    .into_iter()
-    .fold(transform_expression(*callee), |result, param| NExpr {
-      span: result.span.join(&param.span),
-      kind: NExprKind::Transform {
-        callee: Box::new(result),
-        param: Box::new(transform_expression(param)),
-      },
-    })
-    .kind
+pub fn transform_call(callee: Box<CExpr>, params: Vec<CExpr>) -> CompilerResult<NExprKind> {
+  Ok(
+    params
+      .into_iter()
+      .try_fold(transform_expression(*callee)?, |result, param| {
+        Ok(NExpr {
+          span: result.span.join(&param.span),
+          kind: NExprKind::Transform {
+            callee: Box::new(result),
+            param: Box::new(transform_expression(param)?),
+          },
+        })
+      })?
+      .kind,
+  )
 }

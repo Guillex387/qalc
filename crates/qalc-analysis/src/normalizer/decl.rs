@@ -2,6 +2,7 @@ use qalc_ast::concrete_ast::{
   Declaration as CDecl, DeclarationKind as CDeclKind, Expression as CExpr, Pattern, TypeExpression,
 };
 use qalc_ast::normalized_ast::{Declaration as NDecl, DeclarationKind as NDeclKind};
+use qalc_utils::CompilerResult;
 
 use crate::normalizer::{desugar::transform_params_pattern_to_let, expr::transform_expression};
 
@@ -22,27 +23,27 @@ fn transform_function_decl(
   type_annotation: TypeExpression,
   params: Vec<Pattern>,
   body: CExpr,
-) -> NDeclKind {
+) -> CompilerResult<NDeclKind> {
   if params.is_empty() {
-    return NDeclKind::Function {
+    return Ok(NDeclKind::Function {
       identifier,
       type_annotation,
       params: Vec::new(),
-      body: transform_expression(body),
-    };
+      body: transform_expression(body)?,
+    });
   }
 
-  let (params, body) = transform_params_pattern_to_let(params, body);
+  let (params, body) = transform_params_pattern_to_let(params, body)?;
 
-  NDeclKind::Function {
+  Ok(NDeclKind::Function {
     identifier,
     type_annotation,
     params,
     body,
-  }
+  })
 }
 
-pub fn transform_declaration(declaration: CDecl) -> NDecl {
+pub fn transform_declaration(declaration: CDecl) -> CompilerResult<NDecl> {
   let span = declaration.span;
   let kind = match declaration.kind {
     CDeclKind::Type {
@@ -55,8 +56,8 @@ pub fn transform_declaration(declaration: CDecl) -> NDecl {
       type_annotation,
       params,
       body,
-    } => transform_function_decl(identifier, type_annotation, params, body),
+    } => transform_function_decl(identifier, type_annotation, params, body)?,
   };
 
-  NDecl { kind, span }
+  Ok(NDecl { kind, span })
 }

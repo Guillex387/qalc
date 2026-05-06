@@ -21,7 +21,7 @@ impl ASTTransform for Normalizer {
         .declarations
         .into_iter()
         .map(transform_declaration)
-        .collect(),
+        .collect::<CompilerResult<_>>()?,
     })
   }
 }
