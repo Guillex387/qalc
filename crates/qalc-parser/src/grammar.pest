@@ -125,8 +125,8 @@ type_function_annotation = { identifier ~ "::" ~ type }
 
 type_restriction = { "linear" }
 
-type_declaration = { "type" ~ simple_identifier ~ "{" ~ type_function_annotation+ ~ "}" ~ ("where" ~ type_restriction ~ ("," ~ type_restriction)*)?  }
-function_declaration = { type_function_annotation ~ identifier ~ pattern* ~ "=" ~ expression }
+type_declaration = { "type" ~ simple_identifier ~ "{" ~ type_function_annotation+ ~ "}" ~ ("where" ~ type_restriction ~ ("," ~ type_restriction)*)? ~ ";"?  }
+function_declaration = { type_function_annotation ~ identifier ~ pattern* ~ "=" ~ expression ~ ";" }
 
 declarations = _{ type_declaration | function_declaration }
 
