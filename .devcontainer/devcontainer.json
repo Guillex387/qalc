@@ -1,0 +1,21 @@
+{
+  "name": "Rust Dev Environment",
+  "image": "mcr.microsoft.com/devcontainers/rust:1",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        // Desactiva los hints de tipos de datos
+        "rust-analyzer.inlayHints.typeHints.enable": false,
+        // Desactiva los hints de nombres de parámetros en funciones
+        "rust-analyzer.inlayHints.parameterHints.enable": false,
+        // Desactiva los hints de encadenamiento (chaining)
+        "rust-analyzer.inlayHints.chainingHints.enable": false
+      },
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "tamasfe.even-better-toml"
+      ]
+    }
+  },
+  "remoteUser": "vscode"
+}
