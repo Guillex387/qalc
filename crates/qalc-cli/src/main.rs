@@ -2,9 +2,8 @@ use std::{env::args, rc::Rc};
 
 use qalc_analysis::Normalizer;
 
-use qalc_ast::ASTTransform;
 use qalc_parser::parse_program;
-use qalc_utils::{Diagnostic, Source};
+use qalc_utils::{CompilerStep, Diagnostic, Source};
 
 fn main() {
   let filename = args().nth(1).expect("1 argument required");

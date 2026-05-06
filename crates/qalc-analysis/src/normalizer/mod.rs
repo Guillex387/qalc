@@ -1,5 +1,5 @@
-use qalc_ast::{ASTTransform, concrete_ast::ConcreteAST, normalized_ast::NormalizedAST};
-use qalc_utils::{CompilerResult, Diagnostic};
+use qalc_ast::{concrete_ast::ConcreteAST, normalized_ast::NormalizedAST};
+use qalc_utils::{CompilerResult, CompilerStep, Diagnostic};
 
 use crate::normalizer::decl::transform_declaration;
 
@@ -11,7 +11,7 @@ mod expr;
 #[derive(Default)]
 pub struct Normalizer;
 
-impl ASTTransform for Normalizer {
+impl CompilerStep for Normalizer {
   type Input = ConcreteAST;
   type Output = NormalizedAST;
 

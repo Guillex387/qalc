@@ -1,6 +1,6 @@
-use qalc_utils::{CompilerResult, Diagnostic};
+use crate::{CompilerResult, Diagnostic};
 
-pub trait ASTTransform {
+pub trait CompilerStep {
   type Input;
   type Output;
 
