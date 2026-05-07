@@ -1,7 +1,6 @@
-use qalc_ast::concrete_ast::{
-  Expression as CExpr, ExpressionKind as CExprKind, Pattern, PatternKind,
-};
-use qalc_ast::normalized_ast::{Expression as NExpr, ExpressionKind as NExprKind};
+use qalc_ast::Spanned;
+use qalc_ast::base_ast::{Expression, ExpressionKind, Pattern, PatternKind};
+use qalc_ast::concrete_ast::{ConcreteExpression, ConcreteExpressionKind};
 use qalc_utils::{CompilerResult, Span};
 
 use crate::normalizer::expr::transform_expression;
@@ -15,49 +14,49 @@ use crate::normalizer::expr::transform_expression;
 // Example (normalized):
 // ... monadMap (measure qbit) (a) -> let result = a in ...
 fn transform_monad_assigments_to_monadmap(
-  identifier: Pattern,
-  value: Box<CExpr>,
+  identifier: Pattern<Spanned>,
+  value: Box<ConcreteExpression>,
   span: Span,
-  wrapped_expr: NExpr,
-) -> CompilerResult<NExpr> {
-  let monad_map_call = NExpr {
-    kind: NExprKind::Transform {
-      callee: Box::new(NExpr {
-        kind: NExprKind::Identifier("monadMap".to_owned()),
-        span: span.clone(),
+  wrapped_expr: Expression<Spanned>,
+) -> CompilerResult<Expression<Spanned>> {
+  let monad_map_call = Expression {
+    kind: ExpressionKind::Transform {
+      callee: Box::new(Expression {
+        kind: ExpressionKind::Identifier("monadMap".to_owned()),
+        meta: span.clone(),
       }),
       param: Box::new(transform_expression(*value)?),
     },
-    span: span.clone(),
+    meta: span.clone(),
   };
-  let pattern_span = identifier.span.clone();
-  let map_callback = NExpr {
-    kind: NExprKind::Lambda {
+  let pattern_span = identifier.meta.clone();
+  let map_callback = Expression {
+    kind: ExpressionKind::Lambda {
       params: vec!["a".to_owned()],
-      body: Box::new(NExpr {
-        span: pattern_span.clone(),
-        kind: NExprKind::LetBlock {
+      body: Box::new(Expression {
+        meta: pattern_span.clone(),
+        kind: ExpressionKind::LetBlock {
           strict: false,
           assigments: vec![(
             identifier,
-            NExpr {
-              kind: NExprKind::Identifier("a".to_owned()),
-              span: pattern_span,
+            Expression {
+              kind: ExpressionKind::Identifier("a".to_owned()),
+              meta: pattern_span,
             },
           )],
           value: Box::new(wrapped_expr),
         },
       }),
     },
-    span: span.clone(),
+    meta: span.clone(),
   };
 
-  Ok(NExpr {
-    kind: NExprKind::Transform {
+  Ok(Expression {
+    kind: ExpressionKind::Transform {
       callee: Box::new(monad_map_call),
       param: Box::new(map_callback),
     },
-    span,
+    meta: span,
   })
 }
 
@@ -70,18 +69,18 @@ fn transform_monad_assigments_to_monadmap(
 // Example (normalized):
 // ... let pureResult = `+` 3 4 in ...
 pub fn transform_assigment_to_let(
-  identifier: Pattern,
-  value: Box<CExpr>,
+  identifier: Pattern<Spanned>,
+  value: Box<ConcreteExpression>,
   span: Span,
-  wrapped_expr: NExpr,
-) -> CompilerResult<NExpr> {
-  Ok(NExpr {
-    kind: NExprKind::LetBlock {
+  wrapped_expr: Expression<Spanned>,
+) -> CompilerResult<Expression<Spanned>> {
+  Ok(Expression {
+    kind: ExpressionKind::LetBlock {
       strict: false,
       assigments: vec![(identifier, transform_expression(*value)?)],
       value: Box::new(wrapped_expr),
     },
-    span,
+    meta: span,
   })
 }
 
@@ -93,15 +92,18 @@ pub fn transform_assigment_to_let(
 // }
 // Example (normalized):
 // ... letstrict _ = print someThing in ...
-pub fn transform_expr_to_letstrict(expr: NExpr, wrapped_expr: NExpr) -> NExpr {
-  NExpr {
-    span: expr.span.clone(),
-    kind: NExprKind::LetBlock {
+pub fn transform_expr_to_letstrict(
+  expr: Expression<Spanned>,
+  wrapped_expr: Expression<Spanned>,
+) -> Expression<Spanned> {
+  Expression {
+    meta: expr.meta.clone(),
+    kind: ExpressionKind::LetBlock {
       strict: true,
       assigments: vec![(
         Pattern {
           kind: PatternKind::Wildcard,
-          span: expr.span.clone(),
+          meta: expr.meta.clone(),
         },
         expr,
       )],
@@ -117,13 +119,13 @@ pub fn transform_expr_to_letstrict(expr: NExpr, wrapped_expr: NExpr) -> NExpr {
 // }
 // Example (normalized):
 // ... monadPure (`+` 3 4)
-fn transform_expr_to_monad_pure(expr: NExpr) -> NExpr {
-  NExpr {
-    span: expr.span.clone(),
-    kind: NExprKind::Transform {
-      callee: Box::new(NExpr {
-        kind: NExprKind::Identifier("monadPure".to_owned()),
-        span: expr.span.clone(),
+fn transform_expr_to_monad_pure(expr: Expression<Spanned>) -> Expression<Spanned> {
+  Expression {
+    meta: expr.meta.clone(),
+    kind: ExpressionKind::Transform {
+      callee: Box::new(Expression {
+        kind: ExpressionKind::Identifier("monadPure".to_owned()),
+        meta: expr.meta.clone(),
       }),
       param: Box::new(expr),
     },
@@ -149,13 +151,13 @@ fn transform_expr_to_monad_pure(expr: NExpr) -> NExpr {
 //        _ = print otherThing
 //      in flatMap (measure otherThing) (otherResult) -> pure otherResult
 pub fn transform_perform_block(
-  sequence: Vec<CExpr>,
-  value: Option<Box<CExpr>>,
-) -> CompilerResult<NExprKind> {
+  sequence: Vec<ConcreteExpression>,
+  value: Option<Box<ConcreteExpression>>,
+) -> CompilerResult<ExpressionKind<Spanned>> {
   let last_span = sequence.last().unwrap().span.clone();
-  let void_tuple = NExpr {
-    kind: NExprKind::Tuple(Vec::new()),
-    span: last_span,
+  let void_tuple = Expression {
+    kind: ExpressionKind::Tuple(Vec::new()),
+    meta: last_span,
   };
   let return_value = transform_expr_to_monad_pure(match value {
     Some(concrete_expr) => transform_expression(*concrete_expr)?,
@@ -166,7 +168,7 @@ pub fn transform_perform_block(
     sequence
       .into_iter()
       .try_rfold(return_value, |result, sentence| match sentence.kind {
-        CExprKind::Assigment {
+        ConcreteExpressionKind::Assigment {
           identifier,
           value,
           monadic,

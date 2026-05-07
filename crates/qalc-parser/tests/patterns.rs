@@ -1,11 +1,13 @@
 use std::rc::Rc;
 
-use qalc_ast::concrete_ast::{DeclarationKind, Pattern, PatternKind};
+use qalc_ast::Spanned;
+use qalc_ast::base_ast::{Pattern, PatternKind};
+use qalc_ast::concrete_ast::ConcreteDeclarationKind;
 use qalc_parser::parse_program;
 use qalc_utils::Source;
 
-fn parse_params(params: &str) -> Vec<Pattern> {
-  let code = format!("f :: num f {} = 0", params);
+fn parse_params(params: &str) -> Vec<Pattern<Spanned>> {
+  let code = format!("f :: num f {} = 0;", params);
   let source = Rc::new(Source::memory(code));
   let program = parse_program(&source).expect("parse program");
 
@@ -16,7 +18,7 @@ fn parse_params(params: &str) -> Vec<Pattern> {
     .expect("one declaration");
 
   match declaration.kind {
-    DeclarationKind::Function { params, .. } => params,
+    ConcreteDeclarationKind::Function { params, .. } => params,
     _ => panic!("expected function declaration"),
   }
 }
@@ -28,7 +30,7 @@ enum PatternShape {
   Wildcard,
 }
 
-fn assert_pattern_eq(actual: &Pattern, expected: &PatternShape) {
+fn assert_pattern_eq(actual: &Pattern<Spanned>, expected: &PatternShape) {
   match (&actual.kind, expected) {
     (PatternKind::Wildcard, PatternShape::Wildcard) => {}
     (PatternKind::Variable(actual_name), PatternShape::Variable(expected_name)) => {

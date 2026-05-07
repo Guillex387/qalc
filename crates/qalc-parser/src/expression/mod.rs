@@ -4,7 +4,7 @@ mod numbers;
 mod utils;
 
 use pest::{iterators::Pairs, pratt_parser::PrattParser};
-use qalc_ast::concrete_ast::{BinaryOperator, BinaryOperatorKind, Expression, ExpressionKind};
+use qalc_ast::concrete_ast::{BinaryOperator, BinaryOperatorKind, ConcreteExpression, ConcreteExpressionKind};
 use qalc_utils::CompilerResult;
 
 use crate::expression::atoms::parse_atom_expression;
@@ -75,13 +75,13 @@ fn parse_binary_operator(operator: Token) -> BinaryOperator {
 }
 
 fn parse_binary_expression(
-  left: Expression,
+  left: ConcreteExpression,
   operator: Token,
-  right: Expression,
-) -> CompilerResult<Expression> {
-  Ok(Expression {
+  right: ConcreteExpression,
+) -> CompilerResult<ConcreteExpression> {
+  Ok(ConcreteExpression {
     span: left.span.join(&right.span),
-    kind: ExpressionKind::Binary {
+    kind: ConcreteExpressionKind::Binary {
       left: Box::new(left),
       operator: parse_binary_operator(operator),
       right: Box::new(right),
@@ -89,7 +89,7 @@ fn parse_binary_expression(
   })
 }
 
-pub fn parse_expression(token: Token) -> CompilerResult<Expression> {
+pub fn parse_expression(token: Token) -> CompilerResult<ConcreteExpression> {
   let source = token.source().clone();
   let raw_token_iter: Pairs<Rule> = token.inner().into();
 

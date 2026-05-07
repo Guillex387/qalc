@@ -1,17 +1,16 @@
-use qalc_ast::concrete_ast::{
-  Declaration as CDecl, DeclarationKind as CDeclKind, Expression as CExpr, Pattern, TypeExpression,
-};
-use qalc_ast::normalized_ast::{Declaration as NDecl, DeclarationKind as NDeclKind};
+use qalc_ast::Spanned;
+use qalc_ast::base_ast::{Declaration, DeclarationKind, Pattern, TypeExpression};
+use qalc_ast::concrete_ast::{ConcreteDeclaration, ConcreteDeclarationKind, ConcreteExpression};
 use qalc_utils::CompilerResult;
 
 use crate::normalizer::{desugar::transform_params_pattern_to_let, expr::transform_expression};
 
 fn adapt_type_decl(
   identifier: String,
-  attributes: Vec<(String, TypeExpression)>,
+  attributes: Vec<(String, TypeExpression<Spanned>)>,
   linear: bool,
-) -> NDeclKind {
-  NDeclKind::Type {
+) -> DeclarationKind<Spanned> {
+  DeclarationKind::Type {
     identifier,
     attributes,
     linear,
@@ -20,12 +19,12 @@ fn adapt_type_decl(
 
 fn transform_function_decl(
   identifier: String,
-  type_annotation: TypeExpression,
-  params: Vec<Pattern>,
-  body: CExpr,
-) -> CompilerResult<NDeclKind> {
+  type_annotation: TypeExpression<Spanned>,
+  params: Vec<Pattern<Spanned>>,
+  body: ConcreteExpression,
+) -> CompilerResult<DeclarationKind<Spanned>> {
   if params.is_empty() {
-    return Ok(NDeclKind::Function {
+    return Ok(DeclarationKind::Function {
       identifier,
       type_annotation,
       params: Vec::new(),
@@ -35,7 +34,7 @@ fn transform_function_decl(
 
   let (params, body) = transform_params_pattern_to_let(params, body)?;
 
-  Ok(NDeclKind::Function {
+  Ok(DeclarationKind::Function {
     identifier,
     type_annotation,
     params,
@@ -43,15 +42,17 @@ fn transform_function_decl(
   })
 }
 
-pub fn transform_declaration(declaration: CDecl) -> CompilerResult<NDecl> {
+pub fn transform_declaration(
+  declaration: ConcreteDeclaration,
+) -> CompilerResult<Declaration<Spanned>> {
   let span = declaration.span;
   let kind = match declaration.kind {
-    CDeclKind::Type {
+    ConcreteDeclarationKind::Type {
       identifier,
       attributes,
       linear,
     } => adapt_type_decl(identifier, attributes, linear),
-    CDeclKind::Function {
+    ConcreteDeclarationKind::Function {
       identifier,
       type_annotation,
       params,
@@ -59,5 +60,5 @@ pub fn transform_declaration(declaration: CDecl) -> CompilerResult<NDecl> {
     } => transform_function_decl(identifier, type_annotation, params, body)?,
   };
 
-  Ok(NDecl { kind, span })
+  Ok(Declaration { kind, meta: span })
 }

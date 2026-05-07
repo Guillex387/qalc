@@ -1,11 +1,11 @@
 use std::rc::Rc;
 
-use qalc_ast::concrete_ast::{BinaryOperatorKind, DeclarationKind, ExpressionKind};
+use qalc_ast::concrete_ast::{BinaryOperatorKind, ConcreteDeclarationKind, ConcreteExpressionKind};
 use qalc_parser::parse_program;
 use qalc_utils::Source;
 
-fn parse_expression_kind(expression: &str) -> ExpressionKind {
-  let code = format!("f :: num f = {}", expression);
+fn parse_expression_kind(expression: &str) -> ConcreteExpressionKind {
+  let code = format!("f :: num f = {};", expression);
   let source = Rc::new(Source::memory(code));
   let program = parse_program(&source).expect("parse program");
 
@@ -16,23 +16,23 @@ fn parse_expression_kind(expression: &str) -> ExpressionKind {
     .expect("one declaration");
 
   match declaration.kind {
-    DeclarationKind::Function { body, .. } => body.kind,
+    ConcreteDeclarationKind::Function { body, .. } => body.kind,
     _ => panic!("expected function declaration"),
   }
 }
 
-fn assert_integer_literal(kind: &ExpressionKind, expected: i128) {
+fn assert_integer_literal(kind: &ConcreteExpressionKind, expected: i128) {
   match kind {
-    ExpressionKind::IntegerLiteral { number, .. } => {
+    ConcreteExpressionKind::IntegerLiteral { number, .. } => {
       assert_eq!(*number, expected, "integer literal value");
     }
     other => panic!("expected integer literal, got {:?}", other),
   }
 }
 
-fn assert_identifier(kind: &ExpressionKind, expected: &str) {
+fn assert_identifier(kind: &ConcreteExpressionKind, expected: &str) {
   match kind {
-    ExpressionKind::Identifier(value) => {
+    ConcreteExpressionKind::Identifier(value) => {
       assert_eq!(value, expected, "identifier value");
     }
     other => panic!("expected identifier, got {:?}", other),
@@ -40,11 +40,11 @@ fn assert_identifier(kind: &ExpressionKind, expected: &str) {
 }
 
 fn assert_binary(
-  kind: &ExpressionKind,
+  kind: &ConcreteExpressionKind,
   expected: BinaryOperatorKind,
-) -> (&ExpressionKind, &ExpressionKind) {
+) -> (&ConcreteExpressionKind, &ConcreteExpressionKind) {
   match kind {
-    ExpressionKind::Binary {
+    ConcreteExpressionKind::Binary {
       left,
       operator,
       right,
@@ -57,7 +57,7 @@ fn assert_binary(
 }
 
 fn assert_binary_literals(
-  kind: &ExpressionKind,
+  kind: &ConcreteExpressionKind,
   expected: BinaryOperatorKind,
   left: i128,
   right: i128,

@@ -1,4 +1,6 @@
-use qalc_ast::concrete_ast::{Expression, ExpressionKind, Pattern, SliceExpression};
+use qalc_ast::Spanned;
+use qalc_ast::base_ast::Pattern;
+use qalc_ast::concrete_ast::{ConcreteExpression, ConcreteExpressionKind, ConcreteSliceExpression};
 use qalc_utils::CompilerResult;
 
 use crate::expression::blocks::{
@@ -9,60 +11,64 @@ use crate::expression::{numbers::parse_number_literal, parse_binary_operator, pa
 use crate::pattern::parse_pattern;
 use crate::tokenizer::{Rule, Token, TokensIter};
 
-fn parse_call_expression(mut tokens: TokensIter) -> CompilerResult<ExpressionKind> {
+fn parse_call_expression(mut tokens: TokensIter) -> CompilerResult<ConcreteExpressionKind> {
   let callee = consume_atom(&mut tokens)?;
   let params = tokens
     .map(parse_atom_expression)
-    .collect::<CompilerResult<Vec<Expression>>>()?;
+    .collect::<CompilerResult<Vec<ConcreteExpression>>>()?;
 
-  Ok(ExpressionKind::Call { callee, params })
+  Ok(ConcreteExpressionKind::Call { callee, params })
 }
 
-fn parse_lambda_expression(mut tokens: TokensIter) -> CompilerResult<ExpressionKind> {
+fn parse_lambda_expression(mut tokens: TokensIter) -> CompilerResult<ConcreteExpressionKind> {
   let body = consume_back_expression(&mut tokens)?;
-  let params: Vec<Pattern> = tokens.map(parse_pattern).collect();
+  let params: Vec<Pattern<Spanned>> = tokens.map(parse_pattern).collect();
 
-  Ok(ExpressionKind::Lambda { params, body })
+  Ok(ConcreteExpressionKind::Lambda { params, body })
 }
 
-fn parse_partial_op_left(mut tokens: TokensIter) -> CompilerResult<ExpressionKind> {
+fn parse_partial_op_left(mut tokens: TokensIter) -> CompilerResult<ConcreteExpressionKind> {
   let operator = parse_binary_operator(tokens.eat());
   let right = consume_atom(&mut tokens)?;
 
-  Ok(ExpressionKind::PartialLeftBinary { operator, right })
+  Ok(ConcreteExpressionKind::PartialLeftBinary { operator, right })
 }
 
-fn parse_partial_op_right(mut tokens: TokensIter) -> CompilerResult<ExpressionKind> {
+fn parse_partial_op_right(mut tokens: TokensIter) -> CompilerResult<ConcreteExpressionKind> {
   let left = consume_atom(&mut tokens)?;
   let operator = parse_binary_operator(tokens.eat());
 
-  Ok(ExpressionKind::PartialRightBinary { left, operator })
+  Ok(ConcreteExpressionKind::PartialRightBinary { left, operator })
 }
 
-fn parse_tuple_expression(tokens: TokensIter) -> CompilerResult<ExpressionKind> {
-  Ok(ExpressionKind::Tuple(
+fn parse_tuple_expression(tokens: TokensIter) -> CompilerResult<ConcreteExpressionKind> {
+  Ok(ConcreteExpressionKind::Tuple(
     tokens
       .map(parse_expression)
-      .collect::<CompilerResult<Vec<Expression>>>()?,
+      .collect::<CompilerResult<Vec<ConcreteExpression>>>()?,
   ))
 }
 
-fn parse_slice_items_expression(tokens: TokensIter) -> CompilerResult<ExpressionKind> {
-  Ok(ExpressionKind::Slice(SliceExpression::Items(
-    tokens
-      .map(parse_expression)
-      .collect::<CompilerResult<Vec<Expression>>>()?,
-  )))
+fn parse_slice_items_expression(tokens: TokensIter) -> CompilerResult<ConcreteExpressionKind> {
+  Ok(ConcreteExpressionKind::Slice(
+    ConcreteSliceExpression::Items(
+      tokens
+        .map(parse_expression)
+        .collect::<CompilerResult<Vec<ConcreteExpression>>>()?,
+    ),
+  ))
 }
 
-fn parse_slice_range_expression(mut tokens: TokensIter) -> CompilerResult<ExpressionKind> {
-  Ok(ExpressionKind::Slice(SliceExpression::Range(
-    consume_expression(&mut tokens)?,
-    consume_expression(&mut tokens)?,
-  )))
+fn parse_slice_range_expression(mut tokens: TokensIter) -> CompilerResult<ConcreteExpressionKind> {
+  Ok(ConcreteExpressionKind::Slice(
+    ConcreteSliceExpression::Range(
+      consume_expression(&mut tokens)?,
+      consume_expression(&mut tokens)?,
+    ),
+  ))
 }
 
-pub fn parse_atom_expression(token: Token) -> CompilerResult<Expression> {
+pub fn parse_atom_expression(token: Token) -> CompilerResult<ConcreteExpression> {
   let span = token.span();
   let rule = token.rule();
   let mut tokens = token.clone().inner();
@@ -92,10 +98,10 @@ pub fn parse_atom_expression(token: Token) -> CompilerResult<Expression> {
     | Rule::unknow_float
     | Rule::f32_float
     | Rule::f64_float => parse_number_literal(token),
-    Rule::simple_identifier => ExpressionKind::Identifier(token.to_string()),
-    Rule::operator_identifier => ExpressionKind::Identifier(tokens.eat().to_string()),
+    Rule::simple_identifier => ConcreteExpressionKind::Identifier(token.to_string()),
+    Rule::operator_identifier => ConcreteExpressionKind::Identifier(tokens.eat().to_string()),
     rule => unreachable!("Expected atom expression found {:?}", rule),
   };
 
-  Ok(Expression { kind, span })
+  Ok(ConcreteExpression { kind, span })
 }

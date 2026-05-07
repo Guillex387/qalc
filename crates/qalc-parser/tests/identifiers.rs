@@ -1,11 +1,11 @@
 use std::rc::Rc;
 
-use qalc_ast::concrete_ast::{DeclarationKind, ExpressionKind};
+use qalc_ast::concrete_ast::{ConcreteDeclarationKind, ConcreteExpressionKind};
 use qalc_parser::parse_program;
 use qalc_utils::Source;
 
-fn parse_identifier_kind(identifier: &str) -> ExpressionKind {
-  let code = format!("id :: num id = {}", identifier);
+fn parse_identifier_kind(identifier: &str) -> ConcreteExpressionKind {
+  let code = format!("id :: num id = {};", identifier);
   let source = Rc::new(Source::memory(code));
   let program = parse_program(&source).expect("parse program");
 
@@ -16,7 +16,7 @@ fn parse_identifier_kind(identifier: &str) -> ExpressionKind {
     .expect("one declaration");
 
   match declaration.kind {
-    DeclarationKind::Function { body, .. } => body.kind,
+    ConcreteDeclarationKind::Function { body, .. } => body.kind,
     _ => panic!("expected function declaration"),
   }
 }
@@ -31,7 +31,7 @@ fn parse_simple_identifiers_test() {
 
   for (literal, expected) in cases {
     match parse_identifier_kind(literal) {
-      ExpressionKind::Identifier(value) => {
+      ConcreteExpressionKind::Identifier(value) => {
         assert_eq!(value, expected, "identifier {}", literal);
       }
       other => panic!("expected identifier, got {:?}", other),
@@ -45,7 +45,7 @@ fn parse_operator_identifiers_test() {
 
   for (literal, expected) in cases {
     match parse_identifier_kind(literal) {
-      ExpressionKind::Identifier(value) => {
+      ConcreteExpressionKind::Identifier(value) => {
         assert_eq!(value, expected, "identifier {}", literal);
       }
       other => panic!("expected identifier, got {:?}", other),

@@ -1,4 +1,6 @@
-use qalc_ast::concrete_ast::{Declaration, DeclarationKind, Pattern, TypeExpression};
+use qalc_ast::Spanned;
+use qalc_ast::base_ast::{Pattern, TypeExpression};
+use qalc_ast::concrete_ast::{ConcreteDeclaration, ConcreteDeclarationKind};
 use qalc_utils::{CompilerResult, Diagnostic};
 
 use crate::expression::parse_expression;
@@ -6,7 +8,7 @@ use crate::pattern::parse_pattern;
 use crate::tokenizer::{Rule, Token};
 use crate::type_expression::parse_type_expression;
 
-fn parse_function_annotation(token: Token) -> (String, TypeExpression) {
+fn parse_function_annotation(token: Token) -> (String, TypeExpression<Spanned>) {
   let mut tokens = token.inner();
   let identifier = tokens.eat().to_string();
   let type_expression = parse_type_expression(tokens.eat());
@@ -14,10 +16,10 @@ fn parse_function_annotation(token: Token) -> (String, TypeExpression) {
   (identifier, type_expression)
 }
 
-fn parse_type_declaration(token: Token) -> DeclarationKind {
+fn parse_type_declaration(token: Token) -> ConcreteDeclarationKind {
   let mut tokens = token.inner();
   let identifier = tokens.eat().to_string();
-  let mut attributes: Vec<(String, TypeExpression)> = Vec::new();
+  let mut attributes: Vec<(String, TypeExpression<Spanned>)> = Vec::new();
   let mut linear = false;
 
   for token in tokens {
@@ -30,14 +32,14 @@ fn parse_type_declaration(token: Token) -> DeclarationKind {
     }
   }
 
-  DeclarationKind::Type {
+  ConcreteDeclarationKind::Type {
     identifier,
     attributes,
     linear,
   }
 }
 
-fn parse_function_declaration(token: Token) -> CompilerResult<DeclarationKind> {
+fn parse_function_declaration(token: Token) -> CompilerResult<ConcreteDeclarationKind> {
   let mut tokens = token.inner();
   let (identifier, type_annotation) = parse_function_annotation(tokens.eat());
 
@@ -52,9 +54,9 @@ fn parse_function_declaration(token: Token) -> CompilerResult<DeclarationKind> {
   }
 
   let body = parse_expression(tokens.eat_back())?;
-  let params: Vec<Pattern> = tokens.map(parse_pattern).collect();
+  let params: Vec<Pattern<Spanned>> = tokens.map(parse_pattern).collect();
 
-  Ok(DeclarationKind::Function {
+  Ok(ConcreteDeclarationKind::Function {
     identifier,
     type_annotation,
     params,
@@ -62,7 +64,7 @@ fn parse_function_declaration(token: Token) -> CompilerResult<DeclarationKind> {
   })
 }
 
-pub fn parse_declaration(token: Token) -> CompilerResult<Declaration> {
+pub fn parse_declaration(token: Token) -> CompilerResult<ConcreteDeclaration> {
   let span = token.span();
   let kind = match token.rule() {
     Rule::function_declaration => parse_function_declaration(token)?,
@@ -70,5 +72,5 @@ pub fn parse_declaration(token: Token) -> CompilerResult<Declaration> {
     _ => unreachable!("Expected declaration, found: {:?}", token),
   };
 
-  Ok(Declaration { kind, span })
+  Ok(ConcreteDeclaration { kind, span })
 }

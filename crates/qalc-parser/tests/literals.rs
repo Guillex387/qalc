@@ -1,11 +1,12 @@
 use std::rc::Rc;
 
-use qalc_ast::concrete_ast::{DeclarationKind, ExpressionKind, FloatSuffix, NumberSuffix};
+use qalc_ast::base_ast::{FloatSuffix, NumberSuffix};
+use qalc_ast::concrete_ast::{ConcreteDeclarationKind, ConcreteExpressionKind};
 use qalc_parser::parse_program;
 use qalc_utils::Source;
 
-fn parse_literal_kind(literal: &str) -> ExpressionKind {
-  let code = format!("lit :: num lit = {}", literal);
+fn parse_literal_kind(literal: &str) -> ConcreteExpressionKind {
+  let code = format!("lit :: num lit = {};", literal);
   let source = Rc::new(Source::memory(code));
   let program = parse_program(&source).expect("parse program");
 
@@ -16,7 +17,7 @@ fn parse_literal_kind(literal: &str) -> ExpressionKind {
     .expect("one declaration");
 
   match declaration.kind {
-    DeclarationKind::Function { body, .. } => body.kind,
+    ConcreteDeclarationKind::Function { body, .. } => body.kind,
     _ => panic!("expected function declaration"),
   }
 }
@@ -51,7 +52,7 @@ fn parse_integer_literals() {
 
   for (literal, expected, suffix) in cases {
     match parse_literal_kind(literal) {
-      ExpressionKind::IntegerLiteral {
+      ConcreteExpressionKind::IntegerLiteral {
         number,
         suffix: parsed_suffix,
       } => {
@@ -80,7 +81,7 @@ fn parse_float_literals() {
 
   for (literal, expected, suffix) in cases {
     match parse_literal_kind(literal) {
-      ExpressionKind::FloatLiteral {
+      ConcreteExpressionKind::FloatLiteral {
         number,
         suffix: parsed_suffix,
       } => {

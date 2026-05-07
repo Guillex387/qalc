@@ -1,8 +1,11 @@
-use qalc_ast::concrete_ast::{Pattern, PatternKind};
+use qalc_ast::{
+  Spanned,
+  base_ast::{Pattern, PatternKind},
+};
 
 use crate::tokenizer::{Rule, Token};
 
-pub fn parse_pattern(token: Token) -> Pattern {
+pub fn parse_pattern(token: Token) -> Pattern<Spanned> {
   let span = token.span();
   let mut tokens = token.inner().peekable();
   let first_token = tokens.peek().unwrap();
@@ -20,5 +23,5 @@ pub fn parse_pattern(token: Token) -> Pattern {
     _ => unreachable!("Expected pattern, found {:?}", first_token.rule()),
   };
 
-  Pattern { kind, span }
+  Pattern { kind, meta: span }
 }

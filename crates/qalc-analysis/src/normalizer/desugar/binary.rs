@@ -1,10 +1,11 @@
-use qalc_ast::concrete_ast::{BinaryOperator, BinaryOperatorKind, Expression as CExpr};
-use qalc_ast::normalized_ast::{Expression as NExpr, ExpressionKind as NExprKind};
+use qalc_ast::Spanned;
+use qalc_ast::base_ast::{Expression, ExpressionKind};
+use qalc_ast::concrete_ast::{BinaryOperator, BinaryOperatorKind, ConcreteExpression};
 use qalc_utils::{CompilerResult, Span};
 
 use crate::normalizer::expr::transform_expression;
 
-fn operator_to_identifier(operator: BinaryOperator) -> NExpr {
+fn operator_to_identifier(operator: BinaryOperator) -> Expression<Spanned> {
   let ident = match &operator.kind {
     BinaryOperatorKind::LogicOr => "||",
     BinaryOperatorKind::LogicAnd => "&&",
@@ -27,9 +28,9 @@ fn operator_to_identifier(operator: BinaryOperator) -> NExpr {
   }
   .to_string();
 
-  NExpr {
-    kind: NExprKind::Identifier(ident),
-    span: operator.span,
+  Expression {
+    kind: ExpressionKind::Identifier(ident),
+    meta: operator.span,
   }
 }
 
@@ -39,30 +40,30 @@ fn operator_to_identifier(operator: BinaryOperator) -> NExpr {
 //   (a) -> (`+` a 1)
 pub fn transform_partial_left(
   operator: BinaryOperator,
-  right: Box<CExpr>,
+  right: Box<ConcreteExpression>,
   span: Span,
-) -> CompilerResult<NExprKind> {
+) -> CompilerResult<ExpressionKind<Spanned>> {
   let callee = Box::new(operator_to_identifier(operator));
-  let operator_span = callee.span.clone();
+  let operator_span = callee.meta.clone();
   let second_arg = transform_expression(*right)?;
 
-  Ok(NExprKind::Lambda {
+  Ok(ExpressionKind::Lambda {
     params: vec!["a".to_string()],
-    body: Box::new(NExpr {
-      kind: NExprKind::Transform {
-        callee: Box::new(NExpr {
-          kind: NExprKind::Transform {
+    body: Box::new(Expression {
+      kind: ExpressionKind::Transform {
+        callee: Box::new(Expression {
+          kind: ExpressionKind::Transform {
             callee,
-            param: Box::new(NExpr {
-              kind: NExprKind::Identifier("a".to_string()),
-              span: operator_span,
+            param: Box::new(Expression {
+              kind: ExpressionKind::Identifier("a".to_string()),
+              meta: operator_span,
             }),
           },
-          span: span.clone(),
+          meta: span.clone(),
         }),
         param: Box::new(second_arg),
       },
-      span: span.clone(),
+      meta: span.clone(),
     }),
   })
 }
@@ -72,20 +73,20 @@ pub fn transform_partial_left(
 // Example (normalized):
 //   `+` 2
 pub fn transform_partial_right(
-  left: Box<CExpr>,
+  left: Box<ConcreteExpression>,
   operator: BinaryOperator,
-) -> CompilerResult<NExprKind> {
-  Ok(NExprKind::Transform {
+) -> CompilerResult<ExpressionKind<Spanned>> {
+  Ok(ExpressionKind::Transform {
     callee: Box::new(operator_to_identifier(operator)),
     param: Box::new(transform_expression(*left)?),
   })
 }
 
 pub fn transform_binary(
-  left: Box<CExpr>,
+  left: Box<ConcreteExpression>,
   operator: BinaryOperator,
-  right: Box<CExpr>,
-) -> CompilerResult<NExprKind> {
+  right: Box<ConcreteExpression>,
+) -> CompilerResult<ExpressionKind<Spanned>> {
   if let BinaryOperatorKind::Pipe = operator.kind {
     return transform_binary_pipe(left, right);
   }
@@ -93,10 +94,10 @@ pub fn transform_binary(
     return transform_binary_apply(left, right);
   }
 
-  Ok(NExprKind::Transform {
-    callee: Box::new(NExpr {
-      span: left.span.join(&operator.span),
-      kind: NExprKind::Transform {
+  Ok(ExpressionKind::Transform {
+    callee: Box::new(Expression {
+      meta: left.span.join(&operator.span),
+      kind: ExpressionKind::Transform {
         callee: Box::new(operator_to_identifier(operator)),
         param: Box::new(transform_expression(*left)?),
       },
@@ -105,15 +106,21 @@ pub fn transform_binary(
   })
 }
 
-fn transform_binary_pipe(left: Box<CExpr>, right: Box<CExpr>) -> CompilerResult<NExprKind> {
-  Ok(NExprKind::Transform {
+fn transform_binary_pipe(
+  left: Box<ConcreteExpression>,
+  right: Box<ConcreteExpression>,
+) -> CompilerResult<ExpressionKind<Spanned>> {
+  Ok(ExpressionKind::Transform {
     callee: Box::new(transform_expression(*right)?),
     param: Box::new(transform_expression(*left)?),
   })
 }
 
-fn transform_binary_apply(left: Box<CExpr>, right: Box<CExpr>) -> CompilerResult<NExprKind> {
-  Ok(NExprKind::Transform {
+fn transform_binary_apply(
+  left: Box<ConcreteExpression>,
+  right: Box<ConcreteExpression>,
+) -> CompilerResult<ExpressionKind<Spanned>> {
+  Ok(ExpressionKind::Transform {
     callee: Box::new(transform_expression(*left)?),
     param: Box::new(transform_expression(*right)?),
   })

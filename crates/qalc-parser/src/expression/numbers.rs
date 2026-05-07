@@ -1,4 +1,5 @@
-use qalc_ast::concrete_ast::{ExpressionKind, FloatSuffix, NumberSuffix};
+use qalc_ast::base_ast::{FloatSuffix, NumberSuffix};
+use qalc_ast::concrete_ast::ConcreteExpressionKind;
 
 use crate::tokenizer::{Rule, Token};
 
@@ -59,7 +60,7 @@ fn parse_float_value(text: &str, suffix: FloatSuffix) -> f64 {
   }
 }
 
-pub fn parse_number_literal(token: Token) -> ExpressionKind {
+pub fn parse_number_literal(token: Token) -> ConcreteExpressionKind {
   match token.rule() {
     Rule::unknow_integer
     | Rule::i8_integer
@@ -77,7 +78,7 @@ pub fn parse_number_literal(token: Token) -> ExpressionKind {
         None => &raw_text,
       };
 
-      ExpressionKind::IntegerLiteral {
+      ConcreteExpressionKind::IntegerLiteral {
         number: parse_integer_value(number_text),
         suffix,
       }
@@ -90,7 +91,7 @@ pub fn parse_number_literal(token: Token) -> ExpressionKind {
         None => &raw_text,
       };
 
-      ExpressionKind::FloatLiteral {
+      ConcreteExpressionKind::FloatLiteral {
         number: parse_float_value(number_text, suffix.clone()),
         suffix,
       }

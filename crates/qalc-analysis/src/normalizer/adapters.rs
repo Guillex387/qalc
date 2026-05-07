@@ -1,17 +1,18 @@
-use qalc_ast::concrete_ast::{self, Expression as CExpr, ExpressionKind as CExprKind};
-use qalc_ast::normalized_ast::{self, ExpressionKind as NExprKind};
+use qalc_ast::Spanned;
+use qalc_ast::base_ast::{ExpressionKind, SliceExpression};
+use qalc_ast::concrete_ast::{ConcreteExpression, ConcreteExpressionKind, ConcreteSliceExpression};
 use qalc_utils::CompilerResult;
 
 use crate::normalizer::expr::transform_expression;
 
 pub fn adapt_let_expression(
-  assigments: Vec<CExpr>,
-  value: Box<CExpr>,
-) -> CompilerResult<NExprKind> {
+  assigments: Vec<ConcreteExpression>,
+  value: Box<ConcreteExpression>,
+) -> CompilerResult<ExpressionKind<Spanned>> {
   let assigments = assigments
     .into_iter()
     .map(|assigment| {
-      if let CExprKind::Assigment {
+      if let ConcreteExpressionKind::Assigment {
         identifier, value, ..
       } = assigment.kind
       {
@@ -24,7 +25,7 @@ pub fn adapt_let_expression(
     .collect::<CompilerResult<_>>()?;
   let value = Box::new(transform_expression(*value)?);
 
-  Ok(NExprKind::LetBlock {
+  Ok(ExpressionKind::LetBlock {
     strict: false,
     assigments,
     value,
@@ -32,36 +33,36 @@ pub fn adapt_let_expression(
 }
 
 pub fn adapt_ifelse_block(
-  test: Box<CExpr>,
-  consequent: Box<CExpr>,
-  alternative: Box<CExpr>,
-) -> CompilerResult<NExprKind> {
+  test: Box<ConcreteExpression>,
+  consequent: Box<ConcreteExpression>,
+  alternative: Box<ConcreteExpression>,
+) -> CompilerResult<ExpressionKind<Spanned>> {
   let test = Box::new(transform_expression(*test)?);
   let consequent = Box::new(transform_expression(*consequent)?);
   let alternative = Box::new(transform_expression(*alternative)?);
 
-  Ok(NExprKind::IfElseBlock {
+  Ok(ExpressionKind::IfElseBlock {
     test,
     consequent,
     alternative,
   })
 }
 
-pub fn adapt_slice(slice: concrete_ast::SliceExpression) -> CompilerResult<NExprKind> {
+pub fn adapt_slice(slice: ConcreteSliceExpression) -> CompilerResult<ExpressionKind<Spanned>> {
   let slice_expr = match slice {
-    concrete_ast::SliceExpression::Items(items) => normalized_ast::SliceExpression::Items(
+    ConcreteSliceExpression::Items(items) => SliceExpression::Items(
       items
         .into_iter()
         .map(transform_expression)
         .collect::<CompilerResult<_>>()?,
     ),
-    concrete_ast::SliceExpression::Range(start, end) => {
+    ConcreteSliceExpression::Range(start, end) => {
       let start = Box::new(transform_expression(*start)?);
       let end = Box::new(transform_expression(*end)?);
 
-      normalized_ast::SliceExpression::Range(start, end)
+      SliceExpression::Range(start, end)
     }
   };
 
-  Ok(NExprKind::Slice(slice_expr))
+  Ok(ExpressionKind::Slice(slice_expr))
 }

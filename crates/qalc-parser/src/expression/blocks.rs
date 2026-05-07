@@ -1,4 +1,4 @@
-use qalc_ast::concrete_ast::{Expression, ExpressionKind};
+use qalc_ast::concrete_ast::{ConcreteExpression, ConcreteExpressionKind};
 use qalc_utils::{CompilerResult, Diagnostic};
 
 use crate::expression::parse_expression;
@@ -6,7 +6,7 @@ use crate::expression::utils::{consume_back_expression, consume_expression};
 use crate::pattern::parse_pattern;
 use crate::tokenizer::{Rule, Token, TokensIter};
 
-fn parse_assigment(token: Token) -> CompilerResult<Expression> {
+fn parse_assigment(token: Token) -> CompilerResult<ConcreteExpression> {
   let span = token.span();
   let rule = token.rule();
   let mut tokens = token.inner();
@@ -14,37 +14,37 @@ fn parse_assigment(token: Token) -> CompilerResult<Expression> {
   let identifier = parse_pattern(tokens.eat());
   let value = consume_expression(&mut tokens)?;
   let monadic = rule == Rule::monadic_assigment;
-  let kind = ExpressionKind::Assigment {
+  let kind = ConcreteExpressionKind::Assigment {
     identifier,
     value,
     monadic,
   };
 
-  Ok(Expression { kind, span })
+  Ok(ConcreteExpression { kind, span })
 }
 
-pub fn parse_let_block(mut tokens: TokensIter) -> CompilerResult<ExpressionKind> {
+pub fn parse_let_block(mut tokens: TokensIter) -> CompilerResult<ConcreteExpressionKind> {
   let value = consume_back_expression(&mut tokens)?;
   let assigments = tokens
     .map(parse_assigment)
-    .collect::<CompilerResult<Vec<Expression>>>()?;
+    .collect::<CompilerResult<Vec<ConcreteExpression>>>()?;
 
-  Ok(ExpressionKind::LetBlock { assigments, value })
+  Ok(ConcreteExpressionKind::LetBlock { assigments, value })
 }
 
-pub fn parse_if_else_block(mut tokens: TokensIter) -> CompilerResult<ExpressionKind> {
+pub fn parse_if_else_block(mut tokens: TokensIter) -> CompilerResult<ConcreteExpressionKind> {
   let test = consume_expression(&mut tokens)?;
   let consequent = consume_expression(&mut tokens)?;
   let alternative = consume_expression(&mut tokens)?;
 
-  Ok(ExpressionKind::IfElseBlock {
+  Ok(ConcreteExpressionKind::IfElseBlock {
     test,
     consequent,
     alternative,
   })
 }
 
-pub fn parse_match_block(mut tokens: TokensIter) -> CompilerResult<ExpressionKind> {
+pub fn parse_match_block(mut tokens: TokensIter) -> CompilerResult<ConcreteExpressionKind> {
   let value = consume_expression(&mut tokens)?;
 
   let cases = tokens
@@ -60,11 +60,11 @@ pub fn parse_match_block(mut tokens: TokensIter) -> CompilerResult<ExpressionKin
         unreachable!("Expected case-value format, found {:?}", tokens)
       }
     })
-    .collect::<CompilerResult<Vec<(Expression, Expression)>>>()?;
+    .collect::<CompilerResult<Vec<(ConcreteExpression, ConcreteExpression)>>>()?;
 
-  let (default_cases, cases): (Vec<(Expression, Expression)>, Vec<(Expression, Expression)>) =
+  let (default_cases, cases): (Vec<(ConcreteExpression, ConcreteExpression)>, Vec<(ConcreteExpression, ConcreteExpression)>) =
     cases.iter().cloned().partition(|(predicate, _)| {
-      if let ExpressionKind::Identifier(identifier) = &predicate.kind {
+      if let ConcreteExpressionKind::Identifier(identifier) = &predicate.kind {
         identifier == "_"
       } else {
         false
@@ -86,7 +86,7 @@ pub fn parse_match_block(mut tokens: TokensIter) -> CompilerResult<ExpressionKin
     .first()
     .map(|(_, value)| Box::new(value.clone()));
 
-  Ok(ExpressionKind::MatchBlock {
+  Ok(ConcreteExpressionKind::MatchBlock {
     value,
     cases,
     default,
@@ -95,7 +95,7 @@ pub fn parse_match_block(mut tokens: TokensIter) -> CompilerResult<ExpressionKin
 
 fn parse_monadic_block(
   tokens: TokensIter,
-) -> CompilerResult<(Vec<Expression>, Option<Box<Expression>>)> {
+) -> CompilerResult<(Vec<ConcreteExpression>, Option<Box<ConcreteExpression>>)> {
   let (sequence_tokens, return_token): (Vec<Token>, Vec<Token>) =
     tokens.partition(|token| token.rule() != Rule::return_expression);
   let return_token = return_token.first().map(ToOwned::to_owned);
@@ -110,7 +110,7 @@ fn parse_monadic_block(
         token.rule()
       ),
     })
-    .collect::<CompilerResult<Vec<Expression>>>()?;
+    .collect::<CompilerResult<Vec<ConcreteExpression>>>()?;
   let value = return_token
     .map(|token| parse_expression(token.inner().eat()))
     .transpose()?
@@ -119,14 +119,14 @@ fn parse_monadic_block(
   Ok((sequence, value))
 }
 
-pub fn parse_perform_block(tokens: TokensIter) -> CompilerResult<ExpressionKind> {
+pub fn parse_perform_block(tokens: TokensIter) -> CompilerResult<ConcreteExpressionKind> {
   let (sequence, value) = parse_monadic_block(tokens)?;
 
-  Ok(ExpressionKind::PerformBlock { sequence, value })
+  Ok(ConcreteExpressionKind::PerformBlock { sequence, value })
 }
 
-pub fn parse_linear_block(tokens: TokensIter) -> CompilerResult<ExpressionKind> {
+pub fn parse_linear_block(tokens: TokensIter) -> CompilerResult<ConcreteExpressionKind> {
   let (sequence, value) = parse_monadic_block(tokens)?;
 
-  Ok(ExpressionKind::LinearBlock { sequence, value })
+  Ok(ConcreteExpressionKind::LinearBlock { sequence, value })
 }

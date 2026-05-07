@@ -7,7 +7,7 @@ mod type_expression;
 
 use std::rc::Rc;
 
-use qalc_ast::concrete_ast::{ConcreteAST, Declaration};
+use qalc_ast::concrete_ast::{ConcreteAST, ConcreteDeclaration};
 use qalc_utils::{CompilerResult, Source};
 
 use crate::{declarations::parse_declaration, tokenizer::tokenize};
@@ -15,9 +15,10 @@ use crate::{declarations::parse_declaration, tokenizer::tokenize};
 pub fn parse_program(source: &Rc<Source>) -> CompilerResult<ConcreteAST> {
   let declarations_tokens = tokenize(source)?;
 
-  let declarations: Vec<Declaration> = declarations_tokens
+  let declarations: Vec<ConcreteDeclaration> = declarations_tokens
     .map(parse_declaration)
-    .collect::<CompilerResult<Vec<Declaration>>>()?;
+    .collect::<CompilerResult<Vec<ConcreteDeclaration>>>(
+  )?;
 
   Ok(ConcreteAST { declarations })
 }
