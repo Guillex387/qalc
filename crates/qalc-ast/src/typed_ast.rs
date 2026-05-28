@@ -4,12 +4,25 @@ use crate::{ASTMetadata, base_ast::Declaration};
 
 #[derive(Debug, Clone)]
 pub enum Type {
-  // TODO: add some flag for the linear restriction
-  Builtin(String, Vec<Type>),
-  Unknow(usize),
+  Builtin {
+    id: String,
+    params: Vec<Type>,
+    linear: bool,
+  },
   Arrow(Box<Type>, Box<Type>),
   Tuple(Vec<Type>),
   Slice(Box<Type>),
+}
+
+impl Type {
+  pub fn is_linear(&self) -> bool {
+    match self {
+      Type::Builtin { id: _, params: _, linear } => *linear,
+      Type::Arrow(_, _) => false,
+      Type::Tuple(types) => types.iter().any(|ttype| ttype.is_linear()),
+      Type::Slice(ttype) => ttype.is_linear(),
+    }
+  }
 }
 
 #[derive(Debug, Clone)]
