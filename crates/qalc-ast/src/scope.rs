@@ -43,6 +43,16 @@ impl Scope {
   }
 
   pub fn resolve(&self, name: String) -> Option<SymbolInfo> {
-    self.symbols.borrow().get(&name).cloned()
+    let local_result = self.symbols.borrow().get(&name).cloned();
+
+    if local_result.is_some() {
+      return local_result;
+    }
+
+    if let Some(parent) = &self.parent {
+      parent.resolve(name)
+    } else {
+      None
+    }
   }
 }
