@@ -43,10 +43,6 @@ impl Scope {
   }
 
   pub fn resolve(&self, name: String) -> Option<SymbolInfo> {
-    self
-      .symbols
-      .borrow()
-      .get(&name)
-      .cloned()
+    self.symbols.borrow().get(&name).cloned()
   }
 }

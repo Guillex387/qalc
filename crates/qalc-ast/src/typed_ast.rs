@@ -1,6 +1,8 @@
+use std::rc::Rc;
+
 use qalc_utils::Span;
 
-use crate::{ASTMetadata, base_ast::Declaration};
+use crate::{ASTMetadata, base_ast::Declaration, scope::Scope};
 
 #[derive(Debug, Clone)]
 pub enum Type {
@@ -17,7 +19,11 @@ pub enum Type {
 impl Type {
   pub fn is_linear(&self) -> bool {
     match self {
-      Type::Builtin { id: _, params: _, linear } => *linear,
+      Type::Builtin {
+        id: _,
+        params: _,
+        linear,
+      } => *linear,
       Type::Arrow(_, _) => false,
       Type::Tuple(types) => types.iter().any(|ttype| ttype.is_linear()),
       Type::Slice(ttype) => ttype.is_linear(),
@@ -29,7 +35,7 @@ impl Type {
 pub struct TypeMetadata {
   pub span: Span,
   pub ttype: Type,
-  // TODO: pub scope: Rc<...>
+  pub scope: Rc<Scope>,
 }
 
 #[derive(Debug, Clone)]
@@ -45,5 +51,5 @@ impl ASTMetadata for Typed {
 #[derive(Debug, Clone)]
 pub struct TypedAST {
   pub declarations: Vec<Declaration<Typed>>,
-  // TODO: pub global_scope: Rc<...>
+  pub global_scope: Rc<Scope>,
 }
