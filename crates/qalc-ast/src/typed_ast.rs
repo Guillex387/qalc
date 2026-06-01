@@ -4,7 +4,7 @@ use qalc_utils::Span;
 
 use crate::{ASTMetadata, base_ast::Declaration, scope::Scope};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Type {
   Builtin {
     id: String,

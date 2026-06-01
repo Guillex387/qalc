@@ -23,7 +23,7 @@ pub struct SymbolInfo {
 #[derive(Debug, Clone)]
 pub struct Scope {
   parent: Option<Rc<Scope>>,
-  symbols: RefCell<HashMap<String, SymbolInfo>>,
+  symbols: RefCell<HashMap<String, Vec<SymbolInfo>>>,
 }
 
 impl Scope {
@@ -35,15 +35,26 @@ impl Scope {
   }
 
   pub fn define(&self, symbol: SymbolInfo) -> bool {
-    self
-      .symbols
-      .borrow_mut()
-      .insert(symbol.name.clone(), symbol)
-      .is_none()
+    let mut symbols = self.symbols.borrow_mut();
+    let entry = symbols.entry(symbol.name.clone()).or_insert_with(Vec::new);
+
+    if entry
+      .iter()
+      .any(|s| s.declared_type == symbol.declared_type)
+    {
+      false
+    } else {
+      entry.push(symbol);
+      true
+    }
   }
 
-  pub fn resolve(&self, name: String) -> Option<SymbolInfo> {
-    let local_result = self.symbols.borrow().get(&name).cloned();
+  pub fn resolve(&self, name: &str) -> Option<SymbolInfo> {
+    let local_result = self
+      .symbols
+      .borrow()
+      .get(name)
+      .and_then(|vec| vec.first().cloned());
 
     if local_result.is_some() {
       return local_result;
@@ -51,6 +62,24 @@ impl Scope {
 
     if let Some(parent) = &self.parent {
       parent.resolve(name)
+    } else {
+      None
+    }
+  }
+
+  pub fn resolve_declaration_overloaded(
+    &self,
+    name: &str,
+    declared_type: &Type,
+  ) -> Option<SymbolInfo> {
+    if let Some(vec) = self.symbols.borrow().get(name) {
+      if let Some(found) = vec.iter().find(|s| &s.declared_type == declared_type) {
+        return Some(found.clone());
+      }
+    }
+
+    if let Some(parent) = &self.parent {
+      parent.resolve_declaration_overloaded(name, declared_type)
     } else {
       None
     }
