@@ -31,6 +31,43 @@ impl Type {
   }
 }
 
+impl TryFrom<TypeWithUnknow> for Type {
+  type Error = String;
+
+  fn try_from(value: TypeWithUnknow) -> Result<Self, Self::Error> {
+    match value {
+      TypeWithUnknow::Arrow(type_a, type_b) => {
+        let type_a = Type::try_from(*type_a)?;
+        let type_b = Type::try_from(*type_b)?;
+
+        Ok(Type::Arrow(Box::new(type_a), Box::new(type_b)))
+      }
+      TypeWithUnknow::Builtin { id, params, linear } => {
+        let params = params
+          .into_iter()
+          .map(Type::try_from)
+          .collect::<Result<Vec<Type>, Self::Error>>()?;
+
+        Ok(Type::Builtin { id, params, linear })
+      }
+      TypeWithUnknow::Slice(internal_type) => {
+        let internal_type = Type::try_from(*internal_type)?;
+
+        Ok(Type::Slice(Box::new(internal_type)))
+      }
+      TypeWithUnknow::Tuple(internal_types) => {
+        let internal_types = internal_types
+          .into_iter()
+          .map(Type::try_from)
+          .collect::<Result<Vec<Type>, Self::Error>>()?;
+
+        Ok(Type::Tuple(internal_types))
+      }
+      TypeWithUnknow::Unknow(_) => Err("".to_string()),
+    }
+  }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeWithUnknow {
   Builtin {
