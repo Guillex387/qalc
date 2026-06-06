@@ -1,8 +1,8 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use qalc_utils::Span;
+use qalc_utils::{CompilerResult, Diagnostic, Span};
 
-use crate::typed_ast::Type;
+use crate::typed_ast::{Type, TypeWithUnknow};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SymbolKind {
@@ -16,8 +16,21 @@ pub enum SymbolKind {
 pub struct SymbolInfo {
   pub name: String,
   pub kind: SymbolKind,
-  pub declared_type: Type,
+  pub infer_type: TypeWithUnknow,
   pub span: Span,
+}
+
+impl SymbolInfo {
+  pub fn ttype(&self) -> CompilerResult<Type> {
+    match self.infer_type.clone().try_into() {
+      Ok(ttype) => Ok(ttype),
+      Err(_) => Err(Diagnostic::error(
+        "Type inference failed for this definition.",
+        "Type not inferred — add an explicit type annotation here.",
+        self.span.clone(),
+      )),
+    }
+  }
 }
 
 #[derive(Debug, Clone)]
@@ -36,15 +49,11 @@ impl Scope {
 
   pub fn define(&self, symbol: SymbolInfo) -> bool {
     let mut symbols = self.symbols.borrow_mut();
-    let entry = symbols.entry(symbol.name.clone()).or_insert_with(Vec::new);
-
-    if entry
-      .iter()
-      .any(|s| s.declared_type == symbol.declared_type)
-    {
+    if symbols.get(&symbol.name).is_some() {
       false
     } else {
-      entry.push(symbol);
+      symbols.insert(symbol.name.clone(), vec![symbol]);
+
       true
     }
   }
@@ -67,21 +76,11 @@ impl Scope {
     }
   }
 
-  pub fn resolve_declaration_overloaded(
-    &self,
-    name: &str,
-    declared_type: &Type,
-  ) -> Option<SymbolInfo> {
-    if let Some(vec) = self.symbols.borrow().get(name) {
-      if let Some(found) = vec.iter().find(|s| &s.declared_type == declared_type) {
-        return Some(found.clone());
-      }
-    }
+  pub fn define_func(&self, symbol: SymbolInfo) -> bool {
+    todo!()
+  }
 
-    if let Some(parent) = &self.parent {
-      parent.resolve_declaration_overloaded(name, declared_type)
-    } else {
-      None
-    }
+  pub fn resolve_call(&self, name: &str, ttype: &Type) -> Option<SymbolInfo> {
+    todo!()
   }
 }
