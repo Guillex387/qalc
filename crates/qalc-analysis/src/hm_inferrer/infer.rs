@@ -4,7 +4,7 @@ use qalc_ast::{
   Spanned,
   base_ast::{Expression, ExpressionKind, FloatSuffix, NumberSuffix, SliceExpression},
   scope::Scope,
-  typed_ast::{Inferred, InferenceMetadata, TypeWithUnknow},
+  typed_ast::{InferenceMetadata, Inferred, TypeWithUnknow},
 };
 use qalc_utils::{CompilerResult, Diagnostic, Span, gen_id};
 
@@ -12,9 +12,9 @@ use qalc_utils::{CompilerResult, Diagnostic, Span, gen_id};
 pub struct TypeConstraint(pub TypeWithUnknow, pub TypeWithUnknow);
 
 fn infer_ifelse(
-  test: &Expression<Spanned>,
-  consequent: &Expression<Spanned>,
-  alternative: &Expression<Spanned>,
+  test: Expression<Spanned>,
+  consequent: Expression<Spanned>,
+  alternative: Expression<Spanned>,
   scope: &Rc<Scope>,
   span: Span,
 ) -> CompilerResult<(Expression<Inferred>, Vec<TypeConstraint>)> {
@@ -38,14 +38,17 @@ fn infer_ifelse(
         consequent: Box::new(consequent_node),
         alternative: Box::new(alternative_node),
       },
-      meta: InferenceMetadata { span, ttype: return_type },
+      meta: InferenceMetadata {
+        span,
+        ttype: return_type,
+      },
     },
     constraints,
   ))
 }
 
 fn infer_tuple(
-  exprs: &Vec<Expression<Spanned>>,
+  exprs: Vec<Expression<Spanned>>,
   scope: &Rc<Scope>,
   span: Span,
 ) -> CompilerResult<(Expression<Inferred>, Vec<TypeConstraint>)> {
@@ -63,14 +66,17 @@ fn infer_tuple(
   Ok((
     Expression {
       kind: ExpressionKind::Tuple(inferred_exprs),
-      meta: InferenceMetadata { span, ttype: TypeWithUnknow::Tuple(tuple_types) },
+      meta: InferenceMetadata {
+        span,
+        ttype: TypeWithUnknow::Tuple(tuple_types),
+      },
     },
     constraints,
   ))
 }
 
 fn infer_slice(
-  slice_expr: &SliceExpression<Spanned>,
+  slice_expr: SliceExpression<Spanned>,
   scope: &Rc<Scope>,
   span: Span,
 ) -> CompilerResult<(Expression<Inferred>, Vec<TypeConstraint>)> {
@@ -94,7 +100,10 @@ fn infer_slice(
 
       for item in items {
         let (node, node_constraints) = infer_expr(item, scope)?;
-        item_constraints.push(TypeConstraint(slice_internal_type.clone(), node.meta.ttype.clone()));
+        item_constraints.push(TypeConstraint(
+          slice_internal_type.clone(),
+          node.meta.ttype.clone(),
+        ));
         inherited_constraints.extend(node_constraints);
         inferred_items.push(node);
       }
@@ -115,8 +124,8 @@ fn infer_slice(
     }
     SliceExpression::Range(start, end) => {
       let slice_internal_type = TypeWithUnknow::Unknow(gen_id());
-      let (start_node, start_constraints) = infer_expr(start, scope)?;
-      let (end_node, end_constraints) = infer_expr(end, scope)?;
+      let (start_node, start_constraints) = infer_expr(*start, scope)?;
+      let (end_node, end_constraints) = infer_expr(*end, scope)?;
 
       let mut constraints = vec![
         TypeConstraint(slice_internal_type.clone(), start_node.meta.ttype.clone()),
@@ -143,15 +152,18 @@ fn infer_slice(
 }
 
 fn infer_identifier(
-  ident: &str,
+  ident: String,
   scope: &Rc<Scope>,
   span: Span,
 ) -> CompilerResult<(Expression<Inferred>, Vec<TypeConstraint>)> {
-  match scope.resolve(ident) {
+  match scope.resolve(ident.as_str()) {
     Some(symbol_info) => Ok((
       Expression {
         kind: ExpressionKind::Identifier(ident.to_string()),
-        meta: InferenceMetadata { span, ttype: symbol_info.infer_type },
+        meta: InferenceMetadata {
+          span,
+          ttype: symbol_info.infer_type,
+        },
       },
       vec![],
     )),
@@ -163,38 +175,88 @@ fn infer_identifier(
   }
 }
 
-fn infer_integer(suffix: &NumberSuffix) -> TypeWithUnknow {
+fn infer_integer(suffix: NumberSuffix) -> TypeWithUnknow {
   match suffix {
-    NumberSuffix::I8 => TypeWithUnknow::Builtin { id: "i8".to_string(), params: vec![], linear: false },
-    NumberSuffix::I16 => TypeWithUnknow::Builtin { id: "i16".to_string(), params: vec![], linear: false },
-    NumberSuffix::I32 => TypeWithUnknow::Builtin { id: "i32".to_string(), params: vec![], linear: false },
-    NumberSuffix::I64 => TypeWithUnknow::Builtin { id: "i64".to_string(), params: vec![], linear: false },
-    NumberSuffix::U8 => TypeWithUnknow::Builtin { id: "u8".to_string(), params: vec![], linear: false },
-    NumberSuffix::U16 => TypeWithUnknow::Builtin { id: "u16".to_string(), params: vec![], linear: false },
-    NumberSuffix::U32 => TypeWithUnknow::Builtin { id: "u32".to_string(), params: vec![], linear: false },
-    NumberSuffix::U64 => TypeWithUnknow::Builtin { id: "u64".to_string(), params: vec![], linear: false },
-    NumberSuffix::Unknow => TypeWithUnknow::Builtin { id: "i32".to_string(), params: vec![], linear: false },
+    NumberSuffix::I8 => TypeWithUnknow::Builtin {
+      id: "i8".to_string(),
+      params: vec![],
+      linear: false,
+    },
+    NumberSuffix::I16 => TypeWithUnknow::Builtin {
+      id: "i16".to_string(),
+      params: vec![],
+      linear: false,
+    },
+    NumberSuffix::I32 => TypeWithUnknow::Builtin {
+      id: "i32".to_string(),
+      params: vec![],
+      linear: false,
+    },
+    NumberSuffix::I64 => TypeWithUnknow::Builtin {
+      id: "i64".to_string(),
+      params: vec![],
+      linear: false,
+    },
+    NumberSuffix::U8 => TypeWithUnknow::Builtin {
+      id: "u8".to_string(),
+      params: vec![],
+      linear: false,
+    },
+    NumberSuffix::U16 => TypeWithUnknow::Builtin {
+      id: "u16".to_string(),
+      params: vec![],
+      linear: false,
+    },
+    NumberSuffix::U32 => TypeWithUnknow::Builtin {
+      id: "u32".to_string(),
+      params: vec![],
+      linear: false,
+    },
+    NumberSuffix::U64 => TypeWithUnknow::Builtin {
+      id: "u64".to_string(),
+      params: vec![],
+      linear: false,
+    },
+    NumberSuffix::Unknow => TypeWithUnknow::Builtin {
+      id: "i32".to_string(),
+      params: vec![],
+      linear: false,
+    },
   }
 }
 
-fn infer_float(suffix: &FloatSuffix) -> TypeWithUnknow {
+fn infer_float(suffix: FloatSuffix) -> TypeWithUnknow {
   match suffix {
-    FloatSuffix::F32 => TypeWithUnknow::Builtin { id: "f32".to_string(), params: vec![], linear: false },
-    FloatSuffix::F64 => TypeWithUnknow::Builtin { id: "f64".to_string(), params: vec![], linear: false },
-    FloatSuffix::Unknow => TypeWithUnknow::Builtin { id: "f64".to_string(), params: vec![], linear: false },
+    FloatSuffix::F32 => TypeWithUnknow::Builtin {
+      id: "f32".to_string(),
+      params: vec![],
+      linear: false,
+    },
+    FloatSuffix::F64 => TypeWithUnknow::Builtin {
+      id: "f64".to_string(),
+      params: vec![],
+      linear: false,
+    },
+    FloatSuffix::Unknow => TypeWithUnknow::Builtin {
+      id: "f64".to_string(),
+      params: vec![],
+      linear: false,
+    },
   }
 }
 
 pub fn infer_expr(
-  expr: &Expression<Spanned>,
+  expr: Expression<Spanned>,
   scope: &Rc<Scope>,
 ) -> CompilerResult<(Expression<Inferred>, Vec<TypeConstraint>)> {
-  let span = expr.meta.clone();
-  match &expr.kind {
+  let span = expr.meta;
+  match expr.kind {
     ExpressionKind::LetBlock { .. } => todo!(),
-    ExpressionKind::IfElseBlock { test, consequent, alternative } => {
-      infer_ifelse(test, consequent, alternative, scope, span)
-    }
+    ExpressionKind::IfElseBlock {
+      test,
+      consequent,
+      alternative,
+    } => infer_ifelse(*test, *consequent, *alternative, scope, span),
     ExpressionKind::Transform { .. } => todo!(),
     ExpressionKind::Lambda { .. } => todo!(),
     ExpressionKind::Tuple(expressions) => infer_tuple(expressions, scope, span),
@@ -202,15 +264,27 @@ pub fn infer_expr(
     ExpressionKind::Identifier(ident) => infer_identifier(ident, scope, span),
     ExpressionKind::IntegerLiteral { number, suffix } => Ok((
       Expression {
-        kind: ExpressionKind::IntegerLiteral { number: *number, suffix: suffix.clone() },
-        meta: InferenceMetadata { span, ttype: infer_integer(suffix) },
+        kind: ExpressionKind::IntegerLiteral {
+          number: number,
+          suffix: suffix.clone(),
+        },
+        meta: InferenceMetadata {
+          span,
+          ttype: infer_integer(suffix),
+        },
       },
       vec![],
     )),
     ExpressionKind::FloatLiteral { number, suffix } => Ok((
       Expression {
-        kind: ExpressionKind::FloatLiteral { number: *number, suffix: suffix.clone() },
-        meta: InferenceMetadata { span, ttype: infer_float(suffix) },
+        kind: ExpressionKind::FloatLiteral {
+          number: number,
+          suffix: suffix.clone(),
+        },
+        meta: InferenceMetadata {
+          span,
+          ttype: infer_float(suffix),
+        },
       },
       vec![],
     )),
