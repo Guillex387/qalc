@@ -4,6 +4,22 @@ use qalc_utils::Span;
 
 use crate::{ASTMetadata, base_ast::Declaration, scope::Scope};
 
+#[derive(Debug, Clone)]
+pub struct InferenceMetadata {
+  pub span: Span,
+  pub ttype: TypeWithUnknow,
+}
+
+#[derive(Debug, Clone)]
+pub struct Inferred;
+
+impl ASTMetadata for Inferred {
+  type DeclarationMeta = InferenceMetadata;
+  type ExpressionMeta = InferenceMetadata;
+  type PatternMeta = Span;
+  type TypeMeta = Span;
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Type {
   Builtin {
