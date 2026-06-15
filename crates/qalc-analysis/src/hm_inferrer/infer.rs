@@ -176,6 +176,37 @@ fn infer_slice(
   }
 }
 
+fn infer_transform(
+  callee: Expression<Spanned>,
+  param: Expression<Spanned>,
+  scope: &Rc<Scope>,
+  span: Span,
+) -> CompilerResult<(Expression<Inferred>, Vec<TypeConstraint>)> {
+  let return_type = TypeWithUnknow::Unknow(gen_id());
+  let (callee_node, callee_constraints) = infer_expr(callee, scope)?;
+  let (param_node, param_constraints) = infer_expr(param, scope)?;
+
+  let arrow_type = TypeWithUnknow::Arrow(
+    Box::new(param_node.meta.ttype.clone()),
+    Box::new(return_type.clone()),
+  );
+
+  let mut constraints = vec![TypeConstraint(callee_node.meta.ttype.clone(), arrow_type)];
+  constraints.extend(callee_constraints);
+  constraints.extend(param_constraints);
+
+  Ok((
+    Expression {
+      kind: ExpressionKind::Transform {
+        callee: Box::new(callee_node),
+        param: Box::new(param_node),
+      },
+      meta: InferenceMetadata { span, ttype: return_type },
+    },
+    constraints,
+  ))
+}
+
 fn infer_identifier(
   ident: String,
   scope: &Rc<Scope>,
@@ -282,7 +313,7 @@ pub fn infer_expr(
       consequent,
       alternative,
     } => infer_ifelse(*test, *consequent, *alternative, scope, span),
-    ExpressionKind::Transform { .. } => todo!(),
+    ExpressionKind::Transform { callee, param } => infer_transform(*callee, *param, scope, span),
     ExpressionKind::Lambda { params, body } => infer_lambda(params, *body, scope, span),
     ExpressionKind::Tuple(expressions) => infer_tuple(expressions, scope, span),
     ExpressionKind::Slice(slice_expr) => infer_slice(slice_expr, scope, span),
