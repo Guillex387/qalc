@@ -2,14 +2,108 @@ use std::rc::Rc;
 
 use qalc_ast::{
   Spanned,
-  base_ast::{Expression, ExpressionKind, FloatSuffix, NumberSuffix, SliceExpression},
-  scope::Scope,
+  base_ast::{
+    Expression, ExpressionKind, FloatSuffix, NumberSuffix, Pattern, PatternKind, SliceExpression,
+  },
+  scope::{Scope, SymbolInfo, SymbolKind},
   typed_ast::{InferenceMetadata, Inferred, TypeWithUnknow},
 };
 use qalc_utils::{CompilerResult, Diagnostic, Span, gen_id};
 
 #[derive(Debug, Clone)]
 pub struct TypeConstraint(pub TypeWithUnknow, pub TypeWithUnknow);
+
+fn infer_pattern(
+  pattern: Pattern<Spanned>,
+  scope: &Rc<Scope>,
+) -> (Pattern<Inferred>, TypeWithUnknow) {
+  let span = pattern.meta;
+
+  match pattern.kind {
+    PatternKind::Variable(name) => {
+      let ttype = TypeWithUnknow::Unknow(gen_id());
+      scope.define(SymbolInfo {
+        name: name.clone(),
+        kind: SymbolKind::Parameter,
+        infer_type: ttype.clone(),
+        span: span.clone(),
+      });
+
+      (
+        Pattern {
+          kind: PatternKind::Variable(name),
+          meta: span,
+        },
+        ttype,
+      )
+    }
+    PatternKind::Wildcard => (
+      Pattern {
+        kind: PatternKind::Wildcard,
+        meta: span,
+      },
+      TypeWithUnknow::Unknow(gen_id()),
+    ),
+    PatternKind::Tuple(patterns) => {
+      let mut inferred_pats = Vec::new();
+      let mut types = Vec::new();
+      for pattern in patterns {
+        let (pattern_node, pattern_type) = infer_pattern(pattern, scope);
+        inferred_pats.push(pattern_node);
+        types.push(pattern_type);
+      }
+
+      (
+        Pattern {
+          kind: PatternKind::Tuple(inferred_pats),
+          meta: span,
+        },
+        TypeWithUnknow::Tuple(types),
+      )
+    }
+  }
+}
+
+fn infer_let_block(
+  strict: bool,
+  assigments: Vec<(Pattern<Spanned>, Expression<Spanned>)>,
+  value: Expression<Spanned>,
+  scope: &Rc<Scope>,
+  span: Span,
+) -> CompilerResult<(Expression<Inferred>, Vec<TypeConstraint>)> {
+  let let_scope = Rc::new(Scope::new(Some(Rc::clone(scope))));
+  let mut constraints = Vec::new();
+  let mut inferred_assigments = Vec::new();
+
+  for (pattern, expr) in assigments {
+    let (inferred_expr, expr_constraints) = infer_expr(expr, scope)?;
+    constraints.extend(expr_constraints);
+
+    let (inferred_pattern, pattern_type) = infer_pattern(pattern, &let_scope);
+    constraints.push(TypeConstraint(
+      inferred_expr.meta.ttype.clone(),
+      pattern_type,
+    ));
+
+    inferred_assigments.push((inferred_pattern, inferred_expr));
+  }
+
+  let (inferred_value, value_constraints) = infer_expr(value, &let_scope)?;
+  constraints.extend(value_constraints);
+  let ttype = inferred_value.meta.ttype.clone();
+
+  Ok((
+    Expression {
+      kind: ExpressionKind::LetBlock {
+        strict,
+        assigments: inferred_assigments,
+        value: Box::new(inferred_value),
+      },
+      meta: InferenceMetadata { span, ttype },
+    },
+    constraints,
+  ))
+}
 
 fn infer_ifelse(
   test: Expression<Spanned>,
@@ -53,10 +147,27 @@ fn infer_lambda(
   scope: &Rc<Scope>,
   span: Span,
 ) -> CompilerResult<(Expression<Inferred>, Vec<TypeConstraint>)> {
-  let (body, constraints) = infer_expr(body, scope)?;
+  let lambda_scope = Rc::new(Scope::new(Some(Rc::clone(scope))));
+
+  let param_types: Vec<TypeWithUnknow> = params
+    .iter()
+    .map(|name| {
+      let ttype = TypeWithUnknow::Unknow(gen_id());
+      lambda_scope.define(SymbolInfo {
+        name: name.clone(),
+        kind: SymbolKind::Parameter,
+        infer_type: ttype.clone(),
+        span: span.clone(),
+      });
+
+      ttype
+    })
+    .collect();
+
+  let (body, constraints) = infer_expr(body, &lambda_scope)?;
+
   let mut ttype = body.meta.ttype.clone();
-  for _ in 0..params.len() {
-    let param_type = TypeWithUnknow::Unknow(gen_id());
+  for param_type in param_types.into_iter().rev() {
     ttype = TypeWithUnknow::Arrow(Box::new(param_type), Box::new(ttype));
   }
 
@@ -201,7 +312,10 @@ fn infer_transform(
         callee: Box::new(callee_node),
         param: Box::new(param_node),
       },
-      meta: InferenceMetadata { span, ttype: return_type },
+      meta: InferenceMetadata {
+        span,
+        ttype: return_type,
+      },
     },
     constraints,
   ))
@@ -307,7 +421,11 @@ pub fn infer_expr(
 ) -> CompilerResult<(Expression<Inferred>, Vec<TypeConstraint>)> {
   let span = expr.meta;
   match expr.kind {
-    ExpressionKind::LetBlock { .. } => todo!(),
+    ExpressionKind::LetBlock {
+      strict,
+      assigments,
+      value,
+    } => infer_let_block(strict, assigments, *value, scope, span),
     ExpressionKind::IfElseBlock {
       test,
       consequent,
