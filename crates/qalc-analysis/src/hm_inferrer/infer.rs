@@ -47,6 +47,31 @@ fn infer_ifelse(
   ))
 }
 
+fn infer_lambda(
+  params: Vec<String>,
+  body: Expression<Spanned>,
+  scope: &Rc<Scope>,
+  span: Span,
+) -> CompilerResult<(Expression<Inferred>, Vec<TypeConstraint>)> {
+  let (body, constraints) = infer_expr(body, scope)?;
+  let mut ttype = body.meta.ttype.clone();
+  for _ in 0..params.len() {
+    let param_type = TypeWithUnknow::Unknow(gen_id());
+    ttype = TypeWithUnknow::Arrow(Box::new(param_type), Box::new(ttype));
+  }
+
+  Ok((
+    Expression {
+      kind: ExpressionKind::Lambda {
+        params,
+        body: Box::new(body),
+      },
+      meta: InferenceMetadata { span, ttype },
+    },
+    constraints,
+  ))
+}
+
 fn infer_tuple(
   exprs: Vec<Expression<Spanned>>,
   scope: &Rc<Scope>,
@@ -258,7 +283,7 @@ pub fn infer_expr(
       alternative,
     } => infer_ifelse(*test, *consequent, *alternative, scope, span),
     ExpressionKind::Transform { .. } => todo!(),
-    ExpressionKind::Lambda { .. } => todo!(),
+    ExpressionKind::Lambda { params, body } => infer_lambda(params, *body, scope, span),
     ExpressionKind::Tuple(expressions) => infer_tuple(expressions, scope, span),
     ExpressionKind::Slice(slice_expr) => infer_slice(slice_expr, scope, span),
     ExpressionKind::Identifier(ident) => infer_identifier(ident, scope, span),
