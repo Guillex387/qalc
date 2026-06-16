@@ -5,4 +5,5 @@ edition = "2024"
 
 [dependencies]
 qalc-ast = { path = "../qalc-ast" }
+qalc-builtins = { path = "../qalc-builtins" }
 qalc-utils = { path = "../qalc-utils" }
