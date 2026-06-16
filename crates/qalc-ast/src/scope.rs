@@ -39,6 +39,7 @@ pub struct Scope {
   symbols: RefCell<HashMap<String, Vec<SymbolInfo>>>,
 }
 
+// TODO: implementar la sobrecarga a nivel de todos los resolve
 impl Scope {
   pub fn new(parent: Option<Rc<Scope>>) -> Self {
     Scope {
@@ -76,11 +77,7 @@ impl Scope {
     }
   }
 
-  pub fn define_func(&self, symbol: SymbolInfo) -> bool {
-    todo!()
-  }
-
-  pub fn resolve_call(&self, name: &str, ttype: &Type) -> Option<SymbolInfo> {
+  pub fn define_decl(&self, symbol: SymbolInfo) -> bool {
     todo!()
   }
 }

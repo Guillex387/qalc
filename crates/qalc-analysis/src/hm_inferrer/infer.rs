@@ -3,7 +3,8 @@ use std::rc::Rc;
 use qalc_ast::{
   Spanned,
   base_ast::{
-    Expression, ExpressionKind, FloatSuffix, NumberSuffix, Pattern, PatternKind, SliceExpression,
+    Declaration, DeclarationKind, Expression, ExpressionKind, FloatSuffix, NumberSuffix, Pattern,
+    PatternKind, SliceExpression, TypeExpression, TypeExpressionKind,
   },
   scope::{Scope, SymbolInfo, SymbolKind},
   typed_ast::{InferenceMetadata, Inferred, TypeWithUnknow},
@@ -415,7 +416,7 @@ fn infer_float(suffix: FloatSuffix) -> TypeWithUnknow {
   }
 }
 
-pub fn infer_expr(
+fn infer_expr(
   expr: Expression<Spanned>,
   scope: &Rc<Scope>,
 ) -> CompilerResult<(Expression<Inferred>, Vec<TypeConstraint>)> {
@@ -461,6 +462,125 @@ pub fn infer_expr(
         },
       },
       vec![],
+    )),
+  }
+}
+
+pub fn type_expr_to_infer_type(te: TypeExpression<Spanned>) -> TypeWithUnknow {
+  match te.kind {
+    TypeExpressionKind::Identifier(id) => TypeWithUnknow::Builtin {
+      id,
+      params: vec![],
+      linear: false,
+    },
+    TypeExpressionKind::IdentifierWithParams { identifier, params } => TypeWithUnknow::Builtin {
+      id: identifier,
+      params: params.into_iter().map(type_expr_to_infer_type).collect(),
+      linear: false,
+    },
+    TypeExpressionKind::Slice(inner) => {
+      TypeWithUnknow::Slice(Box::new(type_expr_to_infer_type(*inner)))
+    }
+    TypeExpressionKind::Tuple(types) => {
+      TypeWithUnknow::Tuple(types.into_iter().map(type_expr_to_infer_type).collect())
+    }
+    TypeExpressionKind::Transform {
+      input_type,
+      output_type,
+    } => TypeWithUnknow::Arrow(
+      Box::new(type_expr_to_infer_type(*input_type)),
+      Box::new(type_expr_to_infer_type(*output_type)),
+    ),
+  }
+}
+
+fn remap_type_expr(te: TypeExpression<Spanned>) -> TypeExpression<Inferred> {
+  TypeExpression {
+    meta: te.meta,
+    kind: match te.kind {
+      TypeExpressionKind::Identifier(id) => TypeExpressionKind::Identifier(id),
+      TypeExpressionKind::IdentifierWithParams { identifier, params } => {
+        TypeExpressionKind::IdentifierWithParams {
+          identifier,
+          params: params.into_iter().map(remap_type_expr).collect(),
+        }
+      }
+      TypeExpressionKind::Slice(inner) => {
+        TypeExpressionKind::Slice(Box::new(remap_type_expr(*inner)))
+      }
+      TypeExpressionKind::Tuple(types) => {
+        TypeExpressionKind::Tuple(types.into_iter().map(remap_type_expr).collect())
+      }
+      TypeExpressionKind::Transform {
+        input_type,
+        output_type,
+      } => TypeExpressionKind::Transform {
+        input_type: Box::new(remap_type_expr(*input_type)),
+        output_type: Box::new(remap_type_expr(*output_type)),
+      },
+    },
+  }
+}
+
+pub fn infer_decl(
+  decl: Declaration<Spanned>,
+  declared_type: TypeWithUnknow,
+  scope: &Rc<Scope>,
+) -> CompilerResult<(Declaration<Inferred>, Vec<TypeConstraint>)> {
+  let span = decl.meta;
+  match decl.kind {
+    DeclarationKind::Function {
+      identifier,
+      type_annotation,
+      params,
+      body,
+    } => {
+      let fn_scope = Rc::new(Scope::new(Some(Rc::clone(scope))));
+
+      let param_types: Vec<TypeWithUnknow> = params
+        .iter()
+        .map(|name| {
+          let ttype = TypeWithUnknow::Unknow(gen_id());
+          fn_scope.define(SymbolInfo {
+            name: name.clone(),
+            kind: SymbolKind::Parameter,
+            infer_type: ttype.clone(),
+            span: span.clone(),
+          });
+
+          ttype
+        })
+        .collect();
+
+      let (inferred_body, mut constraints) = infer_expr(body, &fn_scope)?;
+
+      let mut inferred_type = inferred_body.meta.ttype.clone();
+      for param_type in param_types.into_iter().rev() {
+        inferred_type = TypeWithUnknow::Arrow(Box::new(param_type), Box::new(inferred_type));
+      }
+
+      constraints.push(TypeConstraint(inferred_type.clone(), declared_type));
+
+      Ok((
+        Declaration {
+          kind: DeclarationKind::Function {
+            identifier,
+            type_annotation: remap_type_expr(type_annotation),
+            params,
+            body: inferred_body,
+          },
+          meta: InferenceMetadata {
+            span,
+            ttype: inferred_type,
+          },
+        },
+        constraints,
+      ))
+    }
+    DeclarationKind::Type { .. } => Err(Diagnostic::error(
+      "Type declarations are not supported in the MVP.",
+      "Feature outside MVP — only function declarations are supported.",
+      span,
     )),
   }
 }
