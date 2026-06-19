@@ -1,0 +1,37 @@
+\chapter{Introducción y Motivación}
+
+La computación cuántica lleva décadas prometiendo resolver problemas que escapan a la capacidad de cualquier ordenador clásico, desde la simulación de sistemas moleculares complejos hasta la búsqueda en espacios de soluciones de escala exponencial. Sin embargo, programar estas máquinas sigue siendo hoy una tarea reservada a especialistas con formación profunda en física cuántica, no porque los algoritmos sean inherentemente incomprensibles, sino porque las herramientas disponibles obligan al desarrollador a razonar al nivel del hardware. Este trabajo de fin de grado nace de esa brecha: la distancia entre lo que la computación cuántica puede hacer y lo que un ingeniero de software puede expresar con las herramientas actuales.
+
+\section{Fundamentos de la Computación Cuántica}
+
+La \textbf{computación cuántica} constituye un cambio de paradigma respecto a la computación clásica. Mientras que un bit clásico representa en todo momento un estado discreto (0 o 1), la unidad fundamental de información cuántica, el \textbf{cúbit}, puede existir en \textbf{superposición}: una combinación lineal de ambos estados cuya amplitud determina la probabilidad de cada resultado al medir. Este comportamiento, descrito formalmente mediante vectores normalizados en un espacio de Hilbert complejo, permite que un sistema de $n$ cúbits represente $2^n$ estados de forma simultánea.
+
+Sobre esta base actúan dos fenómenos adicionales que dotan a la computación cuántica de su potencia expresiva. El \textbf{entrelazamiento} crea correlaciones entre cúbits que no tienen equivalente clásico: el estado de un cúbit entrelazado no puede describirse de forma independiente del resto del sistema. La \textbf{medición}, por su parte, es destructiva: al observar el estado de un cúbit, el sistema colapsa irreversiblemente hacia uno de sus valores base, destruyendo la superposición. La evolución del sistema entre mediciones se realiza mediante \textbf{operadores unitarios}, que conservan la norma del vector de estado y garantizan la reversibilidad de las operaciones.
+
+Para estructurar la interacción entre el software clásico y el hardware cuántico se utiliza habitualmente el modelo \textbf{QRAM} (\textit{Quantum Random Access Machine}): un controlador clásico envía instrucciones a un coprocesador cuántico, recibe los resultados de las mediciones y adapta el flujo de control en consecuencia. Esta arquitectura híbrida es la base sobre la que se construyen todos los lenguajes y frameworks cuánticos modernos.
+
+\section{El Problema: Lenguajes de Bajo Nivel como Barrera}
+
+El ecosistema actual de programación cuántica está dominado por herramientas que operan al nivel del \textbf{circuito cuántico}: el desarrollador construye su algoritmo ensambladando explícitamente puertas lógicas sobre cúbits individuales. Este modelo tiene sentido como representación de bajo nivel para el hardware, pero resulta inadecuado como abstracción de programación para cualquier algoritmo de complejidad moderada.
+
+Los frameworks más extendidos, como \textbf{Qiskit} (IBM) o \textbf{Cirq} (Google), se presentan como bibliotecas Python que construyen circuitos de este modo. Su principal limitación no es la falta de funcionalidades, sino la ausencia total de garantías estáticas sobre la corrección física del código. Al ser bibliotecas de un lenguaje clásico de tipado dinámico, no pueden verificar en tiempo de compilación reglas fundamentales de la mecánica cuántica. El \textbf{teorema de no clonación} prohíbe duplicar el estado de un cúbit arbitrario, pero nada en Python impide que un programador asigne la misma variable cuántica a dos operaciones simultáneas: el error solo aparecerá en tiempo de ejecución, a menudo en forma de resultados silenciosamente incorrectos. La gestión manual de la topología del chip, la secuencia de pulsos o el ciclo de vida de cada cúbit traslada al programador una responsabilidad que debería pertenecer al compilador.
+
+El resultado es un ecosistema donde \textbf{la complejidad accidental supera con frecuencia a la complejidad esencial} del problema. Escribir el algoritmo de Grover o la transformada cuántica de Fourier en Qiskit requiere más líneas de código de bajo nivel que de lógica algorítmica, y cualquier refactorización puede introducir errores físicos difíciles de detectar.
+
+\section{Propuesta: Qalc, un Lenguaje Cuántico de Alto Nivel}
+
+Este proyecto propone el diseño e implementación de \textbf{Qalc}, un lenguaje de programación cuántico de alto nivel con paradigma \textbf{funcional}, inspirado en la sintaxis de Haskell. El objetivo es que el desarrollador pueda expresar algoritmos cuánticos en términos de transformaciones y composiciones de datos, sin necesidad de razonar sobre registros físicos ni sobre el ensamblaje de puertas.
+
+Qalc introduce un modelo en el que los circuitos se construyen \textbf{funcionalmente}: las operaciones no modifican estado global sino que devuelven nuevas representaciones del circuito en construcción. El lenguaje expone tipos de datos abstractos como \lstinline|qint| o \lstinline|qbool|, y permite componer operaciones mediante el operador pipe (\lstinline{|>}) y funciones de orden superior, de forma análoga a como un desarrollador funcional clásico encadena transformaciones sobre listas o árboles.
+
+\subsection{Sistema de Tipos Fuerte con Tipos Lineales}
+
+El eje de seguridad de Qalc es su \textbf{sistema de tipos estático}, construido sobre inferencia \textbf{Hindley-Milner} extendida con \textbf{tipos lineales (o afines)}. Los tipos lineales tratan cada cúbit como un recurso físico que debe consumirse exactamente una vez en el flujo del programa: no puede copiarse, no puede ignorarse y no puede pasarse a dos operaciones a la vez.
+
+Esta restricción tiene una consecuencia directa: el compilador puede verificar el teorema de no clonación en tiempo de compilación, antes de que el programa llegue a ejecutarse en ningún simulador ni hardware real. Cada cúbit tiene un único propietario en cada punto del flujo de datos, y cualquier violación de esa propiedad se convierte en un error de compilación con un diagnóstico preciso que señala el punto exacto del código fuente. Esto elimina una clase entera de errores que en los frameworks actuales solo se manifiestan en ejecución.
+
+\section{Alcance del Proyecto}
+
+El presente trabajo abarca el diseño completo del lenguaje y la implementación de su compilador hasta un \textbf{MVP funcional}. El compilador está escrito en Rust y sigue una arquitectura de pipeline modular: análisis léxico, análisis sintáctico con construcción del AST, normalización, inferencia de tipos con Hindley-Milner y generación de código hacia \textbf{OpenQASM 3}, el estándar de descripción de circuitos cuánticos más extendido en la industria.
+
+Quedan fuera del alcance de este MVP, y se identifican como líneas de trabajo futuro, funcionalidades avanzadas del lenguaje como la \textbf{gestión automática de la descomputación (\textit{uncomputation})}. En los sistemas cuánticos, descartar un cúbit auxiliar que permanece entrelazado con el registro de cálculo induce una medición implícita que destruye la coherencia del estado global; automatizar ese proceso en el compilador, tal y como hace Silq, constituye un problema de investigación de primer orden que merece un trabajo propio.

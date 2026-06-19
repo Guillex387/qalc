@@ -9,3 +9,4 @@ qalc-parser = { path = "../qalc-parser" }
 qalc-ast = { path = "../qalc-ast" }
 qalc-analysis = { path = "../qalc-analysis" }
 qalc-builtins = { path = "../qalc-builtins" }
+serde_json = "1"
