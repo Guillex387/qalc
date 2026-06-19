@@ -1,4 +1,6 @@
+mod apply;
 mod infer;
+mod unify;
 
 use std::rc::Rc;
 
@@ -6,12 +8,33 @@ use qalc_ast::base_ast::DeclarationKind;
 use qalc_ast::normalized_ast::NormalizedAST;
 use qalc_ast::scope::{Scope, SymbolInfo, SymbolKind};
 use qalc_ast::typed_ast::TypedAST;
-use qalc_utils::{CompilerResult, CompilerStep, Diagnostic};
+use qalc_builtins::BuiltinDef;
+use qalc_utils::{CompilerResult, CompilerStep, Diagnostic, Source, Span};
 
+use apply::finalize_decl;
 use infer::{infer_decl, type_expr_to_infer_type};
+use unify::unify;
 
-#[derive(Default)]
-pub struct HMInferrer;
+pub struct HMInferrer {
+  builtins: Vec<BuiltinDef>,
+}
+
+impl HMInferrer {
+  pub fn new(builtins: Vec<BuiltinDef>) -> Self {
+    Self { builtins }
+  }
+
+  pub fn with_builtins(mut self, builtins: Vec<BuiltinDef>) -> Self {
+    self.builtins = builtins;
+    self
+  }
+}
+
+impl Default for HMInferrer {
+  fn default() -> Self {
+    Self { builtins: vec![] }
+  }
+}
 
 impl CompilerStep for HMInferrer {
   type Input = NormalizedAST;
@@ -19,8 +42,21 @@ impl CompilerStep for HMInferrer {
 
   fn transform(&self, input: NormalizedAST, _: &mut Vec<Diagnostic>) -> CompilerResult<TypedAST> {
     let global_scope = Rc::new(Scope::new(None));
-    let mut declared_types = Vec::new();
 
+    if !self.builtins.is_empty() {
+      let builtin_source = Rc::new(Source::memory(""));
+      let builtin_span = Span::new(&builtin_source, 0, 0);
+      for builtin in &self.builtins {
+        global_scope.define(SymbolInfo {
+          name: builtin.name.clone(),
+          kind: SymbolKind::Function,
+          infer_type: builtin.ttype.clone(),
+          span: builtin_span.clone(),
+        });
+      }
+    }
+
+    let mut declared_types = Vec::new();
     for decl in &input.declarations {
       match &decl.kind {
         DeclarationKind::Function {
@@ -55,6 +91,16 @@ impl CompilerStep for HMInferrer {
       inferred_decls.push(inferred_decl);
     }
 
-    todo!("Solve constraints and produce TypedAST")
+    let substitutions = unify(all_constraints)?;
+
+    let typed_decls = inferred_decls
+      .into_iter()
+      .map(|decl| finalize_decl(decl, &substitutions))
+      .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(TypedAST {
+      declarations: typed_decls,
+      global_scope,
+    })
   }
 }

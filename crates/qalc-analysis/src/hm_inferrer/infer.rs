@@ -12,7 +12,11 @@ use qalc_ast::{
 use qalc_utils::{CompilerResult, Diagnostic, Span, gen_id};
 
 #[derive(Debug, Clone)]
-pub struct TypeConstraint(pub TypeWithUnknow, pub TypeWithUnknow);
+pub struct TypeConstraint {
+  pub lhs: TypeWithUnknow,
+  pub rhs: TypeWithUnknow,
+  pub span: Span,
+}
 
 fn infer_pattern(
   pattern: Pattern<Spanned>,
@@ -81,10 +85,11 @@ fn infer_let_block(
     constraints.extend(expr_constraints);
 
     let (inferred_pattern, pattern_type) = infer_pattern(pattern, &let_scope);
-    constraints.push(TypeConstraint(
-      inferred_expr.meta.ttype.clone(),
-      pattern_type,
-    ));
+    constraints.push(TypeConstraint {
+      lhs: inferred_expr.meta.ttype.clone(),
+      rhs: pattern_type,
+      span: inferred_expr.meta.span.clone(),
+    });
 
     inferred_assigments.push((inferred_pattern, inferred_expr));
   }
@@ -100,7 +105,11 @@ fn infer_let_block(
         assigments: inferred_assigments,
         value: Box::new(inferred_value),
       },
-      meta: InferenceMetadata { span, ttype },
+      meta: InferenceMetadata {
+        span,
+        ttype,
+        scope: Rc::clone(scope),
+      },
     },
     constraints,
   ))
@@ -119,8 +128,16 @@ fn infer_ifelse(
   let (alternative_node, alternative_constraints) = infer_expr(alternative, scope)?;
 
   let mut constraints = vec![
-    TypeConstraint(return_type.clone(), consequent_node.meta.ttype.clone()),
-    TypeConstraint(return_type.clone(), alternative_node.meta.ttype.clone()),
+    TypeConstraint {
+      lhs: return_type.clone(),
+      rhs: consequent_node.meta.ttype.clone(),
+      span: consequent_node.meta.span.clone(),
+    },
+    TypeConstraint {
+      lhs: return_type.clone(),
+      rhs: alternative_node.meta.ttype.clone(),
+      span: alternative_node.meta.span.clone(),
+    },
   ];
   constraints.extend(consequent_constraints);
   constraints.extend(alternative_constraints);
@@ -136,6 +153,7 @@ fn infer_ifelse(
       meta: InferenceMetadata {
         span,
         ttype: return_type,
+        scope: Rc::clone(scope),
       },
     },
     constraints,
@@ -178,7 +196,11 @@ fn infer_lambda(
         params,
         body: Box::new(body),
       },
-      meta: InferenceMetadata { span, ttype },
+      meta: InferenceMetadata {
+        span,
+        ttype,
+        scope: Rc::clone(scope),
+      },
     },
     constraints,
   ))
@@ -206,6 +228,7 @@ fn infer_tuple(
       meta: InferenceMetadata {
         span,
         ttype: TypeWithUnknow::Tuple(tuple_types),
+        scope: Rc::clone(scope),
       },
     },
     constraints,
@@ -224,7 +247,11 @@ fn infer_slice(
         return Ok((
           Expression {
             kind: ExpressionKind::Slice(SliceExpression::Items(vec![])),
-            meta: InferenceMetadata { span, ttype },
+            meta: InferenceMetadata {
+              span,
+              ttype,
+              scope: Rc::clone(scope),
+            },
           },
           vec![],
         ));
@@ -237,10 +264,11 @@ fn infer_slice(
 
       for item in items {
         let (node, node_constraints) = infer_expr(item, scope)?;
-        item_constraints.push(TypeConstraint(
-          slice_internal_type.clone(),
-          node.meta.ttype.clone(),
-        ));
+        item_constraints.push(TypeConstraint {
+          lhs: slice_internal_type.clone(),
+          rhs: node.meta.ttype.clone(),
+          span: node.meta.span.clone(),
+        });
         inherited_constraints.extend(node_constraints);
         inferred_items.push(node);
       }
@@ -254,6 +282,7 @@ fn infer_slice(
           meta: InferenceMetadata {
             span,
             ttype: TypeWithUnknow::Slice(Box::new(slice_internal_type)),
+            scope: Rc::clone(scope),
           },
         },
         constraints,
@@ -265,8 +294,16 @@ fn infer_slice(
       let (end_node, end_constraints) = infer_expr(*end, scope)?;
 
       let mut constraints = vec![
-        TypeConstraint(slice_internal_type.clone(), start_node.meta.ttype.clone()),
-        TypeConstraint(slice_internal_type.clone(), end_node.meta.ttype.clone()),
+        TypeConstraint {
+          lhs: slice_internal_type.clone(),
+          rhs: start_node.meta.ttype.clone(),
+          span: start_node.meta.span.clone(),
+        },
+        TypeConstraint {
+          lhs: slice_internal_type.clone(),
+          rhs: end_node.meta.ttype.clone(),
+          span: end_node.meta.span.clone(),
+        },
       ];
       constraints.extend(start_constraints);
       constraints.extend(end_constraints);
@@ -280,6 +317,7 @@ fn infer_slice(
           meta: InferenceMetadata {
             span,
             ttype: TypeWithUnknow::Slice(Box::new(slice_internal_type)),
+            scope: Rc::clone(scope),
           },
         },
         constraints,
@@ -303,7 +341,11 @@ fn infer_transform(
     Box::new(return_type.clone()),
   );
 
-  let mut constraints = vec![TypeConstraint(callee_node.meta.ttype.clone(), arrow_type)];
+  let mut constraints = vec![TypeConstraint {
+    lhs: callee_node.meta.ttype.clone(),
+    rhs: arrow_type,
+    span: callee_node.meta.span.clone(),
+  }];
   constraints.extend(callee_constraints);
   constraints.extend(param_constraints);
 
@@ -316,6 +358,7 @@ fn infer_transform(
       meta: InferenceMetadata {
         span,
         ttype: return_type,
+        scope: Rc::clone(scope),
       },
     },
     constraints,
@@ -334,6 +377,7 @@ fn infer_identifier(
         meta: InferenceMetadata {
           span,
           ttype: symbol_info.infer_type,
+          scope: Rc::clone(scope),
         },
       },
       vec![],
@@ -446,6 +490,7 @@ fn infer_expr(
         meta: InferenceMetadata {
           span,
           ttype: infer_integer(suffix),
+          scope: Rc::clone(scope),
         },
       },
       vec![],
@@ -459,6 +504,7 @@ fn infer_expr(
         meta: InferenceMetadata {
           span,
           ttype: infer_float(suffix),
+          scope: Rc::clone(scope),
         },
       },
       vec![],
@@ -559,7 +605,11 @@ pub fn infer_decl(
         inferred_type = TypeWithUnknow::Arrow(Box::new(param_type), Box::new(inferred_type));
       }
 
-      constraints.push(TypeConstraint(inferred_type.clone(), declared_type));
+      constraints.push(TypeConstraint {
+        lhs: inferred_type.clone(),
+        rhs: declared_type,
+        span: span.clone(),
+      });
 
       Ok((
         Declaration {
@@ -572,6 +622,7 @@ pub fn infer_decl(
           meta: InferenceMetadata {
             span,
             ttype: inferred_type,
+            scope: fn_scope,
           },
         },
         constraints,

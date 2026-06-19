@@ -231,6 +231,7 @@ version = "0.1.0"
 dependencies = [
  "qalc-analysis",
  "qalc-ast",
+ "qalc-builtins",
  "qalc-parser",
  "qalc-utils",
 ]

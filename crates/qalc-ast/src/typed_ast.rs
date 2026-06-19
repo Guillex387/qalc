@@ -8,6 +8,7 @@ use crate::{ASTMetadata, base_ast::Declaration, scope::Scope};
 pub struct InferenceMetadata {
   pub span: Span,
   pub ttype: TypeWithUnknow,
+  pub scope: Rc<Scope>,
 }
 
 #[derive(Debug, Clone)]

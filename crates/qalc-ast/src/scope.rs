@@ -78,6 +78,12 @@ impl Scope {
   }
 
   pub fn define_decl(&self, symbol: SymbolInfo) -> bool {
-    todo!()
+    self
+      .symbols
+      .borrow_mut()
+      .entry(symbol.name.clone())
+      .or_default()
+      .push(symbol);
+    true
   }
 }
