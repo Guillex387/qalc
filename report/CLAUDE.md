@@ -36,3 +36,7 @@ No usar guiones (—, –, -) para intercalar aclaraciones dentro de una oració
 ## Dos puntos
 
 No usar dos puntos (:) fuera de enumeraciones. En particular, evitarlos en títulos, en aclaraciones dentro de párrafos y en transiciones como "cabe destacar que:". Si la oración lo requiere, reformularla o usar una coma.
+
+## Caption de tablas
+
+El `\caption` (y el `\label` asociado) de una tabla va siempre antes del entorno `tabular`/`tabularx`, justo después de `\centering`. Nunca va debajo del `\end{tabular}`.

@@ -1,14 +1,16 @@
-\chapter{Arquitectura del Compilador}
+\chapter{Arquitectura del compilador}
 \label{ch:arquitectura}
 
 El presente capítulo describe la arquitectura interna del compilador de Qalc: la organización del código en crates, la abstracción compartida que conecta las fases del pipeline y el diseño de cada etapa de transformación. Para cada fase se describe qué representación recibe como entrada, qué transformación aplica y qué representación produce como salida, justificando las decisiones de diseño más relevantes.
 
 \section{Visión general del pipeline}
 
-El compilador de Qalc es un pipeline de transformaciones progresivas. Cada fase toma una representación del programa y produce otra más refinada, enriquecida con información que las fases siguientes necesitan. La cadena completa es:
+El compilador de Qalc es un pipeline de transformaciones progresivas. Cada fase toma una representación del programa y produce otra más refinada, enriquecida con información que las fases siguientes necesitan. La cadena completa se muestra en la \autoref{tab:pipeline}.
 
 \begin{table}[h]
 \centering
+\caption{Fases del pipeline del compilador de Qalc}
+\label{tab:pipeline}
 \small
 \begin{tabularx}{\textwidth}{|l|l|X|}
 \hline
@@ -27,8 +29,6 @@ Inliner vago & \lstinline|qalc-analysis| & \lstinline|TypedAST| $\to$ \lstinline
 Generación de código & \lstinline|qalc-codegen| & \lstinline|FlatAST| $\to$ OpenQASM~3 \\
 \hline
 \end{tabularx}
-\caption{Fases del pipeline del compilador de Qalc}
-\label{tab:pipeline}
 \end{table}
 
 El punto de entrada ejecutable reside en el crate \lstinline|qalc-cli|, que encadena todas las fases y emite el resultado final por la salida estándar.
@@ -49,30 +49,36 @@ pub trait CompilerStep {
 }
 \end{lstlisting}
 
-El rasgo establece un contrato uniforme: cada fase recibe su representación de entrada y un vector de diagnósticos acumulable, y devuelve \lstinline|CompilerResult<Output>|, que es \lstinline|Result<Output, Diagnostic>|. Los errores fatales cortan la ejecución del pipeline; los avisos (warnings) se acumulan en el vector de diagnósticos y se reportan al final. Gracias a este contrato, añadir una nueva fase no requiere modificar las fases existentes: basta con definir un nuevo tipo que implemente \lstinline|CompilerStep| con la entrada y la salida apropiadas.
+El rasgo establece un contrato uniforme, en el que cada fase recibe su representación de entrada y un vector de diagnósticos acumulable, y devuelve \lstinline|CompilerResult<Output>|, que es \lstinline|Result<Output, Diagnostic>|. Los errores fatales cortan la ejecución del pipeline; los avisos se acumulan en el vector de diagnósticos y se reportan al final. Gracias a este contrato, añadir una nueva fase no requiere modificar las fases existentes; basta con definir un nuevo tipo que implemente \lstinline|CompilerStep| con la entrada y la salida apropiadas.
 
-Cada diagnóstico lleva asociado un \lstinline|Span| ---un par de posiciones en el texto fuente--- que la biblioteca \texttt{ariadne}~\cite{ariadne} utiliza para renderizar mensajes de error con contexto de código fuente subrayado.
+Cada diagnóstico lleva asociado un \lstinline|Span| (un par de posiciones en el texto fuente) que la biblioteca \texttt{ariadne}~\cite{ariadne} utiliza para renderizar mensajes de error con contexto de código fuente subrayado.
 
 \section{Organización en crates}
 
-El compilador se estructura como un workspace de Cargo con crates de dependencia estrictamente ordenada de abajo hacia arriba:
+El compilador se estructura como un workspace de Cargo con crates de dependencia estrictamente ordenada de abajo hacia arriba.
 
-\textbf{\lstinline|qalc-utils|} es la base de la pila. Define \lstinline|Source| (el texto fuente con su nombre de fichero), \lstinline|Span| (intervalo de bytes dentro de un \lstinline|Source|), \lstinline|Diagnostic| (un error o aviso con span y mensaje) y el rasgo \lstinline|CompilerStep|. Ningún otro módulo puede ignorar un span ni construir un error sin una ubicación en el código fuente.
+\paragraph{\texttt{qalc-utils}}
+Es la base de la pila. Define \lstinline|Source| (el texto fuente con su nombre de fichero), \lstinline|Span| (intervalo de bytes dentro de un \lstinline|Source|), \lstinline|Diagnostic| (un error o aviso con span y mensaje) y el rasgo \lstinline|CompilerStep|. Ningún otro módulo puede ignorar un span ni construir un error sin una ubicación en el código fuente.
 
-\textbf{\lstinline|qalc-ast|} define todos los tipos de nodo AST usados a lo largo del pipeline: \lstinline|ConcreteAST|, \lstinline|NormalizedAST|, \lstinline|TypedAST| y los módulos auxiliares de ámbito léxico (\lstinline|scope|) y metadatos de tipo (\lstinline|typed_ast|). Al centralizar los tipos de nodo se evita la proliferación de estructuras de datos redundantes entre crates.
+\paragraph{\texttt{qalc-ast}}
+Define todos los tipos de nodo AST usados a lo largo del pipeline: \lstinline|ConcreteAST|, \lstinline|NormalizedAST|, \lstinline|TypedAST| y los módulos auxiliares de ámbito léxico (\lstinline|scope|) y metadatos de tipo (\lstinline|typed_ast|). Al centralizar los tipos de nodo se evita la proliferación de estructuras de datos redundantes entre crates.
 
-\textbf{\lstinline|qalc-builtins|} expone el tipo \lstinline|BuiltinDef| y la función \lstinline|standard_builtins()|, que devuelve las definiciones de todas las funciones predefinidas del lenguaje (operaciones aritméticas, comparaciones, etc.) junto con su tipo. Este crate desacopla la definición de los built-ins de la implementación de la inferencia de tipos.
+\paragraph{\texttt{qalc-builtins}}
+Expone el tipo \lstinline|BuiltinDef| y la función \lstinline|standard_builtins()|, que devuelve las definiciones de todas las funciones predefinidas del lenguaje (operaciones aritméticas, comparaciones, etc.) junto con su tipo. Este crate desacopla la definición de los built-ins de la implementación de la inferencia de tipos.
 
-\textbf{\lstinline|qalc-parser|} implementa el analizador léxico-sintáctico. Depende únicamente de \lstinline|qalc-utils| y \lstinline|qalc-ast|.
+\paragraph{\texttt{qalc-parser}}
+Implementa el analizador léxico-sintáctico. Depende únicamente de \lstinline|qalc-utils| y \lstinline|qalc-ast|.
 
-\textbf{\lstinline|qalc-analysis|} contiene el normalizador y el inferidor de tipos HM. Depende de los cuatro crates anteriores.
+\paragraph{\texttt{qalc-analysis}}
+Contiene el normalizador y el inferidor de tipos HM. Depende de los cuatro crates anteriores.
 
-\textbf{\lstinline|qalc-cli|} es el ejecutable. Importa todas las fases, las encadena y presenta los resultados.
+\paragraph{\texttt{qalc-cli}}
+Es el ejecutable. Importa todas las fases, las encadena y presenta los resultados.
 
 \section{El patrón AST paramétrico}
 \label{sec:ast-parametrico}
 
-Una decisión de diseño transversal del compilador es que los tipos de nodo del AST son \textbf{genéricos en sus metadatos}. Cada nodo de expresión, declaración, patrón o tipo lleva un parámetro de tipo \lstinline|M: ASTMetadata| que determina qué información está adjunta a cada nodo en esa fase del pipeline:
+Una decisión de diseño transversal del compilador es que los tipos de nodo del AST son genéricos en sus metadatos. Cada nodo de expresión, declaración, patrón o tipo lleva un parámetro de tipo \lstinline|M: ASTMetadata| que determina qué información está adjunta a cada nodo en esa fase del pipeline:
 
 \begin{lstlisting}[language={}]
 pub trait ASTMetadata {
@@ -83,31 +89,26 @@ pub trait ASTMetadata {
 }
 \end{lstlisting}
 
-El crate \lstinline|qalc-ast| define dos implementaciones de este rasgo que se emplean a lo largo del pipeline:
-
-\begin{itemize}
-  \item \textbf{\lstinline|Spanned|} --- todos los campos meta son \lstinline|Span|. Se usa en el AST concreto (salida del parser) y en el AST normalizado.
-  \item \textbf{\lstinline|Typed|} --- los campos meta son \lstinline|TypeMetadata \{ span, ttype, scope \}|, con el tipo completamente resuelto. Se usa en el AST tipado (salida del inferidor).
-\end{itemize}
+El crate \lstinline|qalc-ast| define dos implementaciones de este rasgo que se emplean a lo largo del pipeline. La implementación \lstinline|Spanned| (en la que todos los campos meta son \lstinline|Span|) se usa en el AST concreto y en el AST normalizado. La implementación \lstinline|Typed| (en la que los campos meta son \lstinline|TypeMetadata \{ span, ttype, scope \}| con el tipo completamente resuelto) se usa en el AST tipado.
 
 Existe además \lstinline|Inferred| (con \lstinline|TypeWithUnknow| en lugar de \lstinline|Type|), que se usa internamente durante la inferencia de tipos antes de que la unificación resuelva todas las variables de tipo. La conversión de \lstinline|Inferred| a \lstinline|Typed| ocurre en la fase de aplicación de sustituciones descrita en el \autoref{ch:analisis-semantico}.
 
-Gracias a este patrón, los tipos de nodo se definen \textit{una sola vez} y se reutilizan sin modificación en todas las fases. Añadir una nueva fase, por ejemplo una que propague información de linealidad, implica únicamente definir un nuevo \lstinline|ASTMetadata| sin tocar los nodos existentes.
+Gracias a este patrón, los tipos de nodo se definen una sola vez y se reutilizan sin modificación en todas las fases. Añadir una nueva fase, por ejemplo una que propague información de linealidad, implica únicamente definir un nuevo \lstinline|ASTMetadata| sin tocar los nodos existentes.
 
 \section{Análisis sintáctico}
 \label{sec:parser}
 
-El parser transforma el texto fuente en un \lstinline|ConcreteAST|. Se articula en dos capas.
+El analizador sintáctico transforma el texto fuente en un \lstinline|ConcreteAST|. Se articula en dos capas.
 
 \subsection{Gramática PEG con Pest}
 
-La gramática del lenguaje se define en un único fichero \lstinline|grammar.pest| usando la biblioteca \textbf{Pest}~\cite{pest_parser}, que implementa \textit{parsing expression grammars} (PEG)~\cite{ford_peg_2004}. Las PEG son deterministas por construcción: no hay ambigüedad, cada alternativa se intenta en orden y la primera que encaja gana. Esto elimina la ambigüedad habitual de las gramáticas libres de contexto y simplifica el mantenimiento.
+La gramática del lenguaje se define en un único fichero \lstinline|grammar.pest| usando la biblioteca Pest~\cite{pest_parser}, que implementa gramáticas de expresión de análisis (PEG, del inglés \textit{Parsing Expression Grammar})~\cite{ford_peg_2004}. Las PEG son deterministas por construcción: no hay ambigüedad, cada alternativa se intenta en orden y la primera que encaja gana. Esto elimina la ambigüedad habitual de las gramáticas libres de contexto y simplifica el mantenimiento.
 
-El fichero \lstinline|grammar.pest| es la fuente de verdad para la sintaxis del lenguaje. Cualquier nueva construcción sintáctica debe reflejarse primero en la gramática y después en el parser; la dirección inversa no es válida.
+El fichero \lstinline|grammar.pest| es la fuente de verdad para la sintaxis del lenguaje. Cualquier nueva construcción sintáctica debe reflejarse primero en la gramática y después en el analizador; la dirección inversa no es válida.
 
-\subsection{Pratt parsing para operadores}
+\subsection{Análisis de Pratt para operadores}
 
-Las expresiones aritméticas, lógicas y de comparación se analizan con un \textbf{parser de Pratt}~\cite{pratt_1973}, también llamado \textit{top-down operator precedence}. Este algoritmo asocia a cada operador un poder de enlace (\textit{binding power}) izquierdo y derecho, y construye el árbol de expresiones respetando la precedencia y la asociatividad sin necesidad de reglas gramaticales adicionales. El resultado es una representación de expresión binaria encadenada que el normalizador transforma en aplicaciones currificadas.
+Las expresiones aritméticas, lógicas y de comparación se analizan con un analizador de Pratt~\cite{pratt_1973}, también llamado \textit{top-down operator precedence}. Este algoritmo asocia a cada operador un poder de enlace (\textit{binding power}) izquierdo y derecho, y construye el árbol de expresiones respetando la precedencia y la asociatividad sin necesidad de reglas gramaticales adicionales. El resultado es una representación de expresión binaria encadenada que el normalizador transforma en aplicaciones currificadas.
 
 \section{Normalización}
 \label{sec:normalizador}
@@ -116,7 +117,7 @@ El normalizador (\lstinline|qalc-analysis/normalizer|) convierte el \lstinline|C
 
 \subsection{Desazucarado de llamadas a función}
 
-Las llamadas a función con múltiples argumentos, de la forma \lstinline|f a b c|, se transforman en una cadena de aplicaciones binarias currificadas:
+Las llamadas a función con múltiples argumentos, de la forma \lstinline|f a b c|, se transforman en una cadena de aplicaciones binarias currificadas.
 
 \begin{lstlisting}[language=Qalc]
 -- Fuente:          f a b c
@@ -127,7 +128,7 @@ En el NormalizedAST solo existe un nodo \lstinline|Transform \{ callee, param \}
 
 \subsection{Desazucarado de patrones en parámetros}
 
-Qalc permite deconstruir tuplas directamente en los parámetros de una función o lambda. El normalizador elimina ese azúcar sintáctico reemplazando el patrón por un nombre generado y añadiendo un bloque \lstinline|let| al inicio del cuerpo:
+Qalc permite deconstruir tuplas directamente en los parámetros de una función o lambda. El normalizador elimina ese azúcar sintáctico reemplazando el patrón por un nombre generado y añadiendo un bloque \lstinline|let| al inicio del cuerpo.
 
 \begin{lstlisting}[language=Qalc]
 -- Fuente:
@@ -156,18 +157,18 @@ Ambos bloques monádicos se desazucaran en el normalizador. El bloque \lstinline
 \section{Verificador de recursividad}
 \label{sec:recursivity-checker}
 
-La fase de verificación de recursividad recorre el \lstinline|TypedAST| comprobando que ninguna declaración de función se invoca a sí misma directa o indirectamente. Esta restricción no es arbitraria: un circuito cuántico es una estructura finita y estática que debe quedar completamente determinada en tiempo de compilación, y OpenQASM~3 no dispone de llamadas recursivas ni de una pila dinámica de invocaciones~\cite{openqasm3_2022}. Permitir recursividad generaría un circuito de profundidad potencialmente infinita, lo que carece de contrapartida física ejecutable.
+La fase de verificación de recursividad recorre el \lstinline|TypedAST| comprobando que ninguna declaración de función se invoca a sí misma directa o indirectamente. Esta restricción no es arbitraria, pues un circuito cuántico es una estructura finita y estática que debe quedar completamente determinada en tiempo de compilación, y OpenQASM~3 no dispone de llamadas recursivas ni de una pila dinámica de invocaciones~\cite{openqasm3_2022}. Permitir recursividad generaría un circuito de profundidad potencialmente infinita, lo que carece de contrapartida física ejecutable.
 
-El diseño de la fase consiste en construir el \textbf{grafo de llamadas} del programa a partir del \lstinline|TypedAST|: cada declaración de función es un nodo y existe una arista dirigida de $f$ a $g$ si el cuerpo de $f$ contiene alguna referencia al nombre $g$. Un ciclo en este grafo indica recursividad. El algoritmo empleado para detectar ciclos es una búsqueda en profundidad (\textit{DFS}) con marcado de nodos en tres estados (no visitado, en pila, completado), una variante clásica del algoritmo de Tarjan para componentes fuertemente conexas~\cite{aho_compiladores_2006}. Cuando se detecta un nodo en pila al explorar sus vecinos, se tiene un ciclo: el verificador recupera el span del identificador que cierra el ciclo y emite un error de compilación con el camino completo de llamadas para ayudar al programador a localizar la recursividad.
+El diseño de la fase consiste en construir el grafo de llamadas del programa a partir del \lstinline|TypedAST|: cada declaración de función es un nodo y existe una arista dirigida de $f$ a $g$ si el cuerpo de $f$ contiene alguna referencia al nombre $g$. Un ciclo en este grafo indica recursividad. El algoritmo empleado para detectar ciclos es una búsqueda en profundidad (DFS, del inglés \textit{Depth-First Search}) con marcado de nodos en tres estados (no visitado, en pila, completado), una variante clásica del algoritmo de Tarjan para componentes fuertemente conexas~\cite{aho_compiladores_2006}. Cuando se detecta un nodo en pila al explorar sus vecinos, se tiene un ciclo; el verificador recupera el span del identificador que cierra el ciclo y emite un error de compilación con el camino completo de llamadas para ayudar al programador a localizar la recursividad.
 
 Esta fase actúa como una validación pura: no modifica el AST ni produce una representación nueva. Su única salida observable es la aprobación o el rechazo del programa con el diagnóstico correspondiente. Al situarse después de la inferencia de tipos, el grafo de llamadas ya tiene información de tipos resuelta, lo que permitirá en el futuro extender la verificación para detectar también ciclos de valor mutuamente dependientes en el sentido de la evaluación vaga.
 
 \section{Inliner vago}
 \label{sec:inliner}
 
-El inliner vago transforma el \lstinline|TypedAST| en un \lstinline|FlatAST|, una representación aplanada orientada directamente a la generación de código. La motivación es que el código OpenQASM~3 que se emitirá en la fase siguiente no tiene noción de abstracción funcional: es una secuencia plana de instrucciones de puerta sobre registros concretos. El inliner cierra esa brecha materializando, en tiempo de compilación, todas las aplicaciones de función.
+El inliner vago transforma el \lstinline|TypedAST| en un \lstinline|FlatAST|, una representación aplanada orientada directamente a la generación de código. La motivación es que el código OpenQASM~3 que se emitirá en la fase siguiente no tiene noción de abstracción funcional, pues es una secuencia plana de instrucciones de puerta sobre registros concretos. El inliner cierra esa brecha materializando, en tiempo de compilación, todas las aplicaciones de función.
 
-El mecanismo es el de una \textbf{evaluación vaga} (\textit{lazy evaluation}) simbólica: el inliner recorre el AST como si fuera un intérprete, pero en lugar de producir valores concretos, produce nodos del \lstinline|FlatAST|. Las expresiones cuyo valor puede determinarse completamente en tiempo de compilación ---literales, aplicaciones de funciones conocidas sobre argumentos conocidos--- se reducen a su forma normal. Las expresiones que dependen de parámetros cuánticos de entrada, cuyo valor solo existe en tiempo de ejecución cuántica, se envuelven en \textbf{thunks}: nodos suspendidos del \lstinline|FlatAST| que representan un cómputo diferido y que el codegen traducirá directamente a secuencias de puertas.
+El mecanismo es el de una evaluación vaga (\textit{lazy evaluation}) simbólica: el inliner recorre el AST como si fuera un intérprete, pero en lugar de producir valores concretos, produce nodos del \lstinline|FlatAST|. Las expresiones cuyo valor puede determinarse completamente en tiempo de compilación (literales, aplicaciones de funciones conocidas sobre argumentos conocidos) se reducen a su forma normal. Las expresiones que dependen de parámetros cuánticos de entrada, cuyo valor solo existe en tiempo de ejecución cuántica, se envuelven en thunks, es decir, nodos suspendidos del \lstinline|FlatAST| que representan un cómputo diferido y que el codegen traducirá directamente a secuencias de puertas.
 
 La estrategia vaga es necesaria porque el lenguaje usa combinadores de orden superior como \lstinline|map| para expresar la aplicación repetida de una operación a un slice de qubits. El inliner despliega estos combinadores en tiempo de compilación conociendo la longitud del slice (que es estática, ya que el tamaño de los registros cuánticos es fijo), produciendo una secuencia plana de aplicaciones de puerta sin ninguna abstracción pendiente.
 
@@ -176,8 +177,8 @@ El \lstinline|FlatAST| resultante contiene únicamente: referencias a built-ins 
 \section{Generación de código}
 \label{sec:codegen}
 
-La fase de generación de código toma el \lstinline|FlatAST| producido por el inliner y emite texto OpenQASM~3 válido. OpenQASM~3 es el estándar abierto de descripción de circuitos cuánticos, adoptado por IBM Quantum, IonQ y Rigetti, entre otros proveedores~\cite{openqasm3_2022}. A diferencia de versiones anteriores, OpenQASM~3 incorpora construcciones de control de flujo clásico ---condicionales y bucles acotados basados en resultados de medición--- que se corresponden directamente con los nodos del \lstinline|FlatAST|.
+La fase de generación de código toma el \lstinline|FlatAST| producido por el inliner y emite texto OpenQASM~3 válido. OpenQASM~3 es el estándar abierto de descripción de circuitos cuánticos, adoptado por IBM Quantum, IonQ y Rigetti, entre otros proveedores~\cite{openqasm3_2022}. A diferencia de versiones anteriores, OpenQASM~3 incorpora construcciones de control de flujo clásico (condicionales y bucles acotados basados en resultados de medición) que se corresponden directamente con los nodos del \lstinline|FlatAST|.
 
-El diseño del codegen se estructura en dos partes. El \textbf{preámbulo} del fichero de salida declara la versión de OpenQASM~3, los registros cuánticos y clásicos necesarios, y las definiciones de las puertas derivadas de los built-ins que no están incluidas en el conjunto estándar de OpenQASM~3. Cada \lstinline|BuiltinDef| del crate \lstinline|qalc-builtins| tiene asociada una plantilla de emisión: para las operaciones aritméticas clásicas se emiten expresiones de OpenQASM~3; para las puertas cuánticas básicas (Hadamard, Pauli-X, CNOT, etc.) se emiten las instrucciones de puerta estándar del lenguaje.
+El diseño del codegen se estructura en dos partes. El preámbulo del fichero de salida declara la versión de OpenQASM~3, los registros cuánticos y clásicos necesarios, y las definiciones de las puertas derivadas de los built-ins que no están incluidas en el conjunto estándar de OpenQASM~3. Cada \lstinline|BuiltinDef| del crate \lstinline|qalc-builtins| tiene asociada una plantilla de emisión: para las operaciones aritméticas clásicas se emiten expresiones de OpenQASM~3; para las puertas cuánticas básicas (Hadamard, Pauli-X, CNOT, etc.) se emiten las instrucciones de puerta estándar del lenguaje.
 
-El \textbf{cuerpo} del circuito se genera recorriendo el \lstinline|FlatAST| en orden topológico y emitiendo para cada nodo la instrucción OpenQASM~3 correspondiente: aplicaciones de puerta sobre qubits concretos, mediciones con asignación a bits clásicos, y bloques \lstinline|if| condicionados a resultados de medición para el control de flujo clásico-cuántico. La correspondencia entre nodos del \lstinline|FlatAST| e instrucciones OpenQASM~3 es, por diseño, casi uno a uno: el trabajo de aplanar y especializar el programa ya ha sido realizado por el inliner, de modo que el codegen puede limitarse a traducir sin necesidad de realizar transformaciones adicionales.
+El cuerpo del circuito se genera recorriendo el \lstinline|FlatAST| en orden topológico y emitiendo para cada nodo la instrucción OpenQASM~3 correspondiente: aplicaciones de puerta sobre qubits concretos, mediciones con asignación a bits clásicos, y bloques \lstinline|if| condicionados a resultados de medición para el control de flujo clásico-cuántico. La correspondencia entre nodos del \lstinline|FlatAST| e instrucciones OpenQASM~3 es, por diseño, casi uno a uno; el trabajo de aplanar y especializar el programa ya ha sido realizado por el inliner, de modo que el codegen puede limitarse a traducir sin necesidad de realizar transformaciones adicionales.

@@ -1,4 +1,4 @@
-\chapter{Análisis Semántico y Sistema de Tipos}
+\chapter{Análisis semántico y sistema de tipos}
 \label{ch:analisis-semantico}
 
 El análisis semántico de Qalc tiene como objetivo dotar a cada nodo del AST de un tipo completamente resuelto, verificando que el programa es coherente desde el punto de vista tipológico antes de que ninguna fase posterior lo transforme en código ejecutable. Este capítulo describe la implementación del inferidor de tipos basado en el algoritmo de Hindley-Milner, la representación interna de los tipos durante la inferencia, el mecanismo de unificación y la sobrecarga de funciones discriminada por tipo, cuya implementación se encuentra en curso de desarrollo.
@@ -9,9 +9,9 @@ El análisis semántico de Qalc tiene como objetivo dotar a cada nodo del AST de
 El algoritmo de Hindley-Milner~\cite{damas_milner_1982} resuelve el problema de la inferencia de tipos en un lenguaje funcional sin necesidad de que el programador anote los tipos de cada expresión: a partir de las anotaciones de las declaraciones de nivel superior y de las reglas del sistema de tipos, el compilador deduce el tipo de toda subexpresión. El algoritmo se estructura en tres fases que se ejecutan secuencialmente~\cite{pierce_tapl_2002}:
 
 \begin{enumerate}
-  \item \textbf{Generación de restricciones.} Se recorre el AST y a cada subexpresión se le asigna una variable de tipo fresca. A medida que se visitan los nodos, se generan \textit{restricciones de tipo}: aserciones de la forma $\tau_1 = \tau_2$ que afirman que dos tipos deben ser iguales. Por ejemplo, al analizar la aplicación $f\;a$, se genera la restricción $\tau_f = \tau_a \to \tau_{resultado}$.
-  \item \textbf{Unificación.} Las restricciones generadas se resuelven mediante el algoritmo de unificación de Robinson~\cite{robinson_1965}. El resultado es una \textit{sustitución}: una función finita que asigna a cada variable de tipo fresca el tipo concreto (o el tipo estructurado) que la resuelve.
-  \item \textbf{Aplicación de la sustitución.} La sustitución se aplica a todo el AST, reemplazando cada variable de tipo por su valor en la sustitución. El resultado es el \lstinline|TypedAST|, en el que cada nodo lleva su tipo completamente resuelto.
+  \item Generación de restricciones. Se recorre el AST y a cada subexpresión se le asigna una variable de tipo fresca. A medida que se visitan los nodos, se generan restricciones de tipo, es decir, aserciones de la forma $\tau_1 = \tau_2$ que afirman que dos tipos deben ser iguales. Por ejemplo, al analizar la aplicación $f\;a$, se genera la restricción $\tau_f = \tau_a \to \tau_{resultado}$.
+  \item Unificación. Las restricciones generadas se resuelven mediante el algoritmo de unificación de Robinson~\cite{robinson_1965}. El resultado es una sustitución, es decir, una función finita que asigna a cada variable de tipo fresca el tipo concreto (o el tipo estructurado) que la resuelve.
+  \item Aplicación de la sustitución. La sustitución se aplica a todo el AST, reemplazando cada variable de tipo por su valor en la sustitución. El resultado es el \lstinline|TypedAST|, en el que cada nodo lleva su tipo completamente resuelto.
 \end{enumerate}
 
 En Qalc, estas tres fases se implementan en los módulos \lstinline|infer.rs|, \lstinline|unify.rs| y \lstinline|apply.rs| del crate \lstinline|qalc-analysis/hm_inferrer|, respectivamente.
@@ -20,17 +20,11 @@ En Qalc, estas tres fases se implementan en los módulos \lstinline|infer.rs|, \
 
 El crate \lstinline|qalc-ast| define dos enumeraciones para representar los tipos en distintos momentos del pipeline.
 
-\textbf{\lstinline|TypeWithUnknow|} es la representación usada durante la inferencia. Sus variantes son:
+\paragraph{\texttt{TypeWithUnknow}}
+Es la representación usada durante la inferencia. Sus variantes son las siguientes: \lstinline|Unknow(usize)| (una variable de tipo fresca, identificada por un entero único generado con \lstinline|gen_id()|, que representa tipos aún no resueltos), \lstinline|Builtin \{ id, params, linear \}| (un tipo conocido, como \lstinline|i32|, \lstinline|bool| o \lstinline|qbool|, donde el campo \lstinline|linear| distingue los tipos cuánticos de los clásicos), \lstinline|Arrow(a, b)| (el tipo función $a \to b$), \lstinline|Tuple(ts)| (el tipo tupla $(t_1, t_2, \ldots, t_n)$) y \lstinline|Slice(t)| (el tipo slice $[t]$).
 
-\begin{itemize}
-  \item \lstinline|Unknow(usize)| --- una variable de tipo fresca, identificada por un entero único generado con \lstinline|gen_id()|. Las variables frescas representan tipos aún no resueltos.
-  \item \lstinline|Builtin \{ id, params, linear \}| --- un tipo conocido, como \lstinline|i32|, \lstinline|bool| o \lstinline|qbool|. El campo \lstinline|linear| distingue los tipos cuánticos (sujetos a la disciplina de uso único) de los clásicos.
-  \item \lstinline|Arrow(a, b)| --- el tipo función $a \to b$.
-  \item \lstinline|Tuple(ts)| --- el tipo tupla $(t_1, t_2, \ldots, t_n)$.
-  \item \lstinline|Slice(t)| --- el tipo slice $[t]$.
-\end{itemize}
-
-\textbf{\lstinline|Type|} es la representación final, producida una vez que la unificación ha resuelto todas las variables. Es isomorfa a \lstinline|TypeWithUnknow| salvo por la ausencia de la variante \lstinline|Unknow|: si la unificación no pudo resolver alguna variable, la conversión \lstinline|TryFrom<TypeWithUnknow> for Type| falla con un error de compilación que pide al usuario una anotación de tipo explícita.
+\paragraph{\texttt{Type}}
+Es la representación final, producida una vez que la unificación ha resuelto todas las variables. Es isomorfa a \lstinline|TypeWithUnknow| salvo por la ausencia de la variante \lstinline|Unknow|: si la unificación no pudo resolver alguna variable, la conversión \lstinline|TryFrom<TypeWithUnknow> for Type| falla con un error de compilación que pide al usuario una anotación de tipo explícita.
 
 La separación entre \lstinline|TypeWithUnknow| y \lstinline|Type| garantiza, a nivel del sistema de tipos de Rust, que ningún nodo del \lstinline|TypedAST| final pueda contener una variable sin resolver.
 
@@ -45,12 +39,7 @@ pub struct Scope {
 }
 \end{lstlisting}
 
-Hay dos operaciones de inserción con semánticas distintas:
-
-\begin{itemize}
-  \item \lstinline|define(&self, symbol)| --- registra un nombre nuevo. Si el nombre ya existe en el ámbito local, devuelve \lstinline|false| y no lo sobreescribe. Se usa para parámetros y variables \lstinline|let|, donde la redefinición en el mismo ámbito es un error.
-  \item \lstinline|define_decl(&self, symbol)| --- añade la definición al vector del nombre, sin rechazar las entradas previas. Se usa para declaraciones de función de nivel superior, donde el mismo nombre puede tener varias definiciones con firmas de tipo distintas (sobrecarga). La resolución de la sobrecarga se describe en la \autoref{sec:overloading}.
-\end{itemize}
+Hay dos operaciones de inserción con semánticas distintas. La primera, \lstinline|define(&self, symbol)|, registra un nombre nuevo y, si el nombre ya existe en el ámbito local, devuelve \lstinline|false| sin sobreescribirlo (se usa para parámetros y variables \lstinline|let|, donde la redefinición en el mismo ámbito es un error). La segunda, \lstinline|define_decl(&self, symbol)|, añade la definición al vector del nombre sin rechazar las entradas previas, lo que permite acumular varias definiciones para el mismo nombre (se usa para declaraciones de función de nivel superior, donde el mismo nombre puede tener varias definiciones con firmas de tipo distintas; la resolución de la sobrecarga se describe en la \autoref{sec:overloading}).
 
 \subsection{Inyección de built-ins y declaraciones anticipadas}
 
@@ -58,7 +47,7 @@ Al inicio de la inferencia, el \lstinline|HMInferrer| realiza dos operaciones pr
 
 En primer lugar, inyecta todas las funciones predefinidas del crate \lstinline|qalc-builtins|. Cada \lstinline|BuiltinDef| contiene el nombre de la función y su tipo completo expresado como \lstinline|TypeWithUnknow|, de modo que el inferidor puede resolver referencias a built-ins exactamente igual que referencias a funciones definidas por el usuario.
 
-En segundo lugar, recorre todas las declaraciones del programa y registra sus firmas de tipo en el ámbito global \textit{antes} de inferir sus cuerpos. Este paso de predeclaración es fundamental para que las funciones puedan referenciarse mutuamente (mutually recursive definitions) sin que el orden de aparición en el fichero fuente afecte a la corrección de la inferencia.
+En segundo lugar, recorre todas las declaraciones del programa y registra sus firmas de tipo en el ámbito global antes de inferir sus cuerpos. Este paso de predeclaración es fundamental para que las funciones puedan referenciarse mutuamente sin que el orden de aparición en el fichero fuente afecte a la corrección de la inferencia.
 
 \section{Generación de restricciones de tipo}
 \label{sec:constraint-gen}
@@ -67,22 +56,30 @@ La función \lstinline|infer_expr| recorre el AST normalizado en profundidad y p
 
 Las reglas más relevantes son las siguientes.
 
-\textbf{Literales.} Los literales enteros y flotantes producen directamente el tipo concreto determinado por su sufijo: \lstinline|42i32| produce \lstinline|Builtin("i32")|, \lstinline|3.14f64| produce \lstinline|Builtin("f64")|. Los literales sin sufijo explícito se tipan por defecto como \lstinline|i32| y \lstinline|f64| respectivamente.
+\paragraph{Literales}
+Los literales enteros y flotantes producen directamente el tipo concreto determinado por su sufijo: \lstinline|42i32| produce \lstinline|Builtin("i32")|, \lstinline|3.14f64| produce \lstinline|Builtin("f64")|. Los literales sin sufijo explícito se tipan por defecto como \lstinline|i32| y \lstinline|f64| respectivamente.
 
-\textbf{Identificadores.} La resolución de un identificador consulta el ámbito léxico en vigor. Si el nombre se encuentra, el nodo hereda el tipo registrado en el símbolo. Si no existe, se emite un error de compilación con el span del identificador.
+\paragraph{Identificadores}
+La resolución de un identificador consulta el ámbito léxico en vigor. Si el nombre se encuentra, el nodo hereda el tipo registrado en el símbolo. Si no existe, se emite un error de compilación con el span del identificador.
 
-\textbf{Aplicación de función} (\lstinline|Transform \{ callee, param \}|). Se genera una variable fresca $\tau_{ret}$ para el tipo de retorno y se añade la restricción $\tau_{callee} = \tau_{param} \to \tau_{ret}$. El tipo del nodo de aplicación es $\tau_{ret}$.
+\paragraph{Aplicación de función (\texttt{Transform \{ callee, param \}})}
+Se genera una variable fresca $\tau_{ret}$ para el tipo de retorno y se añade la restricción $\tau_{callee} = \tau_{param} \to \tau_{ret}$. El tipo del nodo de aplicación es $\tau_{ret}$.
 
-\textbf{Lambda.} Se crea un ámbito nuevo, se registra cada parámetro con una variable fresca y se infiere el cuerpo. El tipo de la lambda se construye encadenando los tipos de los parámetros con el tipo del cuerpo:
+\paragraph{Lambda}
+Se crea un ámbito nuevo, se registra cada parámetro con una variable fresca y se infiere el cuerpo. El tipo de la lambda se construye encadenando los tipos de los parámetros con el tipo del cuerpo:
 \[\tau_{lambda} = \tau_{p_1} \to \tau_{p_2} \to \cdots \to \tau_{cuerpo}\]
 
-\textbf{Bloque \lstinline|let|.} Cada enlace $p = e$ genera las restricciones de $e$ y añade la restricción $\tau_e = \tau_p$, ligando el tipo de la expresión al tipo del patrón. Después se infiere la expresión de valor en el ámbito extendido. El tipo del bloque es el tipo de la expresión de valor.
+\paragraph{Bloque \texttt{let}}
+Cada enlace $p = e$ genera las restricciones de $e$ y añade la restricción $\tau_e = \tau_p$, ligando el tipo de la expresión al tipo del patrón. Después se infiere la expresión de valor en el ámbito extendido. El tipo del bloque es el tipo de la expresión de valor.
 
-\textbf{If-else.} Se genera una variable fresca $\tau_{ret}$ y se añaden las restricciones $\tau_{ret} = \tau_{then}$ y $\tau_{ret} = \tau_{else}$, exigiendo que ambas ramas tengan el mismo tipo. El tipo del test no se restringe a ningún tipo concreto en esta fase.
+\paragraph{If-else}
+Se genera una variable fresca $\tau_{ret}$ y se añaden las restricciones $\tau_{ret} = \tau_{then}$ y $\tau_{ret} = \tau_{else}$, exigiendo que ambas ramas tengan el mismo tipo. El tipo del test no se restringe a ningún tipo concreto en esta fase.
 
-\textbf{Tuplas.} El tipo de una tupla $(e_1, \ldots, e_n)$ es \lstinline|Tuple|$(\tau_{e_1}, \ldots, \tau_{e_n})$, donde cada $\tau_{e_i}$ es el tipo inferido de la subexpresión correspondiente.
+\paragraph{Tuplas}
+El tipo de una tupla $(e_1, \ldots, e_n)$ es \lstinline|Tuple|$(\tau_{e_1}, \ldots, \tau_{e_n})$, donde cada $\tau_{e_i}$ es el tipo inferido de la subexpresión correspondiente.
 
-\textbf{Slices.} Se genera una variable fresca $\tau_{elem}$ y se añade la restricción $\tau_{elem} = \tau_{e_i}$ para cada elemento, exigiendo homogeneidad del slice.
+\paragraph{Slices}
+Se genera una variable fresca $\tau_{elem}$ y se añade la restricción $\tau_{elem} = \tau_{e_i}$ para cada elemento, exigiendo homogeneidad del slice.
 
 \subsection{Inferencia de declaraciones}
 
@@ -96,7 +93,7 @@ Esto obliga al cuerpo de la función a ser coherente con la firma declarada. Si 
 
 La unificación resuelve el conjunto de restricciones generado en la fase anterior. El algoritmo implementado en \lstinline|unify.rs| es el de Robinson~\cite{robinson_1965}, en su variante con verificación de ocurrencias (\textit{occurs check}).
 
-El algoritmo mantiene una sustitución parcial $S$: un mapa de identificadores de variables a tipos. Para cada restricción $\tau_1 = \tau_2$, primero aplica $S$ a ambos lados (reemplazando las variables ya resueltas) y después llama a \lstinline|unify_one|:
+El algoritmo mantiene una sustitución parcial $S$ (un mapa de identificadores de variables a tipos). Para cada restricción $\tau_1 = \tau_2$, primero aplica $S$ a ambos lados (reemplazando las variables ya resueltas) y después llama a \lstinline|unify_one|:
 
 \begin{itemize}
   \item Si $\tau_1 = \tau_2$, no hay nada que hacer.
@@ -116,7 +113,7 @@ Si alguna variable permanece irresuelta tras la sustitución (por ejemplo, en un
 \section{Sobrecarga de funciones discriminada por tipo}
 \label{sec:overloading}
 
-Una de las extensiones en desarrollo del sistema de tipos es la \textbf{sobrecarga de funciones basada en el tipo del primer parámetro}. En Qalc, una función puede tener varias definiciones con el mismo nombre siempre que difieran en el tipo del primer parámetro; el compilador elige la definición adecuada en tiempo de compilación consultando el tipo del primer argumento en el punto de llamada.
+Una de las extensiones en desarrollo del sistema de tipos es la sobrecarga de funciones basada en el tipo del primer parámetro. En Qalc, una función puede tener varias definiciones con el mismo nombre siempre que difieran en el tipo del primer parámetro; el compilador elige la definición adecuada en tiempo de compilación consultando el tipo del primer argumento en el punto de llamada.
 
 Este mecanismo permite expresar operaciones polimórficas sin necesidad de clases de tipos ni de polimorfismo paramétrico completo, manteniendo la inferencia de tipos decidible y eficiente. Por ejemplo, la función \lstinline|at|, que aplica una puerta a un qubit concreto, puede estar definida dos veces con el mismo nombre:
 
