@@ -7,7 +7,7 @@ En este capítulo se presenta el diseño de Qalc, el lenguaje de programación c
 El análisis del estado del arte realizado en el capítulo anterior evidencia una tensión recurrente en los lenguajes cuánticos actuales: los entornos de bajo nivel (Qiskit, Cirq, OpenQASM) ofrecen control físico explícito a costa de una elevada verbosidad y de la ausencia de garantías estáticas, mientras que las propuestas de alto nivel más rigurosas (Silq, Q\#, Quipper) imponen curvas de aprendizaje pronunciadas o delegan en el programador la responsabilidad de no violar restricciones físicas fundamentales. Qalc se diseña para situarse en el espacio que dejan libre estas alternativas, guiado por cuatro principios.
 
 \paragraph{Abstracción sobre circuitos, no sobre registros físicos}
-El programador no manipula registros ni índices de qubits físicos, sino que describe transformaciones y composiciones de alto nivel. Un programa Qalc es, conceptualmente, la descripción funcional de un circuito que el compilador materializa más tarde en una representación ejecutable (OpenQASM~3 como destino por defecto). Esta decisión es el resultado de la evolución de diseño documentada durante el proyecto: el modelo inicial basado en registros físicos al estilo Qiskit se abandonó en favor de un modelo en el que las operaciones construyen el circuito de forma composicional.
+El programador no manipula registros ni índices de cúbits físicos, sino que describe transformaciones y composiciones de alto nivel. Un programa Qalc es, conceptualmente, la descripción funcional de un circuito que el compilador materializa más tarde en una representación ejecutable (OpenQASM~3 como destino por defecto). Esta decisión es el resultado de la evolución de diseño documentada durante el proyecto: el modelo inicial basado en registros físicos al estilo Qiskit se abandonó en favor de un modelo en el que las operaciones construyen el circuito de forma composicional.
 
 \paragraph{Paradigma funcional puro e inmutable}
 Qalc adopta una sintaxis y una semántica fuertemente inspiradas en Haskell: funciones de orden superior, aplicación parcial, composición mediante tuberías (\textit{pipes}) y ausencia de estado mutable global. La motivación es doble. Por un lado, los lenguajes funcionales han demostrado ser un vehículo idóneo para construir abstracciones sólidas y componibles. Por otro, la inmutabilidad encaja de forma natural con la reversibilidad de la computación cuántica unitaria.
@@ -24,9 +24,9 @@ La tensión central que estos principios deben resolver es la aparente incompati
 
 Una restricción de diseño fundamental, impuesta por las limitaciones del hardware cuántico actual y por el modelo de ejecución de OpenQASM~3 (el formato de destino del compilador), es que Qalc no admite recursividad. Un circuito cuántico es, en última instancia, una estructura finita y estática de puertas que debe quedar completamente determinada en tiempo de compilación, pues no existe sobre la QPU una pila de llamadas ni un mecanismo de invocación dinámica que permita que una función se invoque a sí misma un número de veces no acotado a priori. Por ello, OpenQASM~3 carece de recursión y exige que toda repetición sea acotada y desplegable estáticamente en una secuencia concreta de operaciones.
 
-En consecuencia, Qalc es un lenguaje funcional en el que el resultado se describe mediante la composición de transformaciones no recursivas, y no a través de la recursión característica de los lenguajes funcionales clásicos. La repetición de un patrón sobre una estructura de tamaño conocido (por ejemplo, aplicar una puerta a cada qubit de un registro) se expresa mediante combinadores de orden superior (como \lstinline|map|) cuyo número de pasos queda fijado al compilar, de modo que el circuito resultante es siempre finito y materializable. Esta decisión no es una carencia del lenguaje, sino el reflejo directo, en su modelo de cómputo, de lo que el sustrato físico puede ejecutar.
+En consecuencia, Qalc es un lenguaje funcional en el que el resultado se describe mediante la composición de transformaciones no recursivas, y no a través de la recursión característica de los lenguajes funcionales clásicos. La repetición de un patrón sobre una estructura de tamaño conocido (por ejemplo, aplicar una puerta a cada cúbit de un registro) se expresa mediante combinadores de orden superior (como \lstinline|map|) cuyo número de pasos queda fijado al compilar, de modo que el circuito resultante es siempre finito y materializable. Esta decisión no es una carencia del lenguaje, sino el reflejo directo, en su modelo de cómputo, de lo que el sustrato físico puede ejecutar.
 
-\section{El qubit como recurso lineal}
+\section{El cúbit como recurso lineal}
 \label{sec:modelo-lineal}
 
 El núcleo semántico de Qalc consiste en tratar las variables cuánticas no como valores reutilizables, sino como recursos lineales, es decir, entidades que representan un circuito en construcción y que deben consumirse exactamente una vez.
@@ -42,7 +42,7 @@ La reconciliación con la inmutabilidad funcional se obtiene mediante un cambio 
 \subsection{Disciplina lineal y consumo único}
 \label{sec:disciplina_lineal}
 
-Una variable cuántica debe usarse exactamente una vez a lo largo de su ámbito. No puede descartarse (es decir, usarse cero veces), porque ello equivaldría a perder un qubit sin medir ni liberar, lo que constituye una fuga de recurso. Tampoco puede duplicarse (es decir, usarse dos o más veces), porque ello equivaldría a clonar información cuántica.
+Una variable cuántica debe usarse exactamente una vez a lo largo de su ámbito. No puede descartarse (es decir, usarse cero veces), porque ello equivaldría a perder un cúbit sin medir ni liberar, lo que constituye una fuga de recurso. Tampoco puede duplicarse (es decir, usarse dos o más veces), porque ello equivaldría a clonar información cuántica.
 
 La linealidad es una propiedad intrínseca de los tipos cuánticos provistos por la biblioteca del lenguaje. Escribir código que respete la disciplina de consumo único de forma manual resulta verboso y repetitivo, pues obliga a re-enlazar explícitamente cada recurso tras cada operación. Para evitarlo, Qalc ofrece el bloque \lstinline|linear { ... }|, una construcción ergonómica que automatiza ese re-enlazado; se describe en detalle en la \autoref{sec:linear}.
 
@@ -65,7 +65,7 @@ El lenguaje no incorpora literales booleanos ni de cadena como categorías léxi
 
 \subsection{Tipos cuánticos abstractos}
 
-Sobre la base anterior, la biblioteca del lenguaje define tipos cuánticos abstractos de alto nivel. Entre ellos están \lstinline|qbool| (un qubit lógico interpretado como valor booleano cuántico) y los enteros cuánticos con anchura y signo explícitos, como \lstinline|qi8| o \lstinline|qi16| (registros de 8 o 16 qubits interpretados como enteros con signo), análogos cuánticos de los enteros clásicos. Todos estos tipos comparten una misma representación interna, pues son, internamente, un \lstinline|qcirc| (el circuito de qubits), y se diferencian únicamente por la interpretación de alto nivel que cada uno impone sobre ese circuito. Todos son lineales por definición, de modo que toda variable que los habite queda sometida a la disciplina de consumo único.
+Sobre la base anterior, la biblioteca del lenguaje define tipos cuánticos abstractos de alto nivel. Entre ellos están \lstinline|qbool| (un cúbit lógico interpretado como valor booleano cuántico) y los enteros cuánticos con anchura y signo explícitos, como \lstinline|qi8| o \lstinline|qi16| (registros de 8 o 16 cúbits interpretados como enteros con signo), análogos cuánticos de los enteros clásicos. Todos estos tipos comparten una misma representación interna, pues son, internamente, un \lstinline|qcirc| (el circuito de cúbits), y se diferencian únicamente por la interpretación de alto nivel que cada uno impone sobre ese circuito. Todos son lineales por definición, de modo que toda variable que los habite queda sometida a la disciplina de consumo único.
 
 El lenguaje proporciona además el tipo genérico \lstinline|qio<T>|, un tipo de entrada/salida cuántica que encapsula un cómputo con efectos sobre la QPU cuyo resultado es de tipo \lstinline|T|. Los valores \lstinline|qio| se componen dentro de bloques \lstinline|perform|.
 
@@ -80,7 +80,7 @@ Los tipos genéricos (parametrizados) se escriben con parámetros entre ángulos
 
 El sistema de tipos divide los valores de un programa en dos categorías según cómo pueden usarse. Los valores clásicos (enteros, flotantes, booleanos clásicos, etc.) son ordinarios y pueden copiarse, reutilizarse cuantas veces se quiera o no usarse en absoluto. Los valores cuánticos (\lstinline|qbool|, \lstinline|qi16| y demás tipos cuánticos) son lineales, por lo que cada uno debe usarse exactamente una vez.
 
-Conviene precisar qué significa usar un valor cuántico. Aplicarle una operación lo consume, de modo que a partir de ese momento ese valor deja de estar disponible. A cambio, la operación devuelve un valor cuántico nuevo (el resultado de la transformación), que el programa debe a su vez usar. Así, un qubit fluye a través del programa como un testigo que se pasa de mano en mano: en cada paso hay una única copia viva, que se entrega a la siguiente operación.
+Conviene precisar qué significa usar un valor cuántico. Aplicarle una operación lo consume, de modo que a partir de ese momento ese valor deja de estar disponible. A cambio, la operación devuelve un valor cuántico nuevo (el resultado de la transformación), que el programa debe a su vez usar. Así, un cúbit fluye a través del programa como un testigo que se pasa de mano en mano: en cada paso hay una única copia viva, que se entrega a la siguiente operación.
 
 De esta regla se siguen dos prohibiciones, cada una de las cuales evita un error físicamente imposible.
 
@@ -88,16 +88,16 @@ De esta regla se siguen dos prohibiciones, cada una de las cuales evita un error
 Reutilizar una variable cuántica ya consumida equivaldría a duplicar información cuántica, algo que el teorema de no clonación prohíbe. El compilador rechaza el siguiente código:
 
 \begin{lstlisting}[language=Qalc]
-// ERROR: x se usa dos veces; seria clonar el qubit.
+// ERROR: x se usa dos veces; seria clonar el cúbit.
 duplicar :: qbool -> (qbool, qbool)
 duplicar x = (H x, H x);
 \end{lstlisting}
 
 \paragraph{No se puede dejar un valor cuántico sin usar (no fuga)}
-Recibir un qubit y descartarlo dejaría un recurso físico sin medir ni liberar. El compilador también rechaza esto:
+Recibir un cúbit y descartarlo dejaría un recurso físico sin medir ni liberar. El compilador también rechaza esto:
 
 \begin{lstlisting}[language=Qalc]
-// ERROR: x nunca se usa; el qubit quedaria "colgado".
+// ERROR: x nunca se usa; el cúbit quedaria "colgado".
 descartar :: qbool -> i16
 descartar x = 0i16;
 \end{lstlisting}
@@ -105,7 +105,7 @@ descartar x = 0i16;
 El uso correcto consume el recurso exactamente una vez y propaga el resultado:
 
 \begin{lstlisting}[language=Qalc]
-// Correcto: x se consume una vez y se devuelve el qubit transformado.
+// Correcto: x se consume una vez y se devuelve el cúbit transformado.
 aplicarH :: qbool -> qbool
 aplicarH x = H x;
 \end{lstlisting}
@@ -189,11 +189,11 @@ El bloque \lstinline|linear|, por su parte, merece una explicación detallada, p
 
 \section{Operaciones cuánticas y composición de circuitos}
 
-Qalc está pensado para escribirse, en la medida de lo posible, en un nivel de abstracción alto, donde el programador describe transformaciones sobre datos cuánticos (\lstinline|qbool|, \lstinline|qi16|, etc.) sin manipular qubits físicos individuales. No obstante, el lenguaje también ofrece un nivel inferior para los casos en que es necesario controlar el circuito de forma explícita.
+Qalc está pensado para escribirse, en la medida de lo posible, en un nivel de abstracción alto, donde el programador describe transformaciones sobre datos cuánticos (\lstinline|qbool|, \lstinline|qi16|, etc.) sin manipular cúbits físicos individuales. No obstante, el lenguaje también ofrece un nivel inferior para los casos en que es necesario controlar el circuito de forma explícita.
 
 \subsection{Operaciones sobre datos cuánticos en el nivel alto}
 
-En el nivel alto, las operaciones cuánticas no son construcciones sintácticas privilegiadas, sino funciones de la biblioteca del lenguaje con tipos lineales. Toman datos cuánticos, los consumen y devuelven los datos transformados. Por ejemplo, una operación que eleva un entero cuántico a una potencia constante, o que comprueba la igualdad con una constante produciendo un qubit de resultado, tendrían signaturas de la forma siguiente.
+En el nivel alto, las operaciones cuánticas no son construcciones sintácticas privilegiadas, sino funciones de la biblioteca del lenguaje con tipos lineales. Toman datos cuánticos, los consumen y devuelven los datos transformados. Por ejemplo, una operación que eleva un entero cuántico a una potencia constante, o que comprueba la igualdad con una constante produciendo un cúbit de resultado, tendrían signaturas de la forma siguiente.
 
 \begin{lstlisting}[language=Qalc]
 qPowConst :: i16 -> qi16 -> qi16
@@ -204,21 +204,21 @@ La composición se expresa con las herramientas funcionales generales del lengua
 
 \subsection{El tipo \texttt{qcirc} en el nivel bajo}
 
-Cuando se necesita programar el circuito explícitamente, se trabaja con el tipo \lstinline|qcirc|, que representa un circuito de $n$ qubits. La convención de este nivel es que una puerta aplicada a un \lstinline|qcirc| se aplica a todos sus qubits a la vez; al resto de los qubits, cuando proceda, se les aplica implícitamente la identidad. Las puertas básicas son, por tanto, transformaciones del circuito completo.
+Cuando se necesita programar el circuito explícitamente, se trabaja con el tipo \lstinline|qcirc|, que representa un circuito de $n$ cúbits. La convención de este nivel es que una puerta aplicada a un \lstinline|qcirc| se aplica a todos sus cúbits a la vez; al resto de los cúbits, cuando proceda, se les aplica implícitamente la identidad. Las puertas básicas son, por tanto, transformaciones del circuito completo.
 
 \begin{lstlisting}[language=Qalc]
 H :: qcirc -> qcirc
 X :: qcirc -> qcirc
 \end{lstlisting}
 
-Para restringir una operación a qubits concretos se emplea la función de orden superior \lstinline|at|, que recibe el índice sobre el que actuar y la puerta a aplicar. Está sobrecargada para aceptar tanto un índice único como una lista de índices.
+Para restringir una operación a cúbits concretos se emplea la función de orden superior \lstinline|at|, que recibe el índice sobre el que actuar y la puerta a aplicar. Está sobrecargada para aceptar tanto un índice único como una lista de índices.
 
 \begin{lstlisting}[language=Qalc]
-at :: i32 -> (qcirc -> qcirc) -> qcirc -> qcirc    // un qubit
-at :: [i32] -> (qcirc -> qcirc) -> qcirc -> qcirc  // varios qubits
+at :: i32 -> (qcirc -> qcirc) -> qcirc -> qcirc    // un cúbit
+at :: [i32] -> (qcirc -> qcirc) -> qcirc -> qcirc  // varios cúbits
 
-at 0 H                // aplica H solo al qubit 0
-at [0..3] X           // aplica X a los qubits del 0 al 3
+at 0 H                // aplica H solo al cúbit 0
+at [0..3] X           // aplica X a los cúbits del 0 al 3
 \end{lstlisting}
 
 Para las puertas controladas se emplea la operación de orden superior \lstinline|controlled|.
@@ -226,13 +226,13 @@ Para las puertas controladas se emplea la operación de orden superior \lstinlin
 \begin{lstlisting}[language=Qalc]
 controlled :: i32 -> i32 -> (qcirc -> qcirc) -> qcirc -> qcirc
 
-controlled 0 1 X      // CNOT con control en el qubit 0 y objetivo el qubit 1
+controlled 0 1 X      // CNOT con control en el cúbit 0 y objetivo el cúbit 1
 \end{lstlisting}
 
-Obsérvese que \lstinline|at 0 H|, \lstinline|at [0..3] X| y \lstinline|controlled 0 1 X| son aplicaciones parciales cuyo resultado es, en todos los casos, una función \lstinline|qcirc -> qcirc|. Esto las hace directamente componibles con la tubería \lstinline{|>}, lo que permite describir un circuito como una sucesión legible de transformaciones que se lee en el mismo orden en que se aplican las puertas. Por ejemplo, un circuito que prepara un estado de Bell sobre dos qubits se escribe de la siguiente forma.
+Obsérvese que \lstinline|at 0 H|, \lstinline|at [0..3] X| y \lstinline|controlled 0 1 X| son aplicaciones parciales cuyo resultado es, en todos los casos, una función \lstinline|qcirc -> qcirc|. Esto las hace directamente componibles con la tubería \lstinline{|>}, lo que permite describir un circuito como una sucesión legible de transformaciones que se lee en el mismo orden en que se aplican las puertas. Por ejemplo, un circuito que prepara un estado de Bell sobre dos cúbits se escribe de la siguiente forma.
 
 \begin{lstlisting}[language=Qalc]
-// Estado de Bell sobre un circuito de 2 qubits.
+// Estado de Bell sobre un circuito de 2 cúbits.
 bell :: qcirc -> qcirc
 bell c = c |> at 0 H |> controlled 0 1 X;
 \end{lstlisting}
@@ -251,4 +251,4 @@ oracle x = linear {
 }
 \end{lstlisting}
 
-En el oráculo se aprecian con claridad los rasgos del diseño. La variable cuántica \lstinline|x| entra una vez y se devuelve una vez, en la tupla final: nunca se duplica ni se descarta. El cómputo intermedio \lstinline|cube| es un recurso auxiliar: se calcula, se usa para producir el qubit \lstinline|control| y, antes de devolver el resultado, se descomputa para liberar la memoria cuántica que ocupaba. El bloque \lstinline|linear| re-enlaza automáticamente los recursos entre pasos, de modo que la disciplina de uso único se respeta por construcción.
+En el oráculo se aprecian con claridad los rasgos del diseño. La variable cuántica \lstinline|x| entra una vez y se devuelve una vez, en la tupla final: nunca se duplica ni se descarta. El cómputo intermedio \lstinline|cube| es un recurso auxiliar: se calcula, se usa para producir el cúbit \lstinline|control| y, antes de devolver el resultado, se descomputa para liberar la memoria cuántica que ocupaba. El bloque \lstinline|linear| re-enlaza automáticamente los recursos entre pasos, de modo que la disciplina de uso único se respeta por construcción.

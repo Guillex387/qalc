@@ -115,7 +115,7 @@ Si alguna variable permanece irresuelta tras la sustitución (por ejemplo, en un
 
 Una de las extensiones en desarrollo del sistema de tipos es la sobrecarga de funciones basada en el tipo del primer parámetro. En Qalc, una función puede tener varias definiciones con el mismo nombre siempre que difieran en el tipo del primer parámetro; el compilador elige la definición adecuada en tiempo de compilación consultando el tipo del primer argumento en el punto de llamada.
 
-Este mecanismo permite expresar operaciones polimórficas sin necesidad de clases de tipos ni de polimorfismo paramétrico completo, manteniendo la inferencia de tipos decidible y eficiente. Por ejemplo, la función \lstinline|at|, que aplica una puerta a un qubit concreto, puede estar definida dos veces con el mismo nombre:
+Este mecanismo permite expresar operaciones polimórficas sin necesidad de clases de tipos ni de polimorfismo paramétrico completo, manteniendo la inferencia de tipos decidible y eficiente. Por ejemplo, la función \lstinline|at|, que aplica una puerta a un cúbit concreto, puede estar definida dos veces con el mismo nombre:
 
 \begin{lstlisting}[language=Qalc]
 at :: i32 -> (qcirc -> qcirc) -> qcirc -> qcirc

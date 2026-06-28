@@ -74,9 +74,9 @@ Contenido:
 - Explica las reglas de tipado cuántico planificadas.
 
 Ejemplos de reglas:
-- Evitar la clonación de qubits.
+- Evitar la clonación de cúbits.
 - Gestión de recursos lineales y restricciones de uso.
-- Verificación de operaciones válidas sobre qubits y tipos clásicos.
+- Verificación de operaciones válidas sobre cúbits y tipos clásicos.
 
 Si alguna regla no está implementada, debe describirse como parte del diseño lógico.
 
