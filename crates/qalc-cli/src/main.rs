@@ -1,6 +1,6 @@
 use std::{env::args, rc::Rc};
 
-use qalc_analysis::{HMInferrer, Normalizer};
+use qalc_analysis::{HMInferrer, Normalizer, RecursionChecker};
 use qalc_ast::base_ast::{
   Declaration, DeclarationKind, Expression, ExpressionKind, Pattern, PatternKind, SliceExpression,
 };
@@ -25,6 +25,14 @@ fn main() {
   let mut diagnostics: Vec<Diagnostic> = Vec::new();
 
   let normalized_ast = match Normalizer::default().transform(concrete_ast, &mut diagnostics) {
+    Ok(ast) => ast,
+    Err(error) => {
+      eprintln!("{}", error);
+      return;
+    }
+  };
+
+  let normalized_ast = match RecursionChecker::default().transform(normalized_ast, &mut diagnostics) {
     Ok(ast) => ast,
     Err(error) => {
       eprintln!("{}", error);
