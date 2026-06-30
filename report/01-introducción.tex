@@ -212,12 +212,6 @@ El eje de seguridad de Qalc es su sistema de tipos estático, construido sobre i
 
 La interacción entre el software clásico y el hardware cuántico se estructura siguiendo el modelo QRAM (\textit{Quantum Random Access Machine}), en el que un controlador clásico envía instrucciones a un coprocesador cuántico, recibe los resultados de las mediciones y adapta el flujo de control en consecuencia.
 
-Qalc implementa estas decisiones mediante un compilador modular escrito en Rust organizado como un espacio de trabajo de paquetes (\textit{crates}), con un proceso de compilación que transforma el código fuente a través de representaciones progresivamente más refinadas:
-
-\[
-\text{ConcreteAST} \to \text{NormalizedAST} \to \text{TypedAST} \to \text{PlainAST} \to \text{OpenQASM~3}
-\]
-
 \section{Alcance del proyecto}
 \label{sec:alcance}
 
