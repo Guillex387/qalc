@@ -30,7 +30,7 @@ Formalmente, esos pesos son dos números complejos $\alpha$ y $\beta$, y el esta
 
 La única restricción es que las probabilidades deben sumar el cien por cien, es decir, $|\alpha|^2 + |\beta|^2 = 1$. Al medir, se obtiene cero con probabilidad $|\alpha|^2$ y uno con probabilidad $|\beta|^2$. La superposición no es una simple ignorancia del valor real, sino una propiedad física que permite explotar los dos estados en paralelo hasta el momento en que se realiza la medición.
 
-Con $n$ cúbits el efecto se multiplica: un sistema de $n$ cúbits puede representar $2^n$ combinaciones de pesos de forma simultánea, lo que abre la posibilidad de procesar en paralelo espacios de estados de tamaño exponencial con circuitos de profundidad relativamente corta.
+Con $n$ cúbits el efecto se multiplica, de modo que un sistema de $n$ cúbits puede representar $2^n$ combinaciones de pesos de forma simultánea, lo que abre la posibilidad de procesar en paralelo espacios de estados de tamaño exponencial con circuitos de profundidad relativamente corta.
 
 \subsection{Entrelazamiento cuántico}
 \label{subsec:entrelazamiento}
@@ -202,7 +202,7 @@ Silq automatiza la descomputación únicamente para escalares cuánticos derivad
 Guppy demuestra la viabilidad de los tipos lineales en lenguajes cuánticos, pero su embebido en Python introduce una capa de indirección clásica y limita la flexibilidad semántica para ciertos algoritmos dinámicos. Un sistema de tipos afines implementado en un compilador de propósito específico puede ofrecer las mismas garantías con mayor expresividad. Esta observación constituye uno de los objetivos de diseño de Qalc.
 
 \paragraph{Ausencia de backend estándar e interoperable en los lenguajes formales de alto nivel}
-Los lenguajes funcionales y lógicos de mayor rigor formal (Quipper, Silq, Twist) generan como salida representaciones propietarias o simuladores internos que no son directamente ejecutables en hardware cuántico real: Quipper produce grafos de circuitos abstractos en Haskell, mientras que Silq y Twist solo operan sobre sus propios simuladores. Esto aísla al programador del ecosistema industrial y obliga a una retranscripción manual antes de poder ejecutar un programa en una QPU física.
+Los lenguajes funcionales y lógicos de mayor rigor formal (Quipper, Silq, Twist) generan como salida representaciones propietarias o simuladores internos que no son directamente ejecutables en hardware cuántico real. Concretamente, Quipper produce grafos de circuitos abstractos en Haskell, mientras que Silq y Twist solo operan sobre sus propios simuladores. Esto aísla al programador del ecosistema industrial y obliga a una retranscripción manual antes de poder ejecutar un programa en una QPU física.
 
 OpenQASM~3 es el estándar abierto de facto para la descripción de circuitos cuánticos \cite{openqasm3_2022}. A diferencia de las versiones anteriores, OpenQASM~3 incorpora soporte para control de flujo clásico (condicionales y bucles basados en resultados de medición), lo que lo convierte en una representación de salida adecuada para programas cuánticos modernos. Los principales proveedores de hardware (IBM Quantum, IonQ, Rigetti) aceptan OpenQASM~3 de forma nativa o a través de sus transpiladores, lo que permite ejecutar el mismo circuito en múltiples arquitecturas físicas sin recompilación. Los entornos industriales que sí generan OpenQASM (Qiskit, Cirq) carecen de las garantías formales analizadas anteriormente. Esta observación constituye el segundo objetivo de diseño de Qalc.
 

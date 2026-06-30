@@ -66,7 +66,7 @@ La resolución de un identificador consulta el ámbito léxico en vigor. Si el n
 Se genera una variable fresca $\tau_{ret}$ para el tipo de retorno y se añade la restricción $\tau_{callee} = \tau_{param} \to \tau_{ret}$. El tipo del nodo de aplicación es $\tau_{ret}$.
 
 \paragraph{Lambda}
-Se crea un ámbito nuevo, se registra cada parámetro con una variable fresca y se infiere el cuerpo. El tipo de la lambda se construye encadenando los tipos de los parámetros con el tipo del cuerpo:
+Se crea un ámbito nuevo, se registra cada parámetro con una variable fresca y se infiere el cuerpo. El tipo de la lambda se construye encadenando los tipos de los parámetros con el tipo del cuerpo, tal y como muestra la expresión
 \[\tau_{lambda} = \tau_{p_1} \to \tau_{p_2} \to \cdots \to \tau_{cuerpo}\]
 
 \paragraph{Bloque \texttt{let}}
