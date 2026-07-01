@@ -44,3 +44,11 @@ El `\caption` (y el `\label` asociado) de una tabla va siempre antes del entorno
 ## Listados de código
 
 Todo entorno `lstlisting` debe incluir la opción `caption=` con una descripción breve en español. Esto es obligatorio para que el listado aparezca en el índice de códigos (`\lstlistoflistings`), que se genera automáticamente en el frontmatter. El caption va en la parte inferior del bloque (configurado globalmente con `captionpos=b`). No usar dos puntos en el texto del caption.
+
+## Estado de la implementación frente a la memoria
+
+La memoria se redacta algo adelantada respecto al estado real del código, ya que la implementación se completa durante la misma semana en que se escribe cada capítulo. Al describir las siguientes fases del compilador, redactar en presente y como si estuvieran terminadas al nivel indicado, sin usar frases como "en desarrollo", "trabajo en curso" o "parcialmente soportado" salvo que se indique explícitamente lo contrario en el futuro:
+
+- Sobrecarga de funciones discriminada por tipo (`\autoref{sec:overloading}` en `06-capítulo6.tex`), presentar como implementada por completo.
+- Aplanador perezoso (`\autoref{sec:inliner}` en `05-capítulo5.tex`), presentar como una implementación experimental o semifuncional, sin necesidad de garantizar cobertura completa de todos los casos.
+- Generación de código (`\autoref{sec:codegen}` en `05-capítulo5.tex`), presentar como una base suficiente para realizar demostraciones, no como un generador de código completo o listo para producción.

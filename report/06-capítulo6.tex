@@ -1,36 +1,11 @@
 \chapter{Análisis semántico y sistema de tipos}
 \label{ch:analisis-semantico}
 
-El análisis semántico de Qalc tiene como objetivo dotar a cada nodo del AST de un tipo completamente resuelto, verificando que el programa es coherente desde el punto de vista tipológico antes de que ninguna fase posterior lo transforme en código ejecutable. Este capítulo describe la implementación del inferidor de tipos basado en el algoritmo de Hindley-Milner, la representación interna de los tipos durante la inferencia, el mecanismo de unificación y la sobrecarga de funciones discriminada por tipo, cuya implementación se encuentra en curso de desarrollo.
-
-\section{El algoritmo de Hindley-Milner}
-\label{sec:hm}
-
-El algoritmo de Hindley-Milner~\cite{damas_milner_1982} resuelve el problema de la inferencia de tipos en un lenguaje funcional sin necesidad de que el programador anote los tipos de cada expresión: a partir de las anotaciones de las declaraciones de nivel superior y de las reglas del sistema de tipos, el compilador deduce el tipo de toda subexpresión. El algoritmo se estructura en tres fases que se ejecutan secuencialmente~\cite{pierce_tapl_2002}:
-
-\begin{enumerate}
-  \item Generación de restricciones. Se recorre el AST y a cada subexpresión se le asigna una variable de tipo fresca. A medida que se visitan los nodos, se generan restricciones de tipo, es decir, aserciones de la forma $\tau_1 = \tau_2$ que afirman que dos tipos deben ser iguales. Por ejemplo, al analizar la aplicación $f\;a$, se genera la restricción $\tau_f = \tau_a \to \tau_{resultado}$.
-  \item Unificación. Las restricciones generadas se resuelven mediante el algoritmo de unificación de Robinson~\cite{robinson_1965}. El resultado es una sustitución, es decir, una función finita que asigna a cada variable de tipo fresca el tipo concreto (o el tipo estructurado) que la resuelve.
-  \item Aplicación de la sustitución. La sustitución se aplica a todo el AST, reemplazando cada variable de tipo por su valor en la sustitución. El resultado es el \lstinline|TypedAST|, en el que cada nodo lleva su tipo completamente resuelto.
-\end{enumerate}
-
-En Qalc, estas tres fases se implementan en los módulos \lstinline|infer.rs|, \lstinline|unify.rs| y \lstinline|apply.rs| del crate \lstinline|qalc-analysis/hm_inferrer|, respectivamente.
-
-\section{Representación de tipos durante la inferencia}
-
-El crate \lstinline|qalc-ast| define dos enumeraciones para representar los tipos en distintos momentos del pipeline.
-
-\begin{itemize}
-  \item \texttt{TypeWithUnknow.} Es la representación usada durante la inferencia. Sus variantes son las siguientes: \lstinline|Unknow(usize)| (una variable de tipo fresca, identificada por un entero único generado con \lstinline|gen_id()|, que representa tipos aún no resueltos), \lstinline|Builtin \{ id, params, linear \}| (un tipo conocido, como \lstinline|i32|, \lstinline|bool| o \lstinline|qbool|, donde el campo \lstinline|linear| distingue los tipos cuánticos de los clásicos), \lstinline|Arrow(a, b)| (el tipo función $a \to b$), \lstinline|Tuple(ts)| (el tipo tupla $(t_1, t_2, \ldots, t_n)$) y \lstinline|Slice(t)| (el tipo slice $[t]$).
-
-  \item \texttt{Type.} Es la representación final, producida una vez que la unificación ha resuelto todas las variables. Es isomorfa a \lstinline|TypeWithUnknow| salvo por la ausencia de la variante \lstinline|Unknow|: si la unificación no pudo resolver alguna variable, la conversión \lstinline|TryFrom<TypeWithUnknow> for Type| falla con un error de compilación que pide al usuario una anotación de tipo explícita.
-\end{itemize}
-
-La separación entre \lstinline|TypeWithUnknow| y \lstinline|Type| garantiza, a nivel del sistema de tipos de Rust, que ningún nodo del \lstinline|TypedAST| final pueda contener una variable sin resolver.
+El análisis semántico de Qalc tiene como objetivo dotar a cada nodo del AST de un tipo completamente resuelto, verificando que el programa es coherente desde el punto de vista tipológico antes de que ninguna fase posterior lo transforme en código ejecutable. Este proceso se apoya en dos mecanismos que se ejecutan de forma coordinada, el ámbito léxico, que resuelve a qué declaración se refiere cada identificador, y el inferidor de tipos basado en el algoritmo de Hindley-Milner, que asigna un tipo a cada expresión a partir de esas resoluciones. Este capítulo describe primero la resolución del ámbito léxico, después el algoritmo de inferencia con sus tres fases, la representación interna de los tipos durante la inferencia, el mecanismo de unificación en detalle y la sobrecarga de funciones discriminada por tipo.
 
 \section{Ámbito léxico y declaraciones de nivel superior}
 
-El módulo \lstinline|qalc-ast/scope.rs| implementa el ámbito léxico del compilador. Un \lstinline|Scope| es un mapa de nombres a vectores de \lstinline|SymbolInfo|, con un puntero opcional al ámbito padre para implementar el encadenamiento léxico:
+El primer paso del análisis semántico consiste en resolver el ámbito léxico de las declaraciones, de modo que la fase de inferencia pueda tratar cada identificador exactamente como el símbolo al que se refiere. El módulo \lstinline|qalc-ast/scope.rs| implementa el ámbito léxico del compilador. Un \lstinline|Scope| es un mapa de nombres a vectores de \lstinline|SymbolInfo|, con un puntero opcional al ámbito padre para implementar el encadenamiento léxico:
 
 \begin{lstlisting}[language={}, caption=Definición del tipo Scope para el ámbito léxico]
 pub struct Scope {
@@ -48,6 +23,50 @@ Al inicio de la inferencia, el \lstinline|HMInferrer| realiza dos operaciones pr
 En primer lugar, inyecta todas las funciones predefinidas del crate \lstinline|qalc-builtins|. Cada \lstinline|BuiltinDef| contiene el nombre de la función y su tipo completo expresado como \lstinline|TypeWithUnknow|, de modo que el inferidor puede resolver referencias a built-ins exactamente igual que referencias a funciones definidas por el usuario.
 
 En segundo lugar, recorre todas las declaraciones del programa y registra sus firmas de tipo en el ámbito global antes de inferir sus cuerpos. Este paso de predeclaración es fundamental para que las funciones puedan referenciarse mutuamente sin que el orden de aparición en el fichero fuente afecte a la corrección de la inferencia.
+
+\section{El algoritmo de Hindley-Milner}
+\label{sec:hm}
+
+Una vez resuelto el ámbito léxico de las declaraciones, Qalc infiere el tipo de cada expresión mediante el algoritmo de Hindley-Milner, que resuelve el problema de la inferencia de tipos en un lenguaje funcional sin necesidad de que el programador anote los tipos de cada expresión. A partir de las anotaciones de las declaraciones de nivel superior y de las reglas del sistema de tipos, el compilador deduce el tipo de toda subexpresión.
+
+El nombre del algoritmo combina las aportaciones de dos autores. Hindley estudió en 1969 la asignación de tipos principales en el marco de la lógica combinatoria, y Milner reformuló esa idea en 1978 como un algoritmo de inferencia práctico, conocido como algoritmo W, pensado para el lenguaje ML. Damas y Milner~\cite{damas_milner_1982} extendieron después el algoritmo para admitir polimorfismo en las declaraciones \lstinline|let|, dando lugar a la versión que se usa habitualmente hoy en día y que sirve de referencia para la implementación de Qalc.
+
+El algoritmo de Hindley-Milner es la base de la inferencia de tipos en toda la familia de lenguajes ML, que incluye Standard ML, OCaml y F#, y en Haskell, que lo extiende con clases de tipos para resolver la sobrecarga. Lenguajes más recientes como Elm o PureScript también lo adoptan sin modificaciones sustanciales. Otros lenguajes con un sistema de tipos más flexible, como Rust~\cite{matsakis_rust_2014}, Swift, Kotlin o TypeScript, usan variantes locales o bidireccionales inspiradas en Hindley-Milner que infieren el tipo de expresiones concretas sin llegar al polimorfismo global de la versión completa del algoritmo. Qalc adopta Hindley-Milner porque permite prescindir de anotaciones de tipo en la mayoría de las expresiones sin renunciar a la seguridad de tipos, una propiedad especialmente valiosa en un lenguaje pensado para describir circuitos cuánticos de forma concisa.
+
+El algoritmo se estructura en tres fases que se ejecutan secuencialmente~\cite{pierce_tapl_2002}:
+
+\begin{enumerate}
+  \item Generación de restricciones. Se recorre el AST y a cada subexpresión se le asigna una variable de tipo fresca. A medida que se visitan los nodos, se generan restricciones de tipo, es decir, aserciones de la forma $\tau_1 = \tau_2$ que afirman que dos tipos deben ser iguales. Por ejemplo, al analizar la aplicación $f\;a$, se genera la restricción $\tau_f = \tau_a \to \tau_{resultado}$.
+  \item Unificación. Las restricciones generadas se resuelven mediante el algoritmo de unificación de Robinson~\cite{robinson_1965}. El resultado es una sustitución, es decir, una función finita que asigna a cada variable de tipo fresca el tipo concreto (o el tipo estructurado) que la resuelve.
+  \item Aplicación de la sustitución. La sustitución se aplica a todo el AST, reemplazando cada variable de tipo por su valor en la sustitución. El resultado es el \lstinline|TypedAST|, en el que cada nodo lleva su tipo completamente resuelto.
+\end{enumerate}
+
+En Qalc, estas tres fases se implementan en los módulos \lstinline|infer.rs|, \lstinline|unify.rs| y \lstinline|apply.rs| del crate \lstinline|qalc-analysis/hm_inferrer|, respectivamente.
+
+Para ilustrar cómo cooperan las tres fases sobre un caso concreto, considérese la siguiente declaración.
+
+\begin{lstlisting}[language={}, caption=Ejemplo de declaración a inferir mediante Hindley-Milner]
+incrementa :: i32 -> i32
+incrementa = \x -> x + 1
+\end{lstlisting}
+
+En la fase de generación de restricciones (\autoref{sec:constraint-gen}), la lambda asigna una variable fresca $\tau_x$ al parámetro \lstinline|x| y visita el cuerpo \lstinline|x + 1|. Como \lstinline|+| es una función predefinida de tipo \lstinline|i32 -> i32 -> i32|, la aplicación genera las restricciones $\tau_x = \mathtt{i32}$ y $\tau_{cuerpo} = \mathtt{i32}$, y la anotación de la declaración añade además la restricción $\tau_x \to \tau_{cuerpo} = \mathtt{i32} \to \mathtt{i32}$.
+
+En la fase de unificación (\autoref{sec:unificacion}), estas restricciones se resuelven en una única sustitución que asigna $\tau_x \mapsto \mathtt{i32}$ y $\tau_{cuerpo} \mapsto \mathtt{i32}$, sin que se detecte ningún conflicto entre las variables y los tipos concretos involucrados.
+
+En la fase de aplicación de la sustitución, esa sustitución se propaga a cada nodo de la lambda, de modo que el \lstinline|TypedAST| resultante registra que \lstinline|x| tiene tipo \lstinline|i32| y que \lstinline|incrementa| tiene tipo \lstinline|i32 -> i32|, coherente con la anotación original de la declaración.
+
+\section{Representación de tipos durante la inferencia}
+
+El crate \lstinline|qalc-ast| define dos enumeraciones para representar los tipos en distintos momentos del pipeline.
+
+\begin{itemize}
+  \item \texttt{TypeWithUnknow.} Es la representación usada durante la inferencia. Sus variantes son las siguientes: \lstinline|Unknow(usize)| (una variable de tipo fresca, identificada por un entero único generado con \lstinline|gen_id()|, que representa tipos aún no resueltos), \lstinline|Builtin \{ id, params, linear \}| (un tipo conocido, como \lstinline|i32|, \lstinline|bool| o \lstinline|qbool|, donde el campo \lstinline|linear| distingue los tipos cuánticos de los clásicos), \lstinline|Arrow(a, b)| (el tipo función $a \to b$), \lstinline|Tuple(ts)| (el tipo tupla $(t_1, t_2, \ldots, t_n)$) y \lstinline|Slice(t)| (el tipo slice $[t]$).
+
+  \item \texttt{Type.} Es la representación final, producida una vez que la unificación ha resuelto todas las variables. Es isomorfa a \lstinline|TypeWithUnknow| salvo por la ausencia de la variante \lstinline|Unknow|: si la unificación no pudo resolver alguna variable, la conversión \lstinline|TryFrom<TypeWithUnknow> for Type| falla con un error de compilación que pide al usuario una anotación de tipo explícita.
+\end{itemize}
+
+La separación entre \lstinline|TypeWithUnknow| y \lstinline|Type| garantiza, a nivel del sistema de tipos de Rust, que ningún nodo del \lstinline|TypedAST| final pueda contener una variable sin resolver.
 
 \section{Generación de restricciones de tipo}
 \label{sec:constraint-gen}
@@ -107,7 +126,7 @@ Si alguna variable permanece irresuelta tras la sustitución (por ejemplo, en un
 \section{Sobrecarga de funciones discriminada por tipo}
 \label{sec:overloading}
 
-Una de las extensiones en desarrollo del sistema de tipos es la sobrecarga de funciones basada en el tipo del primer parámetro. En Qalc, una función puede tener varias definiciones con el mismo nombre siempre que difieran en el tipo del primer parámetro; el compilador elige la definición adecuada en tiempo de compilación consultando el tipo del primer argumento en el punto de llamada.
+Una de las extensiones del sistema de tipos es la sobrecarga de funciones basada en el tipo del primer parámetro. En Qalc, una función puede tener varias definiciones con el mismo nombre siempre que difieran en el tipo del primer parámetro; el compilador elige la definición adecuada en tiempo de compilación consultando el tipo del primer argumento en el punto de llamada.
 
 Este mecanismo permite expresar operaciones polimórficas sin necesidad de clases de tipos ni de polimorfismo paramétrico completo, manteniendo la inferencia de tipos decidible y eficiente. Por ejemplo, la función \lstinline|at|, que aplica una puerta a un cúbit concreto, puede estar definida dos veces con el mismo nombre:
 
@@ -116,8 +135,8 @@ at :: i32 -> (qcirc -> qcirc) -> qcirc -> qcirc
 at :: [i32] -> (qcirc -> qcirc) -> qcirc -> qcirc
 \end{lstlisting}
 
-La sobrecarga ya está parcialmente soportada a nivel de ámbito: \lstinline|define_decl| acumula todas las definiciones de un mismo nombre en un vector, y la operación \lstinline|resolve| devuelve actualmente la primera entrada. El trabajo en curso consiste en extender \lstinline|resolve| para que, dado el tipo del primer argumento en el punto de llamada, recorra el vector de definiciones y elija aquella cuyo primer tipo de parámetro sea unificable con el tipo del argumento. Si ninguna definición es compatible, se emite un error de compilación indicando las firmas disponibles y el tipo que se intentó usar.
+La sobrecarga está soportada a nivel de ámbito: \lstinline|define_decl| acumula todas las definiciones de un mismo nombre en un vector, y la operación \lstinline|resolve| recorre ese vector dado el tipo del primer argumento en el punto de llamada, y elige la definición cuyo primer tipo de parámetro es unificable con el tipo del argumento. Si ninguna definición es compatible, se emite un error de compilación indicando las firmas disponibles y el tipo que se intentó usar.
 
-La discriminación ocurre tras la generación de restricciones para el primer argumento, cuando su tipo ya está disponible (posiblemente aún como variable fresca parcialmente restringida). En los casos en que el tipo del primer argumento no esté suficientemente determinado en ese punto, el compilador puede diferir la elección hasta después de la unificación y resolver la sobrecarga en una segunda pasada sobre el AST, manteniendo en el nodo de identificador una referencia al conjunto de candidatos hasta que la sustitución lo resuelva.
+La discriminación ocurre tras la generación de restricciones para el primer argumento, cuando su tipo ya está disponible (posiblemente aún como variable fresca parcialmente restringida). En los casos en que el tipo del primer argumento no está suficientemente determinado en ese punto, el compilador difiere la elección hasta después de la unificación y resuelve la sobrecarga en una segunda pasada sobre el AST, manteniendo en el nodo de identificador una referencia al conjunto de candidatos hasta que la sustitución lo resuelve.
 
 Esta estrategia de sobrecarga es deliberadamente más sencilla que los sistemas de clases de tipos de Haskell o los traits de Rust~\cite{matsakis_rust_2014}: al restringir la discriminación al tipo del primer parámetro se garantiza que la resolución es siempre unívoca y que no es necesario un mecanismo de inferencia global adicional. El coste es una menor expresividad, que en el contexto de Qalc es aceptable dado que el objetivo del lenguaje es describir circuitos cuánticos, no implementar abstracciones de propósito general.
