@@ -1,0 +1,213 @@
+\chapter{Gramática del lenguaje en notación EBNF}
+\label{ch:gramatica-ebnf}
+
+Este apéndice recoge la especificación sintáctica completa del lenguaje Qalc. La gramática se transcribe fielmente desde el fichero \lstinline|grammar.pest|, que es la fuente de verdad que emplea el analizador sintáctico (véase el \autoref{sec:parser}), y se expresa en notación EBNF en su variante ISO/Wirth.
+
+\section{Convenciones de notación}
+\label{sec:ebnf-convenciones}
+
+Cada regla tiene la forma \lstinline|nombre = expresión ;|, donde el signo igual asocia un nombre a su definición y el punto y coma cierra la regla. Las alternativas se separan con \lstinline{|}, la concatenación se indica con una coma, la agrupación con paréntesis, la repetición de cero o más veces con llaves \lstinline|{ }|, y la parte opcional con corchetes \lstinline|[ ]|. Los terminales del lenguaje se escriben entre comillas dobles, de modo que los caracteres \lstinline|{|, \lstinline|}|, \lstinline|[| y \lstinline|]| que forman parte de la sintaxis de Qalc aparecen entrecomillados y no se confunden con la metasintaxis. La excepción se denota con el signo menos, es decir, \lstinline|A - B| describe lo que encaja con \lstinline|A| pero no con \lstinline|B|. Las clases de caracteres que no pueden desglosarse cómodamente se describen entre interrogantes siguiendo la convención de secuencia especial de ISO, y las aclaraciones intercaladas se escriben entre \lstinline|(*| y \lstinline|*)|.
+
+La transcripción conserva los nombres de regla originales, pero conviene tener presentes algunas particularidades del formalismo de partida que la notación EBNF no captura de manera directa. Pest implementa gramáticas de expresión de análisis, por lo que la alternativa se resuelve de forma ordenada, probando cada opción de izquierda a derecha y quedándose con la primera que encaja, mientras que en EBNF la alternativa es conceptualmente no ordenada. Las reglas léxicas (atómicas en Pest) no admiten espacios en su interior, en cambio entre los símbolos de las reglas sintácticas se permite de forma implícita cualquier \lstinline|whitespace| o \lstinline|comment|. La búsqueda negativa de Pest, que no forma parte de EBNF, se aproxima mediante la excepción con el signo menos o con una aclaración. Por último, los anclajes \lstinline|SOI| y \lstinline|EOI| marcan respectivamente el inicio y el final de la entrada.
+
+A lo largo de la gramática se emplean los siguientes auxiliares para las clases de caracteres.
+
+\begin{lstlisting}[language=EBNF, caption=Clases de caracteres auxiliares]
+letter          = ? carácter alfabético ASCII, a-z o A-Z ? ;
+digit           = ? dígito decimal ASCII, 0-9 ? ;
+hex_digit       = ? dígito hexadecimal ASCII, 0-9 a-f A-F ? ;
+newline         = ? salto de línea ? ;
+tab             = ? tabulador ? ;
+carriage_return = ? retorno de carro ? ;
+any_character   = ? cualquier carácter ? ;
+end_of_input    = ? fin de la entrada (EOI) ? ;
+\end{lstlisting}
+
+\section{Espacios en blanco y comentarios}
+\label{sec:ebnf-espacios}
+
+\begin{lstlisting}[language=EBNF, caption=Reglas de espacios en blanco y comentarios]
+whitespace    = " " | tab | carriage_return | newline ;
+block_comment = "/*" , { block_comment | ( any_character - "*/" ) } , "*/" ;
+line_comment  = ( "//" | "#" ) , { any_character - newline } ,
+                ( newline | end_of_input ) ;
+comment       = line_comment | block_comment ;
+\end{lstlisting}
+
+\section{Palabras reservadas e identificadores}
+\label{sec:ebnf-identificadores}
+
+\begin{lstlisting}[language=EBNF, caption=Reglas de palabras reservadas e identificadores]
+keyword           = "if" | "else" | "let" | "type" | "in" | "then"
+                  | "match" | "perform" | "linear" | "where" | "return" ;
+simple_identifier = ( ( letter | "_" ) , { letter | digit | "_" } )
+                  - keyword ;
+\end{lstlisting}
+
+\section{Literales}
+\label{sec:ebnf-literales}
+
+\begin{lstlisting}[language=EBNF, caption=Reglas de literales numéricos]
+dec_integer    = digit , { digit } ;
+hex_integer    = "0x" , hex_digit , { hex_digit } ;
+bin_integer    = "0b" , ( "0" | "1" ) , { "0" | "1" } ;
+unknow_integer = hex_integer | bin_integer | dec_integer ;
+u8_integer     = ( hex_integer | bin_integer | dec_integer ) , "u8" ;
+u16_integer    = ( hex_integer | bin_integer | dec_integer ) , "u16" ;
+u32_integer    = ( hex_integer | bin_integer | dec_integer ) , "u32" ;
+u64_integer    = ( hex_integer | bin_integer | dec_integer ) , "u64" ;
+i8_integer     = ( hex_integer | bin_integer | dec_integer ) , "i8" ;
+i16_integer    = ( hex_integer | bin_integer | dec_integer ) , "i16" ;
+i32_integer    = ( hex_integer | bin_integer | dec_integer ) , "i32" ;
+i64_integer    = ( hex_integer | bin_integer | dec_integer ) , "i64" ;
+float_exponent = ( "e" | "E" ) , [ "+" | "-" ] , digit , { digit } ;
+float_decimal  = digit , { digit } , "." , digit , { digit } ;
+float_leading  = "." , digit , { digit } ;
+float_number   = float_decimal , [ float_exponent ]
+               | float_leading , [ float_exponent ]
+               | ( digit , { digit } ) , float_exponent ;
+unknow_float   = float_number ;
+f32_float      = ( float_number | ( digit , { digit } ) ) , "f32" ;
+f64_float      = ( float_number | ( digit , { digit } ) ) , "f64" ;
+literal        = f32_float | f64_float | unknow_float
+               | u8_integer | u16_integer | u32_integer | u64_integer
+               | i8_integer | i16_integer | i32_integer | i64_integer
+               | unknow_integer ;
+\end{lstlisting}
+
+\section{Operadores}
+\label{sec:ebnf-operadores}
+
+\begin{lstlisting}[language=EBNF, caption=Reglas de operadores]
+apply_operator         = "$" ;
+pipe_operator          = "|>" ;
+logic_or_operator      = "||" ;
+logic_and_operator     = "&&" ;
+or_operator            = "|" ;
+and_operator           = "&" ;
+xor_operator           = "^" ;
+equal_operator         = "==" ;
+not_equal_operator     = "!=" ;
+less_equal_operator    = "<=" ;
+greater_equal_operator = ">=" ;
+less_operator          = "<" ;
+greater_operator       = ">" ;
+add_operator           = "+" ;
+subtract_operator      = "-" ;
+multiply_operator      = "*" ;
+divide_operator        = "/" ;
+module_operator        = "%" ;
+raised_operator        = "**" ;
+overloadable_operators = logic_or_operator | logic_and_operator
+               | equal_operator | not_equal_operator
+               | less_equal_operator | greater_equal_operator
+               | less_operator | greater_operator
+               | add_operator | subtract_operator | raised_operator
+               | multiply_operator | divide_operator | module_operator
+               | or_operator | and_operator | xor_operator ;
+binary_operators = pipe_operator | apply_operator
+               | logic_or_operator | logic_and_operator
+               | equal_operator | not_equal_operator
+               | less_equal_operator | greater_equal_operator
+               | less_operator | greater_operator
+               | add_operator | subtract_operator | raised_operator
+               | multiply_operator | divide_operator | module_operator
+               | or_operator | and_operator | xor_operator ;
+\end{lstlisting}
+
+\section{Expresiones átomo}
+\label{sec:ebnf-atomos}
+
+\begin{lstlisting}[language=EBNF, caption=Reglas de las expresiones átomo]
+operator_identifier     = "`" , overloadable_operators , "`" ;
+identifier              = simple_identifier | operator_identifier ;
+pattern                 = simple_identifier
+                        | "(" , pattern ,
+                          ( "," , pattern ) , { "," , pattern } , ")" ;
+partial_operation_left  = "(" , binary_operators , expression_atom , ")" ;
+partial_operation_right = "(" , expression_atom , binary_operators , ")" ;
+call_expression         = ( identifier | ( "(" , expression , ")" ) ) ,
+                          call_operand , { call_operand } ;
+    (* call_operand agrupa el "+" de Pest; no es una regla del .pest *)
+call_operand            = block_expression | lambda_expression
+                        | partial_operation_right | partial_operation_left
+                        | ( "(" , expression , ")" ) | tuple_expression
+                        | slice_expression | identifier | literal ;
+lambda_expression       = "(" , { pattern } , ")" , "->" , expression ;
+tuple_expression        = ( "(" , ")" )
+                        | "(" , expression ,
+                          ( "," , expression ) , { "," , expression } , ")" ;
+slice_range_expression  = "[" , expression , ".." , expression , "]" ;
+slice_items_expression  = "[" , [ expression , { "," , expression } ] , "]" ;
+slice_expression        = slice_items_expression | slice_range_expression ;
+\end{lstlisting}
+
+\section{Expresiones de bloque}
+\label{sec:ebnf-bloques}
+
+\begin{lstlisting}[language=EBNF, caption=Reglas de las expresiones de bloque]
+assigment_expression = pattern , "=" , expression ;
+let_block            = "let" , assigment_expression ,
+                       { "," , assigment_expression } , "in" , expression ;
+if_else_block        = "if" , expression , "then" , expression ,
+                       "else" , expression ;
+match_block          = "match" , expression , "{" ,
+                       ( expression , "->" , expression ) ,
+                       { "," , expression , "->" , expression } , "}" ;
+return_expression    = "return" , expression ;
+monadic_assigment    = pattern , "<-" , expression ;
+monadic_block        = "{" ,
+                       ( assigment_expression | monadic_assigment | expression ) ,
+                       { "," ,
+                         ( assigment_expression | monadic_assigment | expression ) } ,
+                       [ "," , return_expression ] , "}" ;
+perform_block        = "perform" , monadic_block ;
+linear_block         = "linear" , monadic_block ;
+block_expression     = let_block | if_else_block | match_block
+                     | perform_block | linear_block ;
+\end{lstlisting}
+
+\section{Expresiones binarias}
+\label{sec:ebnf-binarias}
+
+\begin{lstlisting}[language=EBNF, caption=Reglas de las expresiones binarias]
+expression_atom = block_expression | lambda_expression
+               | partial_operation_right | partial_operation_left
+               | call_expression | ( "(" , expression , ")" )
+               | tuple_expression | slice_expression | identifier | literal ;
+expression      = expression_atom , { binary_operators , expression_atom } ;
+\end{lstlisting}
+
+\section{Tipos}
+\label{sec:ebnf-tipos}
+
+\begin{lstlisting}[language=EBNF, caption=Reglas del sistema de tipos]
+type_inner       = "(" , type , ")" ;
+type_slice       = "[" , type , "]" ;
+type_tuple       = ( "(" , type ,
+                     ( "," , type ) , { "," , type } , ")" )
+                 | ( "(" , ")" ) ;
+type_with_params = simple_identifier , "<" , type_atom , { type_atom } , ">" ;
+type_atom        = type_with_params | simple_identifier | type_slice
+                 | type_tuple | type_inner ;
+type             = type_atom , { "->" , type_atom } ;
+\end{lstlisting}
+
+\section{Declaraciones y producción inicial}
+\label{sec:ebnf-declaraciones}
+
+\begin{lstlisting}[language=EBNF, caption=Reglas de declaraciones y producción inicial]
+type_function_annotation = identifier , "::" , type ;
+type_restriction         = "linear" ;
+type_declaration         = "type" , simple_identifier , "{" ,
+                           type_function_annotation ,
+                           { type_function_annotation } , "}" ,
+                           [ "where" , type_restriction ,
+                             { "," , type_restriction } ] ,
+                           [ ";" ] ;
+function_declaration     = type_function_annotation , identifier ,
+                           { pattern } , "=" , expression , ";" ;
+declarations             = type_declaration | function_declaration ;
+program                  = { declarations } ;
+    (* delimitado por SOI (inicio) y EOI (fin de la entrada) *)
+\end{lstlisting}
