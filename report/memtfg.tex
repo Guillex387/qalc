@@ -67,8 +67,9 @@
     \newfontfamily{\lmromanfont}{Latin Modern Roman}
 \fi
 
-% Configuración de listas no numeradas
+% Configuración de listas (bullets — \setlist se aplica tras cargar enumitem)
 \setkomafont{itemizelabel}{\lmromanfont}
+\renewcommand{\labelitemi}{\textbullet}
 \renewcommand{\labelitemii}{$\circ$}
 \renewcommand{\labelitemiii}{$\diamond$}
 \renewcommand{\labelitemiv}{$\triangleright$}
@@ -90,6 +91,7 @@
 
 \usepackage{caption}
 \usepackage{enumitem}
+\setlist{leftmargin=1.5em}
 \usepackage{float}
 \usepackage{graphicx}
 \usepackage{lipsum}

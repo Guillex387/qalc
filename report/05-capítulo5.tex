@@ -57,23 +57,19 @@ Cada diagnóstico lleva asociado un \lstinline|Span| (un par de posiciones en el
 
 El compilador se estructura como un workspace de Cargo con crates de dependencia estrictamente ordenada de abajo hacia arriba.
 
-\paragraph{\texttt{qalc-utils}}
-Es la base de la pila. Define \lstinline|Source| (el texto fuente con su nombre de fichero), \lstinline|Span| (intervalo de bytes dentro de un \lstinline|Source|), \lstinline|Diagnostic| (un error o aviso con span y mensaje) y el rasgo \lstinline|CompilerStep|. Ningún otro módulo puede ignorar un span ni construir un error sin una ubicación en el código fuente.
+\begin{itemize}
+  \item \texttt{qalc-utils.} Es la base de la pila. Define \lstinline|Source| (el texto fuente con su nombre de fichero), \lstinline|Span| (intervalo de bytes dentro de un \lstinline|Source|), \lstinline|Diagnostic| (un error o aviso con span y mensaje) y el rasgo \lstinline|CompilerStep|. Ningún otro módulo puede ignorar un span ni construir un error sin una ubicación en el código fuente.
 
-\paragraph{\texttt{qalc-ast}}
-Define todos los tipos de nodo AST usados a lo largo del pipeline: \lstinline|ConcreteAST|, \lstinline|NormalizedAST|, \lstinline|TypedAST| y los módulos auxiliares de ámbito léxico (\lstinline|scope|) y metadatos de tipo (\lstinline|typed_ast|). Al centralizar los tipos de nodo se evita la proliferación de estructuras de datos redundantes entre crates.
+  \item \texttt{qalc-ast.} Define todos los tipos de nodo AST usados a lo largo del pipeline: \lstinline|ConcreteAST|, \lstinline|NormalizedAST|, \lstinline|TypedAST| y los módulos auxiliares de ámbito léxico (\lstinline|scope|) y metadatos de tipo (\lstinline|typed_ast|). Al centralizar los tipos de nodo se evita la proliferación de estructuras de datos redundantes entre crates.
 
-\paragraph{\texttt{qalc-builtins}}
-Expone el tipo \lstinline|BuiltinDef| y la función \lstinline|standard_builtins()|, que devuelve las definiciones de todas las funciones predefinidas del lenguaje (operaciones aritméticas, comparaciones, etc.) junto con su tipo. Este crate desacopla la definición de los built-ins de la implementación de la inferencia de tipos.
+  \item \texttt{qalc-builtins.} Expone el tipo \lstinline|BuiltinDef| y la función \lstinline|standard_builtins()|, que devuelve las definiciones de todas las funciones predefinidas del lenguaje (operaciones aritméticas, comparaciones, etc.) junto con su tipo. Este crate desacopla la definición de los built-ins de la implementación de la inferencia de tipos.
 
-\paragraph{\texttt{qalc-parser}}
-Implementa el analizador léxico-sintáctico. Depende únicamente de \lstinline|qalc-utils| y \lstinline|qalc-ast|.
+  \item \texttt{qalc-parser.} Implementa el analizador léxico-sintáctico. Depende únicamente de \lstinline|qalc-utils| y \lstinline|qalc-ast|.
 
-\paragraph{\texttt{qalc-analysis}}
-Contiene el normalizador y el inferidor de tipos HM. Depende de los cuatro crates anteriores.
+  \item \texttt{qalc-analysis.} Contiene el normalizador y el inferidor de tipos HM. Depende de los cuatro crates anteriores.
 
-\paragraph{\texttt{qalc-cli}}
-Es el ejecutable. Importa todas las fases, las encadena y presenta los resultados.
+  \item \texttt{qalc-cli.} Es el ejecutable. Importa todas las fases, las encadena y presenta los resultados.
+\end{itemize}
 
 \section{El patrón AST paramétrico}
 \label{sec:ast-parametrico}
@@ -115,20 +111,17 @@ Las expresiones aritméticas, lógicas y de comparación se analizan con un anal
 
 El normalizador (\lstinline|qalc-analysis/normalizer|) convierte el \lstinline|ConcreteAST| en un \lstinline|NormalizedAST| más simple. La representación normalizada elimina construcciones sintácticas de alto nivel dejando un núcleo reducido que las fases siguientes pueden procesar de manera uniforme.
 
-\subsection{Desazucarado de llamadas a función}
-
-Las llamadas a función con múltiples argumentos, de la forma \lstinline|f a b c|, se transforman en una cadena de aplicaciones binarias currificadas.
+\begin{itemize}
+  \item \textit{Desazucarado de llamadas a función.} Las llamadas a función con múltiples argumentos, de la forma \lstinline|f a b c|, se transforman en una cadena de aplicaciones binarias currificadas.
 
 \begin{lstlisting}[language=Qalc]
 -- Fuente:          f a b c
 -- Normalizado:     ((f a) b) c
 \end{lstlisting}
 
-En el NormalizedAST solo existe un nodo \lstinline|Transform \{ callee, param \}| que representa la aplicación de una función a un único argumento. Esto simplifica el inferidor de tipos, que no necesita distinguir entre funciones variadicas y funciones unarias.
+  En el NormalizedAST solo existe un nodo \lstinline|Transform \{ callee, param \}| que representa la aplicación de una función a un único argumento. Esto simplifica el inferidor de tipos, que no necesita distinguir entre funciones variadicas y funciones unarias.
 
-\subsection{Desazucarado de patrones en parámetros}
-
-Qalc permite deconstruir tuplas directamente en los parámetros de una función o lambda. El normalizador elimina ese azúcar sintáctico reemplazando el patrón por un nombre generado y añadiendo un bloque \lstinline|let| al inicio del cuerpo.
+  \item \textit{Desazucarado de patrones en parámetros.} Qalc permite deconstruir tuplas directamente en los parámetros de una función o lambda. El normalizador elimina ese azúcar sintáctico reemplazando el patrón por un nombre generado y añadiendo un bloque \lstinline|let| al inicio del cuerpo.
 
 \begin{lstlisting}[language=Qalc]
 -- Fuente:
@@ -138,9 +131,7 @@ add (x, y) = x + y;
 add p0 = let (x, y) = p0 in x + y;
 \end{lstlisting}
 
-\subsection{Desazucarado de \texttt{match}}
-
-Las expresiones \lstinline|match| se transforman en cadenas de \lstinline|if-else| anidados. Cada rama del \lstinline|match| se convierte en una comparación de igualdad con el valor escrutado; el caso por defecto pasa a ser la alternativa del último \lstinline|else|. Esta simplificación evita introducir un nodo \lstinline|Match| en el inferidor y en las fases siguientes.
+  \item \textit{Desazucarado de} \texttt{match}. Las expresiones \lstinline|match| se transforman en cadenas de \lstinline|if-else| anidados. Cada rama del \lstinline|match| se convierte en una comparación de igualdad con el valor escrutado; el caso por defecto pasa a ser la alternativa del último \lstinline|else|. Esta simplificación evita introducir un nodo \lstinline|Match| en el inferidor y en las fases siguientes.
 
 \begin{lstlisting}[language=Qalc]
 -- Fuente:
@@ -150,9 +141,8 @@ match x { 1 -> "uno", 2 -> "dos" }
 if x == 1 then "uno" else if x == 2 then "dos" else ()
 \end{lstlisting}
 
-\subsection{Desazucarado de bloques \texttt{linear} y \texttt{perform}}
-
-Ambos bloques monádicos se desazucaran en el normalizador. El bloque \lstinline|linear|, que facilita el encadenamiento de operaciones sobre recursos lineales, se expande en una cadena de expresiones \lstinline|let| anidadas que re-enlazan automáticamente las variables lineales consumidas. La ligadura monádica \lstinline|x <- f a| extrae el resultado del par devuelto por \lstinline|f a| y lo asigna a \lstinline|x|, relanzando la continuación con los valores re-enlazados. El bloque \lstinline|perform| sigue un esquema análogo orientado a la composición de efectos.
+  \item \textit{Desazucarado de bloques} \texttt{linear} \textit{y} \texttt{perform}. Ambos bloques monádicos se desazucaran en el normalizador. El bloque \lstinline|linear|, que facilita el encadenamiento de operaciones sobre recursos lineales, se expande en una cadena de expresiones \lstinline|let| anidadas que re-enlazan automáticamente las variables lineales consumidas. La ligadura monádica \lstinline|x <- f a| extrae el resultado del par devuelto por \lstinline|f a| y lo asigna a \lstinline|x|, relanzando la continuación con los valores re-enlazados. El bloque \lstinline|perform| sigue un esquema análogo orientado a la composición de efectos.
+\end{itemize}
 
 \section{Verificador de recursividad}
 \label{sec:recursivity-checker}

@@ -20,11 +20,11 @@ En Qalc, estas tres fases se implementan en los módulos \lstinline|infer.rs|, \
 
 El crate \lstinline|qalc-ast| define dos enumeraciones para representar los tipos en distintos momentos del pipeline.
 
-\paragraph{\texttt{TypeWithUnknow}}
-Es la representación usada durante la inferencia. Sus variantes son las siguientes: \lstinline|Unknow(usize)| (una variable de tipo fresca, identificada por un entero único generado con \lstinline|gen_id()|, que representa tipos aún no resueltos), \lstinline|Builtin \{ id, params, linear \}| (un tipo conocido, como \lstinline|i32|, \lstinline|bool| o \lstinline|qbool|, donde el campo \lstinline|linear| distingue los tipos cuánticos de los clásicos), \lstinline|Arrow(a, b)| (el tipo función $a \to b$), \lstinline|Tuple(ts)| (el tipo tupla $(t_1, t_2, \ldots, t_n)$) y \lstinline|Slice(t)| (el tipo slice $[t]$).
+\begin{itemize}
+  \item \texttt{TypeWithUnknow.} Es la representación usada durante la inferencia. Sus variantes son las siguientes: \lstinline|Unknow(usize)| (una variable de tipo fresca, identificada por un entero único generado con \lstinline|gen_id()|, que representa tipos aún no resueltos), \lstinline|Builtin \{ id, params, linear \}| (un tipo conocido, como \lstinline|i32|, \lstinline|bool| o \lstinline|qbool|, donde el campo \lstinline|linear| distingue los tipos cuánticos de los clásicos), \lstinline|Arrow(a, b)| (el tipo función $a \to b$), \lstinline|Tuple(ts)| (el tipo tupla $(t_1, t_2, \ldots, t_n)$) y \lstinline|Slice(t)| (el tipo slice $[t]$).
 
-\paragraph{\texttt{Type}}
-Es la representación final, producida una vez que la unificación ha resuelto todas las variables. Es isomorfa a \lstinline|TypeWithUnknow| salvo por la ausencia de la variante \lstinline|Unknow|: si la unificación no pudo resolver alguna variable, la conversión \lstinline|TryFrom<TypeWithUnknow> for Type| falla con un error de compilación que pide al usuario una anotación de tipo explícita.
+  \item \texttt{Type.} Es la representación final, producida una vez que la unificación ha resuelto todas las variables. Es isomorfa a \lstinline|TypeWithUnknow| salvo por la ausencia de la variante \lstinline|Unknow|: si la unificación no pudo resolver alguna variable, la conversión \lstinline|TryFrom<TypeWithUnknow> for Type| falla con un error de compilación que pide al usuario una anotación de tipo explícita.
+\end{itemize}
 
 La separación entre \lstinline|TypeWithUnknow| y \lstinline|Type| garantiza, a nivel del sistema de tipos de Rust, que ningún nodo del \lstinline|TypedAST| final pueda contener una variable sin resolver.
 
@@ -56,30 +56,24 @@ La función \lstinline|infer_expr| recorre el AST normalizado en profundidad y p
 
 Las reglas más relevantes son las siguientes.
 
-\paragraph{Literales}
-Los literales enteros y flotantes producen directamente el tipo concreto determinado por su sufijo: \lstinline|42i32| produce \lstinline|Builtin("i32")|, \lstinline|3.14f64| produce \lstinline|Builtin("f64")|. Los literales sin sufijo explícito se tipan por defecto como \lstinline|i32| y \lstinline|f64| respectivamente.
+\begin{itemize}
+  \item \textit{Literales.} Los literales enteros y flotantes producen directamente el tipo concreto determinado por su sufijo: \lstinline|42i32| produce \lstinline|Builtin("i32")|, \lstinline|3.14f64| produce \lstinline|Builtin("f64")|. Los literales sin sufijo explícito se tipan por defecto como \lstinline|i32| y \lstinline|f64| respectivamente.
 
-\paragraph{Identificadores}
-La resolución de un identificador consulta el ámbito léxico en vigor. Si el nombre se encuentra, el nodo hereda el tipo registrado en el símbolo. Si no existe, se emite un error de compilación con el span del identificador.
+  \item \textit{Identificadores.} La resolución de un identificador consulta el ámbito léxico en vigor. Si el nombre se encuentra, el nodo hereda el tipo registrado en el símbolo. Si no existe, se emite un error de compilación con el span del identificador.
 
-\paragraph{Aplicación de función (\texttt{Transform \{ callee, param \}})}
-Se genera una variable fresca $\tau_{ret}$ para el tipo de retorno y se añade la restricción $\tau_{callee} = \tau_{param} \to \tau_{ret}$. El tipo del nodo de aplicación es $\tau_{ret}$.
+  \item \textit{Aplicación de función} (\texttt{Transform \{ callee, param \}}). Se genera una variable fresca $\tau_{ret}$ para el tipo de retorno y se añade la restricción $\tau_{callee} = \tau_{param} \to \tau_{ret}$. El tipo del nodo de aplicación es $\tau_{ret}$.
 
-\paragraph{Lambda}
-Se crea un ámbito nuevo, se registra cada parámetro con una variable fresca y se infiere el cuerpo. El tipo de la lambda se construye encadenando los tipos de los parámetros con el tipo del cuerpo, tal y como muestra la expresión
-\[\tau_{lambda} = \tau_{p_1} \to \tau_{p_2} \to \cdots \to \tau_{cuerpo}\]
+  \item \textit{Lambda.} Se crea un ámbito nuevo, se registra cada parámetro con una variable fresca y se infiere el cuerpo. El tipo de la lambda se construye encadenando los tipos de los parámetros con el tipo del cuerpo, tal y como muestra la expresión
+  \[\tau_{lambda} = \tau_{p_1} \to \tau_{p_2} \to \cdots \to \tau_{cuerpo}\]
 
-\paragraph{Bloque \texttt{let}}
-Cada enlace $p = e$ genera las restricciones de $e$ y añade la restricción $\tau_e = \tau_p$, ligando el tipo de la expresión al tipo del patrón. Después se infiere la expresión de valor en el ámbito extendido. El tipo del bloque es el tipo de la expresión de valor.
+  \item \textit{Bloque} \texttt{let}. Cada enlace $p = e$ genera las restricciones de $e$ y añade la restricción $\tau_e = \tau_p$, ligando el tipo de la expresión al tipo del patrón. Después se infiere la expresión de valor en el ámbito extendido. El tipo del bloque es el tipo de la expresión de valor.
 
-\paragraph{If-else}
-Se genera una variable fresca $\tau_{ret}$ y se añaden las restricciones $\tau_{ret} = \tau_{then}$ y $\tau_{ret} = \tau_{else}$, exigiendo que ambas ramas tengan el mismo tipo. El tipo del test no se restringe a ningún tipo concreto en esta fase.
+  \item \textit{If-else.} Se genera una variable fresca $\tau_{ret}$ y se añaden las restricciones $\tau_{ret} = \tau_{then}$ y $\tau_{ret} = \tau_{else}$, exigiendo que ambas ramas tengan el mismo tipo. El tipo del test no se restringe a ningún tipo concreto en esta fase.
 
-\paragraph{Tuplas}
-El tipo de una tupla $(e_1, \ldots, e_n)$ es \lstinline|Tuple|$(\tau_{e_1}, \ldots, \tau_{e_n})$, donde cada $\tau_{e_i}$ es el tipo inferido de la subexpresión correspondiente.
+  \item \textit{Tuplas.} El tipo de una tupla $(e_1, \ldots, e_n)$ es \lstinline|Tuple|$(\tau_{e_1}, \ldots, \tau_{e_n})$, donde cada $\tau_{e_i}$ es el tipo inferido de la subexpresión correspondiente.
 
-\paragraph{Slices}
-Se genera una variable fresca $\tau_{elem}$ y se añade la restricción $\tau_{elem} = \tau_{e_i}$ para cada elemento, exigiendo homogeneidad del slice.
+  \item \textit{Slices.} Se genera una variable fresca $\tau_{elem}$ y se añade la restricción $\tau_{elem} = \tau_{e_i}$ para cada elemento, exigiendo homogeneidad del slice.
+\end{itemize}
 
 \subsection{Inferencia de declaraciones}
 
