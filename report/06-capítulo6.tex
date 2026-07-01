@@ -32,7 +32,7 @@ La separación entre \lstinline|TypeWithUnknow| y \lstinline|Type| garantiza, a 
 
 El módulo \lstinline|qalc-ast/scope.rs| implementa el ámbito léxico del compilador. Un \lstinline|Scope| es un mapa de nombres a vectores de \lstinline|SymbolInfo|, con un puntero opcional al ámbito padre para implementar el encadenamiento léxico:
 
-\begin{lstlisting}[language={}]
+\begin{lstlisting}[language={}, caption=Definición del tipo Scope para el ámbito léxico]
 pub struct Scope {
     parent: Option<Rc<Scope>>,
     symbols: RefCell<HashMap<String, Vec<SymbolInfo>>>,
@@ -111,7 +111,7 @@ Una de las extensiones en desarrollo del sistema de tipos es la sobrecarga de fu
 
 Este mecanismo permite expresar operaciones polimórficas sin necesidad de clases de tipos ni de polimorfismo paramétrico completo, manteniendo la inferencia de tipos decidible y eficiente. Por ejemplo, la función \lstinline|at|, que aplica una puerta a un cúbit concreto, puede estar definida dos veces con el mismo nombre:
 
-\begin{lstlisting}[language=Qalc]
+\begin{lstlisting}[language={}, caption=Ejemplo de sobrecarga de función discriminada por tipo del primer parámetro]
 at :: i32 -> (qcirc -> qcirc) -> qcirc -> qcirc
 at :: [i32] -> (qcirc -> qcirc) -> qcirc -> qcirc
 \end{lstlisting}

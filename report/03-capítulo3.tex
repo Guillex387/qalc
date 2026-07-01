@@ -85,7 +85,7 @@ De esta regla se siguen dos prohibiciones, cada una de las cuales evita un error
 \paragraph{No se puede usar un valor cuántico dos veces (no clonación)}
 Reutilizar una variable cuántica ya consumida equivaldría a duplicar información cuántica, algo que el teorema de no clonación prohíbe. El compilador rechaza el siguiente código:
 
-\begin{lstlisting}[language=Qalc]
+\begin{lstlisting}[language={}, caption=Violación de no clonación por uso doble de un valor cuántico]
 // ERROR: x se usa dos veces; seria clonar el cúbit.
 duplicar :: qbool -> (qbool, qbool)
 duplicar x = (H x, H x);
@@ -94,7 +94,7 @@ duplicar x = (H x, H x);
 \paragraph{No se puede dejar un valor cuántico sin usar (no fuga)}
 Recibir un cúbit y descartarlo dejaría un recurso físico sin medir ni liberar. El compilador también rechaza esto:
 
-\begin{lstlisting}[language=Qalc]
+\begin{lstlisting}[language={}, caption=Violación de no fuga por descarte implícito de un cúbit]
 // ERROR: x nunca se usa; el cúbit quedaria "colgado".
 descartar :: qbool -> i16
 descartar x = 0i16;
@@ -102,7 +102,7 @@ descartar x = 0i16;
 
 El uso correcto consume el recurso exactamente una vez y propaga el resultado:
 
-\begin{lstlisting}[language=Qalc]
+\begin{lstlisting}[language={}, caption=Uso correcto de un valor cuántico lineal]
 // Correcto: x se consume una vez y se devuelve el cúbit transformado.
 aplicarH :: qbool -> qbool
 aplicarH x = H x;
@@ -110,7 +110,7 @@ aplicarH x = H x;
 
 En contraste, un valor clásico no está sujeto a ninguna de estas restricciones. El siguiente código es válido, porque \lstinline|n| es un entero clásico y puede usarse varias veces o ninguna:
 
-\begin{lstlisting}[language=Qalc]
+\begin{lstlisting}[language={}, caption=Valor clásico sin restricciones de linealidad]
 // Correcto: n es clasico; se puede duplicar y descartar libremente.
 doble :: i16 -> i16
 doble n = n + n;
@@ -196,7 +196,7 @@ Qalc está pensado para escribirse, en la medida de lo posible, en un nivel de a
 
 En el nivel alto, las operaciones cuánticas no son construcciones sintácticas privilegiadas, sino funciones de la biblioteca del lenguaje con tipos lineales. Toman datos cuánticos, los consumen y devuelven los datos transformados. Por ejemplo, una operación que eleva un entero cuántico a una potencia constante, o que comprueba la igualdad con una constante produciendo un cúbit de resultado, tendrían signaturas de la forma siguiente.
 
-\begin{lstlisting}[language=Qalc]
+\begin{lstlisting}[language={}, caption=Signaturas de operaciones cuánticas de alto nivel sobre qi16]
 qPowConst :: i16 -> qi16 -> qi16
 qEqConst  :: i16 -> qi16 -> (qi16, qbool)
 \end{lstlisting}
@@ -207,14 +207,14 @@ La composición se expresa con las herramientas funcionales generales del lengua
 
 Cuando se necesita programar el circuito explícitamente, se trabaja con el tipo \lstinline|qcirc|, que representa un circuito de $n$ cúbits. La convención de este nivel es que una puerta aplicada a un \lstinline|qcirc| se aplica a todos sus cúbits a la vez; al resto de los cúbits, cuando proceda, se les aplica implícitamente la identidad. Las puertas básicas son, por tanto, transformaciones del circuito completo.
 
-\begin{lstlisting}[language=Qalc]
+\begin{lstlisting}[language={}, caption=Signaturas de las puertas básicas H y X sobre qcirc]
 H :: qcirc -> qcirc
 X :: qcirc -> qcirc
 \end{lstlisting}
 
 Para restringir una operación a cúbits concretos se emplea la función de orden superior \lstinline|at|, que recibe el índice sobre el que actuar y la puerta a aplicar. Está sobrecargada para aceptar tanto un índice único como una lista de índices.
 
-\begin{lstlisting}[language=Qalc]
+\begin{lstlisting}[language={}, caption=Firma sobrecargada de at y ejemplos de aplicación parcial]
 at :: i32 -> (qcirc -> qcirc) -> qcirc -> qcirc    // un cúbit
 at :: [i32] -> (qcirc -> qcirc) -> qcirc -> qcirc  // varios cúbits
 
@@ -224,7 +224,7 @@ at [0..3] X           // aplica X a los cúbits del 0 al 3
 
 Para las puertas controladas se emplea la operación de orden superior \lstinline|controlled|.
 
-\begin{lstlisting}[language=Qalc]
+\begin{lstlisting}[language={}, caption=Firma de controlled y ejemplo de puerta CNOT]
 controlled :: i32 -> i32 -> (qcirc -> qcirc) -> qcirc -> qcirc
 
 controlled 0 1 X      // CNOT con control en el cúbit 0 y objetivo el cúbit 1
@@ -232,24 +232,24 @@ controlled 0 1 X      // CNOT con control en el cúbit 0 y objetivo el cúbit 1
 
 Obsérvese que \lstinline|at 0 H|, \lstinline|at [0..3] X| y \lstinline|controlled 0 1 X| son aplicaciones parciales cuyo resultado es, en todos los casos, una función \lstinline|qcirc -> qcirc|. Esto las hace directamente componibles con la tubería \lstinline{|>}, lo que permite describir un circuito como una sucesión legible de transformaciones que se lee en el mismo orden en que se aplican las puertas. Por ejemplo, un circuito que prepara un estado de Bell sobre dos cúbits se escribe de la siguiente forma.
 
-\begin{lstlisting}[language=Qalc]
+\begin{lstlisting}[language={}, caption=Circuito de Bell implementado en Qalc]
 // Estado de Bell sobre un circuito de 2 cúbits.
 bell :: qcirc -> qcirc
 bell c = c |> at 0 H |> controlled 0 1 X;
 \end{lstlisting}
 
-\subsection{Oráculo de Grover para $x^3 = 125$}
+\subsection{Implementación de un oráculo de Grover}
 
-El algoritmo de búsqueda de Grover ilustra cómo el lenguaje combina tipos lineales, el bloque \lstinline|linear| y la composición funcional en el nivel alto. El elemento característico del algoritmo es el oráculo, es decir, una función que marca las soluciones del problema. Aquí se busca el conjunto de valores \lstinline|x| que satisfacen \lstinline|x³ = 125|. En Qalc, el oráculo es una función ordinaria.
+El algoritmo de búsqueda de Grover ilustra cómo el lenguaje combina tipos lineales, el bloque \lstinline|linear| y la composición funcional en el nivel alto. El elemento característico del algoritmo es el oráculo, es decir, una función que marca las soluciones del problema. Aquí se busca el conjunto de valores \lstinline|x| que satisfacen $x^3 = 125$. En Qalc, el oráculo es una función ordinaria.
 
-\begin{lstlisting}[language=Qalc]
+\begin{lstlisting}[language={}, caption=Oráculo de Grover para la condición x^3 = 125]
 oracle :: qi16 -> (qi16, qbool)
 oracle x = linear {
   cube <- qPowConst 3i16 x,         // x^3
-  control <- qEqConst 125i16 cube,  // x^3 = 125
+  result <- qEqConst 125i16 cube,  // x^3 = 125
   uncompute cube,
-  return (x, control)
+  return (x, result)
 }
 \end{lstlisting}
 
-En el oráculo se aprecian con claridad los rasgos del diseño. La variable cuántica \lstinline|x| entra una vez y se devuelve una vez, en la tupla final: nunca se duplica ni se descarta. El cómputo intermedio \lstinline|cube| es un recurso auxiliar: se calcula, se usa para producir el cúbit \lstinline|control| y, antes de devolver el resultado, se descomputa para liberar la memoria cuántica que ocupaba. El bloque \lstinline|linear| re-enlaza automáticamente los recursos entre pasos, de modo que la disciplina de uso único se respeta por construcción.
+En el oráculo se aprecian con claridad los rasgos del diseño. La variable cuántica \lstinline|x| entra una vez y se devuelve una vez, en la tupla final: nunca se duplica ni se descarta. El cómputo intermedio \lstinline|cube| es un recurso auxiliar: se calcula, se usa para producir el cúbit \lstinline|result| y, antes de devolver el resultado, se descomputa para liberar la memoria cuántica que ocupaba. El bloque \lstinline|linear| re-enlaza automáticamente los recursos entre pasos, de modo que la disciplina de uso único se respeta por construcción.

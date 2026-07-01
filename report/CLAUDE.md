@@ -40,3 +40,7 @@ No usar dos puntos (:) fuera de enumeraciones. En particular, evitarlos en títu
 ## Caption de tablas
 
 El `\caption` (y el `\label` asociado) de una tabla va siempre antes del entorno `tabular`/`tabularx`, justo después de `\centering`. Nunca va debajo del `\end{tabular}`.
+
+## Listados de código
+
+Todo entorno `lstlisting` debe incluir la opción `caption=` con una descripción breve en español. Esto es obligatorio para que el listado aparezca en el índice de códigos (`\lstlistoflistings`), que se genera automáticamente en el frontmatter. El caption va en la parte inferior del bloque (configurado globalmente con `captionpos=b`). No usar dos puntos en el texto del caption.

@@ -37,7 +37,7 @@ El punto de entrada ejecutable reside en el crate \lstinline|qalc-cli|, que enca
 
 Todas las fases del compilador comparten una interfaz común definida en \lstinline|qalc-utils|:
 
-\begin{lstlisting}[language={}]
+\begin{lstlisting}[language={}, caption=Definición del rasgo CompilerStep en Rust]
 pub trait CompilerStep {
     type Input;
     type Output;
@@ -76,7 +76,7 @@ El compilador se estructura como un workspace de Cargo con crates de dependencia
 
 Una decisión de diseño transversal del compilador es que los tipos de nodo del AST son genéricos en sus metadatos. Cada nodo de expresión, declaración, patrón o tipo lleva un parámetro de tipo \lstinline|M: ASTMetadata| que determina qué información está adjunta a cada nodo en esa fase del pipeline:
 
-\begin{lstlisting}[language={}]
+\begin{lstlisting}[language={}, caption=Definición del rasgo ASTMetadata en Rust]
 pub trait ASTMetadata {
     type DeclarationMeta;
     type ExpressionMeta;
@@ -114,7 +114,7 @@ El normalizador (\lstinline|qalc-analysis/normalizer|) convierte el \lstinline|C
 \begin{itemize}
   \item \textit{Desazucarado de llamadas a función.} Las llamadas a función con múltiples argumentos, de la forma \lstinline|f a b c|, se transforman en una cadena de aplicaciones binarias currificadas.
 
-\begin{lstlisting}[language=Qalc]
+\begin{lstlisting}[language={}, caption=Desazucarado de llamadas a función con múltiples argumentos]
 -- Fuente:          f a b c
 -- Normalizado:     ((f a) b) c
 \end{lstlisting}
@@ -123,7 +123,7 @@ El normalizador (\lstinline|qalc-analysis/normalizer|) convierte el \lstinline|C
 
   \item \textit{Desazucarado de patrones en parámetros.} Qalc permite deconstruir tuplas directamente en los parámetros de una función o lambda. El normalizador elimina ese azúcar sintáctico reemplazando el patrón por un nombre generado y añadiendo un bloque \lstinline|let| al inicio del cuerpo.
 
-\begin{lstlisting}[language=Qalc]
+\begin{lstlisting}[language={}, caption=Desazucarado de deconstrucción de tupla en parámetros]
 -- Fuente:
 add (x, y) = x + y;
 
@@ -133,7 +133,7 @@ add p0 = let (x, y) = p0 in x + y;
 
   \item \textit{Desazucarado de} \texttt{match}. Las expresiones \lstinline|match| se transforman en cadenas de \lstinline|if-else| anidados. Cada rama del \lstinline|match| se convierte en una comparación de igualdad con el valor escrutado; el caso por defecto pasa a ser la alternativa del último \lstinline|else|. Esta simplificación evita introducir un nodo \lstinline|Match| en el inferidor y en las fases siguientes.
 
-\begin{lstlisting}[language=Qalc]
+\begin{lstlisting}[language={}, caption=Desazucarado de match a cadena de if-else]
 -- Fuente:
 match x { 1 -> "uno", 2 -> "dos" }
 
