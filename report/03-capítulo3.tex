@@ -179,16 +179,25 @@ La aplicación de funciones se realiza por yuxtaposición, \lstinline|f a b|, al
 
 El operador de tubería \lstinline{|>} aplica una función en estilo fluido: \lstinline|a |> f| es equivalente a \lstinline|f a|, y encadena de forma legible una secuencia de transformaciones, lo que resulta especialmente natural para describir la composición de operaciones sobre un circuito.
 
-\subsection{Bloques monádicos \texttt{perform} y \texttt{linear}}
+\subsection{Bloques monádicos}
 \label{sec:linear}
 
-Dos construcciones comparten la misma estructura de bloque monádico (una secuencia de enunciados separados por comas que puede terminar en una expresión \lstinline|return|). Por un lado, \lstinline|perform { ... }| secuencia operaciones con efectos, en el espíritu de la notación \textit{do} de Haskell. Por otro, \lstinline|linear { ... }| facilita el encadenado de operaciones sobre recursos lineales.
+Ambos bloques comparten la misma estructura sintáctica: una palabra clave seguida de un cuerpo entre llaves con enunciados separados por comas.
 
-Dentro de estos bloques, además de expresiones y ligaduras ordinarias (\lstinline|p = e|), se admite la ligadura monádica \lstinline|p <- e|. Ambos bloques son azúcar sintáctico, pero se expanden de forma distinta, acorde con su propósito.
+\begin{lstlisting}[language={}, caption=Estructura genérica de un bloque monádico]
+keyword {
+  enunciado,
+  enunciado,
+  ...
+  return expr
+}
+\end{lstlisting}
 
-El bloque \lstinline|perform| secuencia cómputos con efectos (por ejemplo, valores \lstinline|qio|) y se expande a la combinación monádica habitual de las funciones \lstinline|flatMap| (encadenar un cómputo con efectos y ligar su resultado) y \lstinline|pure| (producir un cómputo sin efectos a partir de un valor).
+Dentro del cuerpo se admiten tres formas de enunciado. Una expresión simple \lstinline|f x| se evalúa y su resultado se descarta, lo que resulta útil para operaciones de solo efecto como \lstinline|uncompute|. Una ligadura ordinaria \lstinline|p = e| liga el valor de \lstinline|e| al patrón \lstinline|p|. Una ligadura monádica \lstinline|p <- e| extrae el valor del interior del envoltorio lineal o monádico producido por \lstinline|e| y lo liga a \lstinline|p|. El bloque termina con \lstinline|return expr| para producir un valor; si se omite el \lstinline|return|, el bloque devuelve la tupla vacía \lstinline|()|.
 
-El bloque \lstinline|linear|, por su parte, merece una explicación detallada, pues persigue un objetivo distinto, a saber, evitar la verbosidad del código que manipula variables lineales. Como una variable lineal se consume al usarse, encadenar varias operaciones sobre un mismo recurso de forma explícita obliga a re-enlazarlo tras cada paso, lo que resulta tedioso y propenso a errores. El bloque \lstinline|linear| automatiza ese re-enlazado, pues el compilador lo expande en una cadena anidada de expresiones \lstinline|let|, re-ligando automáticamente las variables lineales consumidas a sus mismos nombres.
+El bloque \lstinline|linear { ... }| está orientado a evitar el renombramiento sistemático de variables lineales al encadenar operaciones. Dado que una variable lineal se consume en cuanto se usa, escribir varias transformaciones sobre un mismo recurso sin este bloque obliga a introducir un nombre fresco en cada paso. La versión explícita de tres puertas aplicadas en secuencia sería \lstinline|let q1 = H q in let q2 = X q1 in Z q2|, donde \lstinline|q1| y \lstinline|q2| no aportan significado semántico alguno. El bloque \lstinline|linear| resuelve esto mediante la ligadura \lstinline|q <- H q|: el compilador genera automáticamente los nombres intermedios y expande el bloque en la cadena de \lstinline|let| equivalente, de modo que el programador trabaja siempre con el mismo nombre lógico. Las expresiones simples dentro del bloque, como \lstinline|uncompute cube|, permiten liberar recursos auxiliares sin necesidad de ligar su resultado, pues la función devuelve \lstinline|()|.
+
+El bloque \lstinline|perform { ... }| tiene un propósito distinto: secuenciar cómputos con efectos, de forma análoga a la notación \textit{do} de Haskell. Se emplea con valores de tipo \lstinline|qio| u otros tipos monádicos, y la ligadura \lstinline|p <- e| extrae el resultado del cómputo efectivo. El compilador lo expande en combinaciones de \lstinline|flatMap| (encadenar un cómputo con efectos y ligar su resultado) y \lstinline|pure| (elevar un valor puro a un cómputo sin efectos).
 
 \section{Operaciones cuánticas y composición de circuitos}
 
