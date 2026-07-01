@@ -1,7 +1,28 @@
 \chapter{Arquitectura del compilador}
 \label{ch:arquitectura}
 
-El presente capítulo describe la arquitectura interna del compilador de Qalc, en concreto la organización del código en crates, la abstracción compartida que conecta las fases del pipeline y el diseño de cada etapa de transformación. Para cada fase se describe qué representación recibe como entrada, qué transformación aplica y qué representación produce como salida, justificando las decisiones de diseño más relevantes.
+El presente capítulo describe la arquitectura interna del compilador de Qalc, en concreto las herramientas y dependencias externas sobre las que se apoya el proyecto, la organización del código en crates, la abstracción compartida que conecta las fases del pipeline y el diseño de cada etapa de transformación. Para cada fase se describe qué representación recibe como entrada, qué transformación aplica y qué representación produce como salida, justificando las decisiones de diseño más relevantes.
+
+\section{Stack tecnológico}
+\label{sec:stack}
+
+El compilador está escrito íntegramente en Rust~\cite{matsakis_rust_2014}, un lenguaje de sistemas con garantías de seguridad de memoria en tiempo de compilación basadas en el sistema de propiedad (\textit{ownership}) y préstamo (\textit{borrowing}). Esta elección tiene afinidad directa con el diseño del lenguaje Qalc, cuya disciplina lineal exige que cada recurso se consuma exactamente una vez, una restricción análoga a la que el sistema de tipos de Rust impone sobre los valores no \lstinline|Copy|.
+
+La gestión del proyecto se delega a Cargo, la herramienta oficial de construcción y gestión de dependencias de Rust. El repositorio se organiza como un \textit{workspace} de Cargo: un único fichero \lstinline|Cargo.toml| en la raíz declara un conjunto de \textit{crates} miembro situados bajo el directorio \lstinline|crates/|. Un crate es la unidad básica de compilación en Rust; puede ser una biblioteca (\textit{lib}) o un ejecutable (\textit{bin}), y cada uno declara sus propias dependencias. Dentro del workspace, los crates del proyecto pueden depender unos de otros mediante rutas locales, lo que permite estructurar el compilador en capas sin sacrificar la verificación de tipos entre ellas.
+
+Las dependencias externas del proyecto son las siguientes.
+
+\begin{itemize}
+  \item \texttt{pest} y \texttt{pest\_derive.} Generador de analizadores sintácticos basado en gramáticas PEG~\cite{pest_parser}. A partir de un fichero de gramática \lstinline|.pest|, la macro de procedimiento \lstinline{pest_derive} genera en tiempo de compilación el código Rust del analizador, evitando la escritura manual de código de análisis repetitivo.
+
+  \item \texttt{ariadne.} Biblioteca para renderizar mensajes de diagnóstico del compilador~\cite{ariadne}. Toma un intervalo de bytes (\lstinline|Span|) dentro del texto fuente y produce un mensaje de error con el fragmento de código relevante subrayado y coloreado en terminal, análogo a los mensajes del propio compilador de Rust.
+
+  \item \texttt{lazy\_static.} Macro que permite declarar variables estáticas inicializadas de forma perezosa la primera vez que se accede a ellas. Se emplea para tablas que deben construirse una sola vez en tiempo de ejecución, como las tablas de potencia de enlace de los operadores en el analizador de Pratt.
+
+  \item \texttt{derive\_more.} Conjunto de macros procedurales que amplían el mecanismo estándar \lstinline|#[derive(...)]| de Rust con rasgos adicionales como \lstinline|Debug| con formato personalizado, reduciendo el código repetitivo en las definiciones de tipos del compilador.
+
+  \item \texttt{serde\_json.} Biblioteca de serialización y deserialización de JSON. Se usa en \lstinline|qalc-cli| para volcar representaciones intermedias del AST en formato legible durante el desarrollo y la depuración.
+\end{itemize}
 
 \section{Visión general del pipeline}
 
@@ -151,7 +172,7 @@ La fase de verificación de recursividad recorre el \lstinline|TypedAST| comprob
 
 El diseño de la fase consiste en construir el grafo de llamadas del programa a partir del \lstinline|TypedAST|, donde cada declaración de función es un nodo y existe una arista dirigida de $f$ a $g$ si el cuerpo de $f$ contiene alguna referencia al nombre $g$. Un ciclo en este grafo indica recursividad. El algoritmo empleado para detectar ciclos es una búsqueda en profundidad (DFS, del inglés \textit{Depth-First Search}) con marcado de nodos en tres estados (no visitado, en pila, completado), una variante clásica del algoritmo de Tarjan para componentes fuertemente conexas~\cite{aho_compiladores_2006}. Cuando se detecta un nodo en pila al explorar sus vecinos, se tiene un ciclo; el verificador recupera el span del identificador que cierra el ciclo y emite un error de compilación con el camino completo de llamadas para ayudar al programador a localizar la recursividad.
 
-Esta fase actúa como una validación pura, es decir, no modifica el AST ni produce una representación nueva. Su única salida observable es la aprobación o el rechazo del programa con el diagnóstico correspondiente. Al situarse después de la inferencia de tipos, el grafo de llamadas ya tiene información de tipos resuelta, lo que permitirá en el futuro extender la verificación para detectar también ciclos de valor mutuamente dependientes en el sentido de la evaluación vaga.
+Esta fase actúa como una validación pura, es decir, no modifica el AST ni produce una representación nueva. Su única salida observable es la aprobación o el rechazo del programa con el diagnóstico correspondiente. Al situarse después de la inferencia de tipos, el grafo de llamadas ya tiene información de tipos resuelta, lo que permitirá en el futuro extender la verificación para detectar también ciclos de valor mutuamente dependientes en el sentido de la evaluación perezosa.
 
 \section{Aplanador perezoso}
 \label{sec:inliner}
@@ -160,9 +181,9 @@ El aplanador perezoso transforma el \lstinline|TypedAST| en un \lstinline|FlatAS
 
 El mecanismo es el de una evaluación perezosa simbólica. El aplanador recorre el AST como si fuera un intérprete, pero en lugar de producir valores concretos, produce nodos del \lstinline|FlatAST|. Las expresiones cuyo valor puede determinarse completamente en tiempo de compilación (literales, aplicaciones de funciones conocidas sobre argumentos conocidos) se reducen a su forma normal. Las expresiones que dependen de parámetros cuánticos de entrada, cuyo valor solo existe en tiempo de ejecución cuántica, se envuelven en thunks, es decir, nodos suspendidos del \lstinline|FlatAST| que representan un cómputo diferido y que el codegen traducirá directamente a secuencias de puertas.
 
-La estrategia vaga es necesaria porque el lenguaje usa combinadores de orden superior como \lstinline|map| para expresar la aplicación repetida de una operación a un slice de cúbits. El aplanador despliega estos combinadores en tiempo de compilación conociendo la longitud del slice (que es estática, ya que el tamaño de los registros cuánticos es fijo), produciendo una secuencia plana de aplicaciones de puerta sin ninguna abstracción pendiente.
+La estrategia perezosa es necesaria porque el lenguaje usa combinadores de orden superior como \lstinline|map| para expresar la aplicación repetida de una operación a un slice de cúbits. El aplanador despliega estos combinadores en tiempo de compilación conociendo la longitud del slice (que es estática, ya que el tamaño de los registros cuánticos es fijo), produciendo una secuencia plana de aplicaciones de puerta sin ninguna abstracción pendiente.
 
-El \lstinline|FlatAST| resultante contiene únicamente: referencias a built-ins con sus argumentos concretos, composiciones secuenciales de operaciones y condicionales clásicos basados en resultados de medición. No existe ningún nodo lambda, ningún bloque \lstinline|let| ni ninguna referencia a funciones definidas por el usuario: todas han sido inlinadas y sus cuerpos sustituidos en el punto de llamada.
+El \lstinline|FlatAST| resultante contiene únicamente: referencias a built-ins con sus argumentos concretos, composiciones secuenciales de operaciones y condicionales clásicos basados en resultados de medición. No existe ningún nodo lambda, ningún bloque \lstinline|let| ni ninguna referencia a funciones definidas por el usuario: todas han sido aplanadas y sus cuerpos sustituidos en el punto de llamada.
 
 \section{Generación de código}
 \label{sec:codegen}
