@@ -1,7 +1,7 @@
 \chapter{Arquitectura del compilador}
 \label{ch:arquitectura}
 
-El presente capítulo describe la arquitectura interna del compilador de Qalc, en concreto las herramientas y dependencias externas sobre las que se apoya el proyecto, la organización del código en crates, la abstracción compartida que conecta las fases del pipeline y el diseño de cada etapa de transformación. Para cada fase se describe qué representación recibe como entrada, qué transformación aplica y qué representación produce como salida, justificando las decisiones de diseño más relevantes.
+El presente capítulo describe la arquitectura interna del compilador de Qalc, en concreto las herramientas y dependencias externas sobre las que se apoya el proyecto, la organización del código en crates, la abstracción compartida que conecta las fases del pipeline y el diseño de las fases de análisis léxico, sintáctico y de recursividad. Para cada una de estas fases se describe qué representación recibe como entrada, qué transformación aplica y qué representación produce como salida, justificando las decisiones de diseño más relevantes.
 
 \section{Stack tecnológico}
 \label{sec:stack}
@@ -47,6 +47,8 @@ Verificación de recursividad & \lstinline|qalc-analysis| & \lstinline|TypedAST|
 \hline
 Aplanador perezoso & \lstinline|qalc-analysis| & \lstinline|TypedAST| $\to$ \lstinline|FlatAST| \\
 \hline
+Comprobación de consumo lineal & \lstinline|qalc-analysis| & \lstinline|FlatAST| $\to$ \lstinline|FlatAST| \\
+\hline
 Generación de código & \lstinline|qalc-codegen| & \lstinline|FlatAST| $\to$ OpenQASM~3 \\
 \hline
 \end{tabularx}
@@ -75,6 +77,7 @@ El rasgo establece un contrato uniforme, en el que cada fase recibe su represent
 Cada diagnóstico lleva asociado un \lstinline|Span| (un par de posiciones en el texto fuente) que la biblioteca \texttt{ariadne}~\cite{ariadne} utiliza para renderizar mensajes de error con contexto de código fuente subrayado.
 
 \section{Organización en crates}
+\label{sec:organizacion-crates}
 
 El compilador se estructura como un workspace de Cargo con crates de dependencia estrictamente ordenada de abajo hacia arriba.
 
@@ -174,22 +177,4 @@ El diseño de la fase consiste en construir el grafo de llamadas del programa a 
 
 Esta fase actúa como una validación pura, es decir, no modifica el AST ni produce una representación nueva. Su única salida observable es la aprobación o el rechazo del programa con el diagnóstico correspondiente. Al situarse después de la inferencia de tipos, el grafo de llamadas ya tiene información de tipos resuelta, lo que permitirá en el futuro extender la verificación para detectar también ciclos de valor mutuamente dependientes en el sentido de la evaluación perezosa.
 
-\section{Aplanador perezoso}
-\label{sec:inliner}
-
-El aplanador perezoso transforma el \lstinline|TypedAST| en un \lstinline|FlatAST|, una representación aplanada orientada directamente a la generación de código. La motivación es que el código OpenQASM~3 que se emitirá en la fase siguiente no tiene noción de abstracción funcional, pues es una secuencia plana de instrucciones de puerta sobre registros concretos. El aplanador cierra esa brecha materializando, en tiempo de compilación, todas las aplicaciones de función.
-
-El mecanismo es el de una evaluación perezosa simbólica. El aplanador recorre el AST como si fuera un intérprete, pero en lugar de producir valores concretos, produce nodos del \lstinline|FlatAST|. Las expresiones cuyo valor puede determinarse completamente en tiempo de compilación (literales, aplicaciones de funciones conocidas sobre argumentos conocidos) se reducen a su forma normal. Las expresiones que dependen de parámetros cuánticos de entrada, cuyo valor solo existe en tiempo de ejecución cuántica, se envuelven en thunks, es decir, nodos suspendidos del \lstinline|FlatAST| que representan un cómputo diferido y que el codegen traducirá directamente a secuencias de puertas.
-
-La estrategia perezosa es necesaria porque el lenguaje usa combinadores de orden superior como \lstinline|map| para expresar la aplicación repetida de una operación a un slice de cúbits. El aplanador despliega estos combinadores en tiempo de compilación conociendo la longitud del slice (que es estática, ya que el tamaño de los registros cuánticos es fijo), produciendo una secuencia plana de aplicaciones de puerta sin ninguna abstracción pendiente.
-
-El \lstinline|FlatAST| resultante contiene únicamente: referencias a built-ins con sus argumentos concretos, composiciones secuenciales de operaciones y condicionales clásicos basados en resultados de medición. No existe ningún nodo lambda, ningún bloque \lstinline|let| ni ninguna referencia a funciones definidas por el usuario: todas han sido aplanadas y sus cuerpos sustituidos en el punto de llamada.
-
-\section{Generación de código}
-\label{sec:codegen}
-
-La fase de generación de código toma el \lstinline|FlatAST| producido por el aplanador y emite texto OpenQASM~3 válido. OpenQASM~3 es el estándar abierto de descripción de circuitos cuánticos, adoptado por IBM Quantum, IonQ y Rigetti, entre otros proveedores~\cite{openqasm3_2022}. A diferencia de versiones anteriores, OpenQASM~3 incorpora construcciones de control de flujo clásico (condicionales y bucles acotados basados en resultados de medición) que se corresponden directamente con los nodos del \lstinline|FlatAST|.
-
-El diseño del codegen se estructura en dos partes. El preámbulo del fichero de salida declara la versión de OpenQASM~3, los registros cuánticos y clásicos necesarios, y las definiciones de las puertas derivadas de los built-ins que no están incluidas en el conjunto estándar de OpenQASM~3. Cada \lstinline|BuiltinDef| del crate \lstinline|qalc-builtins| tiene asociada una plantilla de emisión: para las operaciones aritméticas clásicas se emiten expresiones de OpenQASM~3; para las puertas cuánticas básicas (Hadamard, Pauli-X, CNOT, etc.) se emiten las instrucciones de puerta estándar del lenguaje.
-
-El cuerpo del circuito se genera recorriendo el \lstinline|FlatAST| en orden topológico y emitiendo para cada nodo la instrucción OpenQASM~3 correspondiente: aplicaciones de puerta sobre cúbits concretos, mediciones con asignación a bits clásicos, y bloques \lstinline|if| condicionados a resultados de medición para el control de flujo clásico-cuántico. La correspondencia entre nodos del \lstinline|FlatAST| e instrucciones OpenQASM~3 es, por diseño, casi uno a uno; el trabajo de aplanar y especializar el programa ya ha sido realizado por el aplanador, de modo que el codegen puede limitarse a traducir sin necesidad de realizar transformaciones adicionales.
+Las tres fases finales del pipeline, el aplanador perezoso, la comprobación de consumo lineal y la generación de código, se describen en detalle en el \autoref{ch:backend}.

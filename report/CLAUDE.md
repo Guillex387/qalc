@@ -50,5 +50,6 @@ Todo entorno `lstlisting` debe incluir la opción `caption=` con una descripció
 La memoria se redacta algo adelantada respecto al estado real del código, ya que la implementación se completa durante la misma semana en que se escribe cada capítulo. Al describir las siguientes fases del compilador, redactar en presente y como si estuvieran terminadas al nivel indicado, sin usar frases como "en desarrollo", "trabajo en curso" o "parcialmente soportado" salvo que se indique explícitamente lo contrario en el futuro:
 
 - Sobrecarga de funciones discriminada por tipo (`\autoref{sec:overloading}` en `06-capítulo6.tex`), presentar como implementada por completo.
-- Aplanador perezoso (`\autoref{sec:inliner}` en `05-capítulo5.tex`), presentar como una implementación experimental o semifuncional, sin necesidad de garantizar cobertura completa de todos los casos.
-- Generación de código (`\autoref{sec:codegen}` en `05-capítulo5.tex`), presentar como una base suficiente para realizar demostraciones, no como un generador de código completo o listo para producción.
+- Aplanador perezoso (`\autoref{sec:inliner}` en `07-capítulo-backend.tex`), presentar como una implementación experimental o semifuncional, sin necesidad de garantizar cobertura completa de todos los casos.
+- Comprobación de consumo único de recursos lineales (`\autoref{sec:linear-checker}` en `07-capítulo-backend.tex`), presentar también como una implementación experimental o semifuncional, igual que el aplanador perezoso.
+- Generación de código (`\autoref{sec:codegen}` en `07-capítulo-backend.tex`), presentar como una base suficiente para realizar demostraciones, no como un generador de código completo o listo para producción.
