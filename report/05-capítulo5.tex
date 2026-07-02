@@ -13,7 +13,7 @@ La gestión del proyecto se delega a Cargo, la herramienta oficial de construcci
 Las dependencias externas del proyecto son las siguientes.
 
 \begin{itemize}
-  \item \texttt{pest} y \texttt{pest\_derive.} Generador de analizadores sintácticos basado en gramáticas PEG~\cite{pest_parser}. A partir de un fichero de gramática \lstinline|.pest|, la macro de procedimiento \lstinline{pest_derive} genera en tiempo de compilación el código Rust del analizador, evitando la escritura manual de código de análisis repetitivo.
+  \item \texttt{pest} y \texttt{pest\_derive.} Generador de analizadores sintácticos basado en gramáticas de expresión de análisis (PEG, del inglés \textit{Parsing Expression Grammar})~\cite{pest_parser}. A partir de un fichero de gramática \lstinline|.pest|, la macro de procedimiento \lstinline{pest_derive} genera en tiempo de compilación el código Rust del analizador, evitando la escritura manual de código de análisis repetitivo.
 
   \item \texttt{ariadne.} Biblioteca para renderizar mensajes de diagnóstico del compilador~\cite{ariadne}. Toma un intervalo de bytes (\lstinline|Span|) dentro del texto fuente y produce un mensaje de error con el fragmento de código relevante subrayado y coloreado en terminal, análogo a los mensajes del propio compilador de Rust.
 
@@ -90,7 +90,7 @@ El compilador se estructura como un workspace de Cargo con crates de dependencia
 
   \item \texttt{qalc-parser.} Implementa el analizador léxico-sintáctico. Depende únicamente de \lstinline|qalc-utils| y \lstinline|qalc-ast|.
 
-  \item \texttt{qalc-analysis.} Contiene el normalizador y el inferidor de tipos HM. Depende de los cuatro crates anteriores.
+  \item \texttt{qalc-analysis.} Contiene el normalizador y el inferidor de tipos basado en el algoritmo de Hindley-Milner. Depende de los cuatro crates anteriores.
 
   \item \texttt{qalc-cli.} Es el ejecutable. Importa todas las fases, las encadena y presenta los resultados.
 \end{itemize}
@@ -122,9 +122,9 @@ El analizador sintáctico transforma el texto fuente en un \lstinline|ConcreteAS
 
 \subsection{Gramática PEG con Pest}
 
-La gramática del lenguaje se define en un único fichero \lstinline|grammar.pest| usando la biblioteca Pest~\cite{pest_parser}, que implementa gramáticas de expresión de análisis (PEG, del inglés \textit{Parsing Expression Grammar})~\cite{ford_peg_2004}. Las PEG son deterministas por construcción: no hay ambigüedad, cada alternativa se intenta en orden y la primera que encaja gana. Esto elimina la ambigüedad habitual de las gramáticas libres de contexto y simplifica el mantenimiento.
+La gramática del lenguaje se define en un único fichero \lstinline|grammar.pest| usando la biblioteca Pest~\cite{pest_parser}, que implementa el formalismo PEG~\cite{ford_peg_2004}. Las PEG son deterministas por construcción: no hay ambigüedad, cada alternativa se intenta en orden y la primera que encaja gana. Esto elimina la ambigüedad habitual de las gramáticas libres de contexto y simplifica el mantenimiento.
 
-El fichero \lstinline|grammar.pest| es la fuente de verdad para la sintaxis del lenguaje. Cualquier nueva construcción sintáctica debe reflejarse primero en la gramática y después en el analizador; la dirección inversa no es válida. La transcripción completa de esta gramática a notación EBNF se recoge en el apéndice~\ref{ch:gramatica-ebnf}.
+El fichero \lstinline|grammar.pest| es la fuente de verdad para la sintaxis del lenguaje. Cualquier nueva construcción sintáctica debe reflejarse primero en la gramática y después en el analizador; la dirección inversa no es válida. La transcripción completa de esta gramática a notación EBNF (del inglés \textit{Extended Backus-Naur Form}) se recoge en el apéndice~\ref{ch:gramatica-ebnf}.
 
 \subsection{Análisis de Pratt para operadores}
 
