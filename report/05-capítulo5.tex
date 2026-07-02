@@ -120,15 +120,11 @@ Gracias a este patrón, los tipos de nodo se definen una sola vez y se reutiliza
 
 El analizador sintáctico transforma el texto fuente en un \lstinline|ConcreteAST|. Se articula en dos capas.
 
-\subsection{Gramática PEG con Pest}
+\begin{itemize}
+  \item \textit{Gramática PEG con Pest.} La gramática del lenguaje se define en un único fichero \lstinline|grammar.pest| usando la biblioteca Pest~\cite{pest_parser}, que implementa el formalismo PEG~\cite{ford_peg_2004}. Las PEG son deterministas por construcción, ya que no hay ambigüedad, cada alternativa se intenta en orden y la primera que encaja gana, lo que elimina la ambigüedad habitual de las gramáticas libres de contexto y simplifica el mantenimiento. El fichero \lstinline|grammar.pest| es la fuente de verdad para la sintaxis del lenguaje; cualquier nueva construcción sintáctica debe reflejarse primero en la gramática y después en el analizador, y la dirección inversa no es válida. La transcripción completa de esta gramática a notación EBNF (del inglés \textit{Extended Backus-Naur Form}) se recoge en el apéndice~\ref{ch:gramatica-ebnf}.
 
-La gramática del lenguaje se define en un único fichero \lstinline|grammar.pest| usando la biblioteca Pest~\cite{pest_parser}, que implementa el formalismo PEG~\cite{ford_peg_2004}. Las PEG son deterministas por construcción: no hay ambigüedad, cada alternativa se intenta en orden y la primera que encaja gana. Esto elimina la ambigüedad habitual de las gramáticas libres de contexto y simplifica el mantenimiento.
-
-El fichero \lstinline|grammar.pest| es la fuente de verdad para la sintaxis del lenguaje. Cualquier nueva construcción sintáctica debe reflejarse primero en la gramática y después en el analizador; la dirección inversa no es válida. La transcripción completa de esta gramática a notación EBNF (del inglés \textit{Extended Backus-Naur Form}) se recoge en el apéndice~\ref{ch:gramatica-ebnf}.
-
-\subsection{Análisis de Pratt para operadores}
-
-Las expresiones aritméticas, lógicas y de comparación se analizan con un analizador de Pratt~\cite{pratt_1973}, también llamado \textit{top-down operator precedence}. Este algoritmo asocia a cada operador un poder de enlace (\textit{binding power}) izquierdo y derecho, y construye el árbol de expresiones respetando la precedencia y la asociatividad sin necesidad de reglas gramaticales adicionales. El resultado es una representación de expresión binaria encadenada que el normalizador transforma en aplicaciones currificadas.
+  \item \textit{Análisis de Pratt para operadores.} Las expresiones aritméticas, lógicas y de comparación se analizan con un analizador de Pratt~\cite{pratt_1973}, también llamado \textit{top-down operator precedence}. Este algoritmo asocia a cada operador un poder de enlace (\textit{binding power}) izquierdo y derecho, y construye el árbol de expresiones respetando la precedencia y la asociatividad sin necesidad de reglas gramaticales adicionales. El resultado es una representación de expresión binaria encadenada que el normalizador transforma en aplicaciones currificadas.
+\end{itemize}
 
 \section{Normalización}
 \label{sec:normalizador}
