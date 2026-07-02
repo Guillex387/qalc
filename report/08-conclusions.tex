@@ -11,16 +11,18 @@ The second objective, generating code towards a standard, interoperable format, 
 
 The combined result of both objectives is a functional prototype in which the compiler frontend, from lexical analysis through type inference and recursion verification, is fully implemented. The backend phases (the lazy flattener, the linear consumption check and the code generation, described in \autoref{ch:backend}) remain at an experimental stage, sufficient to demonstrate the complete operation of the pipeline over programs that respect the linear discipline described in \autoref{sec:disciplina_lineal_uso}, but they do not yet cover every possible combination of the language.
 
-As anticipated in \autoref{sec:alcance}, this work does not address the automatic uncomputation of recursive quantum data structures. This is a deliberate limitation rather than an unmet objective, since that problem requires a static analysis of the topological graph of the quantum state that exceeds the scope of a prototype of this kind and constitutes, as already argued, a research line of its own.
+As anticipated in \autoref{sec:alcance}, this work does not address automatic uncomputation. This is a deliberate limitation rather than an unmet objective, since that problem requires a static analysis of the topological graph of the quantum state that exceeds the scope of a prototype of this kind and constitutes, as already argued, a research line of its own.
 
 \section{Future work}
 
 The modular design of the compiler, in which each phase communicates with the next through the \lstinline|CompilerStep| trait described in \autoref{ch:arquitectura}, makes it possible to identify future lines of work that can be tackled incrementally without redesigning the existing compiler.
 
 \begin{itemize}
-  \item \textit{Automatic uncomputation of recursive structures.} Extend the semantic analysis to automatically synthesize the uncomputation operator for recursive quantum data structures, as discussed in \autoref{sec:alcance}, combining static scope analysis with a richer representation of the entanglement graph.
+  \item \textit{Automatic uncomputation.} Extend the semantic analysis to automatically synthesize the uncomputation operator for recursive quantum data structures, as discussed in \autoref{sec:alcance}, combining static scope analysis with a richer representation of the entanglement graph.
 
   \item \textit{Maturing the backend phases.} Complete the coverage of the lazy flattener over nested combinations of higher-order combinators and monadic blocks, and extend the test coverage of the linear consumption check to the nested-thunk cases described in \autoref{sec:linear-checker}, until it reaches the same level of maturity as the compiler frontend.
+
+  \item \textit{Expanding the standard library of types and operations.} The delivered prototype offers an illustrative catalog of built-ins (the basic quantum gates, a small set of arithmetic operations and the functions used in this document's examples), sufficient to demonstrate the language design but not for productive use. Completing this standard library relies on the same \lstinline|BuiltinDef| and \lstinline|Transpilable| mechanism already described in \autoref{ch:backend}, without requiring structural changes to the compiler.
 
   \item \textit{Additional backends.} Exploit the separation between the \lstinline|Transpilable| trait and its concrete implementation for OpenQASM~3, described in \autoref{sec:codegen}, to add support for further output formats, such as Quil, validating in practice the extensibility that motivated that design.
 

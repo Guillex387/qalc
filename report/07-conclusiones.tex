@@ -11,18 +11,20 @@ El segundo objetivo, generar código hacia un formato estándar e interoperable,
 
 El resultado conjunto de ambos objetivos es un prototipo funcional en el que el frontend del compilador, desde el análisis léxico hasta la inferencia de tipos y la verificación de recursividad, está completamente implementado. Las fases del backend (el aplanador perezoso, la comprobación de consumo lineal y la generación de código, descritas en el \autoref{ch:backend}) se encuentran en un estado experimental, suficiente para demostrar el funcionamiento completo del pipeline sobre programas que respetan la disciplina lineal descrita en el \autoref{sec:disciplina_lineal_uso}, pero todavía no cubren la totalidad de las combinaciones posibles del lenguaje.
 
-Tal y como se anticipó en el \autoref{sec:alcance}, este trabajo no aborda la descomputación automática de estructuras de datos cuánticos recursivos. Se trata de una limitación deliberada y no de un objetivo incumplido, ya que ese problema exige un análisis estático del grafo topológico del estado cuántico que excede el alcance de un prototipo de estas características y que constituye, como ya se argumentó, una línea de investigación propia.
+Tal y como se anticipó en el \autoref{sec:alcance}, este trabajo no aborda la descomputación automática. Se trata de una limitación deliberada y no de un objetivo incumplido, ya que ese problema exige un análisis estático del grafo topológico del estado cuántico que excede el alcance de un prototipo de estas características y que constituye, como ya se argumentó, una línea de investigación propia.
 
 \section{Líneas futuras}
 
 El diseño modular del compilador, en el que cada fase se comunica con la siguiente mediante el rasgo \lstinline|CompilerStep| descrito en el \autoref{ch:arquitectura}, permite identificar líneas de trabajo futuro que se pueden abordar de forma incremental sin rediseñar el compilador existente.
 
 \begin{itemize}
-  \item \textit{Descomputación automática de estructuras recursivas.} Extender el análisis semántico para sintetizar automáticamente el operador de descomputación de estructuras de datos cuánticos recursivos, como se discutió en el \autoref{sec:alcance}, combinando análisis de alcance estático con una representación enriquecida del grafo de entrelazamiento.
+  \item \textit{Descomputación automática.} Extender el análisis semántico para sintetizar automáticamente el operador de descomputación de estructuras de datos cuánticos recursivos, como se discutió en el \autoref{sec:alcance}, combinando análisis de alcance estático con una representación enriquecida del grafo de entrelazamiento.
 
   \item \textit{Maduración de las fases del backend.} Completar la cobertura del aplanador perezoso sobre combinaciones anidadas de combinadores de orden superior y bloques monádicos, y extender las pruebas de la comprobación de consumo lineal a los casos de thunks anidados descritos en el \autoref{sec:linear-checker}, hasta alcanzar el mismo nivel de madurez que el frontend del compilador.
 
-  \item \textit{Backends adicionales.} Aprovechar la separación entre el rasgo \lstinline|Transpilable| y su implementación concreta para OpenQASM~3, descrita en el \autoref{sec:codegen}, para añadir soporte a formatos de salida adicionales, como Quil, validando en la práctica la extensibilidad que motivó ese diseño.
+  \item \textit{Ampliación de la librería estándar de tipos y operaciones.} El prototipo entregado ofrece un catálogo ilustrativo de built-ins (las puertas cuánticas básicas, un pequeño conjunto de operaciones aritméticas y las funciones usadas en los ejemplos de este documento), suficiente para demostrar el diseño del lenguaje pero no para un uso productivo. Completar esta librería estándar se apoya en el mismo mecanismo de \lstinline|BuiltinDef| y \lstinline|Transpilable| ya descrito en el \autoref{ch:backend}, sin requerir cambios estructurales en el compilador.
+
+  \item \textit{Backends adicionales.} Aprovechar la separación entre el rasgo \lstinline|Transpilable| y su implementación concreta para OpenQASM~3, descrita en el \autoref{sec:codegen}, para añadir soporte a formatos de salida adicionales, como Quil~\cite{quil_2016}, validando en la práctica la extensibilidad que motivó ese diseño.
 
   \item \textit{Sobrecarga de funciones más expresiva.} Generalizar la sobrecarga discriminada por el tipo del primer parámetro, descrita en el \autoref{sec:overloading}, hacia mecanismos de resolución que consideren varios parámetros o que se aproximen a las clases de tipos, siempre que la inferencia de tipos siga siendo decidible.
 
