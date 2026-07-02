@@ -1,4 +1,30 @@
 \chapter{Conclusiones y líneas futuras}
 \label{ch:conclusiones}
 
-Este capítulo es obligatorio. Toda memoria de trabajo de fin de grado debe incluir unas conclusiones y unas líneas de trabajo futuro.
+\section{Conclusiones}
+
+Este trabajo ha abordado el diseño de un lenguaje de programación cuántica de alto nivel y la implementación de su compilador, partiendo de una observación central expuesta en el \autoref{sec:contexto}, que ningún lenguaje existente combina un sistema de tipos lineales estático con una salida hacia un formato estándar e interoperable con hardware de múltiples fabricantes. Los dos objetivos de diseño que se derivaron de esa observación han guiado el desarrollo completo de Qalc.
+
+El primer objetivo, dotar al lenguaje de un sistema de tipos lineal sin la penalización de rendimiento que introducen las soluciones embebidas en un lenguaje anfitrión como Guppy, se ha alcanzado combinando la inferencia de tipos de Hindley-Milner con la disciplina de consumo único descrita en el \autoref{ch:analisis-semantico}. Al implementarse en un compilador de propósito específico y no como una biblioteca embebida en un lenguaje de tipado dinámico, Qalc verifica en tiempo de compilación tanto la clonación accidental como la fuga de cúbits sin liberar, sin necesidad de anotaciones de tipo explícitas en la mayoría de las expresiones del programa. La sobrecarga de funciones discriminada por tipo, descrita en el \autoref{sec:overloading}, complementa este sistema de tipos permitiendo expresar operaciones polimórficas sencillas sin recurrir a clases de tipos.
+
+El segundo objetivo, generar código hacia un formato estándar e interoperable, se ha alcanzado con la fase de generación de código descrita en el \autoref{ch:backend}, que traduce el programa aplanado a OpenQASM~3. El diseño del mecanismo de emisión, basado en el rasgo \lstinline|Transpilable| parametrizado por el tipo de backend, se planteó explícitamente para que añadir un formato de salida adicional no exigiera modificar el resto del compilador, en línea con el objetivo de modularidad y extensibilidad que atraviesa toda la arquitectura descrita en el \autoref{ch:arquitectura}.
+
+El resultado conjunto de ambos objetivos es un prototipo funcional en el que el frontend del compilador, desde el análisis léxico hasta la inferencia de tipos y la verificación de recursividad, está completamente implementado. Las fases del backend (el aplanador perezoso, la comprobación de consumo lineal y la generación de código, descritas en el \autoref{ch:backend}) se encuentran en un estado experimental, suficiente para demostrar el funcionamiento completo del pipeline sobre programas que respetan la disciplina lineal descrita en el \autoref{sec:disciplina_lineal_uso}, pero todavía no cubren la totalidad de las combinaciones posibles del lenguaje.
+
+Tal y como se anticipó en el \autoref{sec:alcance}, este trabajo no aborda la descomputación automática de estructuras de datos cuánticos recursivos. Se trata de una limitación deliberada y no de un objetivo incumplido, ya que ese problema exige un análisis estático del grafo topológico del estado cuántico que excede el alcance de un prototipo de estas características y que constituye, como ya se argumentó, una línea de investigación propia.
+
+\section{Líneas futuras}
+
+El diseño modular del compilador, en el que cada fase se comunica con la siguiente mediante el rasgo \lstinline|CompilerStep| descrito en el \autoref{ch:arquitectura}, permite identificar líneas de trabajo futuro que se pueden abordar de forma incremental sin rediseñar el compilador existente.
+
+\begin{itemize}
+  \item \textit{Descomputación automática de estructuras recursivas.} Extender el análisis semántico para sintetizar automáticamente el operador de descomputación de estructuras de datos cuánticos recursivos, como se discutió en el \autoref{sec:alcance}, combinando análisis de alcance estático con una representación enriquecida del grafo de entrelazamiento.
+
+  \item \textit{Maduración de las fases del backend.} Completar la cobertura del aplanador perezoso sobre combinaciones anidadas de combinadores de orden superior y bloques monádicos, y extender las pruebas de la comprobación de consumo lineal a los casos de thunks anidados descritos en el \autoref{sec:linear-checker}, hasta alcanzar el mismo nivel de madurez que el frontend del compilador.
+
+  \item \textit{Backends adicionales.} Aprovechar la separación entre el rasgo \lstinline|Transpilable| y su implementación concreta para OpenQASM~3, descrita en el \autoref{sec:codegen}, para añadir soporte a formatos de salida adicionales, como Quil, validando en la práctica la extensibilidad que motivó ese diseño.
+
+  \item \textit{Sobrecarga de funciones más expresiva.} Generalizar la sobrecarga discriminada por el tipo del primer parámetro, descrita en el \autoref{sec:overloading}, hacia mecanismos de resolución que consideren varios parámetros o que se aproximen a las clases de tipos, siempre que la inferencia de tipos siga siendo decidible.
+
+  \item \textit{Evaluación empírica sobre hardware cuántico.} Ejecutar los circuitos generados por Qalc sobre simuladores y hardware físico real de distintos proveedores compatibles con OpenQASM~3, para medir la profundidad y la fidelidad de los circuitos resultantes frente a implementaciones equivalentes en Qiskit o Cirq.
+\end{itemize}
