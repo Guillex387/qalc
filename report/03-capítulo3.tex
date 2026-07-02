@@ -43,30 +43,86 @@ La reconciliación con la inmutabilidad funcional se obtiene mediante un cambio 
 
 Qalc es un lenguaje fuertemente tipado. Su sistema de tipos combina tipos clásicos convencionales, tipos cuánticos abstractos de alto nivel, tipos función y una noción de linealidad que atraviesa todo el sistema. Conviene anticipar que la gramática del lenguaje no privilegia sintácticamente ningún tipo cuántico concreto, pues nombres como \lstinline|qbool| o \lstinline|qi16| son, a efectos del analizador sintáctico, identificadores de tipo ordinarios definidos por la biblioteca del lenguaje. Lo que distingue a un tipo cuántico de uno clásico es su carácter lineal.
 
-\subsection{Tipos clásicos}
-
-Los tipos clásicos no están sujetos a la disciplina lineal, por lo que pueden descartarse y duplicarse libremente. El lenguaje contempla los siguientes:
+Los tipos clásicos no están sujetos a la disciplina lineal, por lo que pueden descartarse y duplicarse libremente, mientras que los tipos cuánticos y los tipos función y genéricos que los combinan sí heredan las restricciones propias de cada componente. El lenguaje contempla los siguientes tipos.
 
 \begin{itemize}
-  \item Enteros con anchura y signo explícitos. Los literales admiten los sufijos \lstinline|u8|, \lstinline|u16|, \lstinline|u32|, \lstinline|u64|, \lstinline|i8|, \lstinline|i16|, \lstinline|i32| e \lstinline|i64|, y pueden escribirse en base decimal, hexadecimal (\lstinline|0x...|) o binaria (\lstinline|0b...|). Un literal sin sufijo es un entero de anchura aún por determinar.
-  \item Números en coma flotante con sufijos \lstinline|f32| y \lstinline|f64|, en notación decimal o exponencial.
-  \item Tuplas, incluida la tupla vacía \lstinline|()|, escritas \lstinline|(a, b, c)|.
-  \item Slices, tanto enumerados \lstinline|[1, 2, 3]| como por rango \lstinline|[1..10]|, y su tipo correspondiente \lstinline|[T]|.
+  \item \textit{Enteros con anchura y signo explícitos.} Los literales admiten los sufijos \lstinline|u8|, \lstinline|u16|, \lstinline|u32|, \lstinline|u64|, \lstinline|i8|, \lstinline|i16|, \lstinline|i32| e \lstinline|i64|, y pueden escribirse en base decimal, hexadecimal (\lstinline|0x...|) o binaria (\lstinline|0b...|); un literal sin sufijo es un entero de anchura aún por determinar.
+
+\begin{lstlisting}[language={}, caption=Declaración de constantes enteras con distintos sufijos y bases]
+edad :: u8
+edad = 42u8
+
+altitud :: i32
+altitud = -15i32
+
+mascara :: u16
+mascara = 0xFFu16
+\end{lstlisting}
+
+  \item \textit{Números en coma flotante} con sufijos \lstinline|f32| y \lstinline|f64|, en notación decimal o exponencial.
+
+\begin{lstlisting}[language={}, caption=Declaración de una constante en coma flotante]
+pi :: f64
+pi = 3.14159f64
+\end{lstlisting}
+
+  \item \textit{Tuplas,} incluida la tupla vacía \lstinline|()|, escritas \lstinline|(a, b, c)|.
+
+\begin{lstlisting}[language={}, caption=Declaración de una tupla de dos componentes]
+punto :: (i32, i32)
+punto = (3, -4)
+\end{lstlisting}
+
+  \item \textit{Slices,} tanto enumerados \lstinline|[1, 2, 3]| como por rango \lstinline|[1..10]|, con su tipo correspondiente \lstinline|[T]|.
+
+\begin{lstlisting}[language={}, caption=Declaración de slices enumerado y por rango]
+primos :: [i32]
+primos = [2, 3, 5, 7]
+
+rango :: [i32]
+rango = [1..10]
+\end{lstlisting}
+
+  \item \textit{Booleanos clásicos.} El lenguaje no incorpora literales booleanos ni de cadena como categorías léxicas propias; los valores de verdad clásicos se modelan como constantes de un tipo \lstinline|bool| definido en la biblioteca, que surge de forma natural al usar un operador de comparación.
+
+\begin{lstlisting}[language={}, caption=El tipo bool como resultado de una comparación]
+esPositivo :: i32 -> bool
+esPositivo n = n > 0i32
+\end{lstlisting}
+
+  \item \textit{\lstinline|qbool|,} un cúbit lógico interpretado como valor booleano cuántico, lineal por definición, de modo que toda variable que lo habite queda sometida a la disciplina de consumo único detallada en la \autoref{sec:disciplina_lineal_uso}.
+
+\begin{lstlisting}[language={}, caption=Firma de una función sobre qbool]
+moneda :: qbool -> qbool
+\end{lstlisting}
+
+  \item \textit{Enteros cuánticos} con anchura y signo explícitos, como \lstinline|qi8| o \lstinline|qi16| (registros de 8 o 16 cúbits interpretados como enteros con signo), análogos cuánticos de los enteros clásicos y, al igual que \lstinline|qbool|, lineales por definición.
+
+\begin{lstlisting}[language={}, caption=Firma de una función sobre un entero cuántico]
+registro :: qi16 -> qi16
+\end{lstlisting}
+
+  \item \textit{\lstinline|qio<T>|,} un tipo genérico de entrada/salida cuántica que encapsula un cómputo con efectos sobre la QPU cuyo resultado es de tipo \lstinline|T|; los valores \lstinline|qio| se componen dentro de bloques \lstinline|perform|.
+
+\begin{lstlisting}[language={}, caption=Firma de una medición que produce un resultado clásico envuelto en qio]
+medir :: qbool -> qio<u8>
+\end{lstlisting}
+
+  \item \textit{\lstinline|qcirc|,} el circuito de cúbits sobre el que se representan internamente todos los tipos cuánticos anteriores, descrito con sus propios ejemplos en la \autoref{subsec:qcirc-nivel-bajo}.
+
+  \item \textit{Tipos función,} escritos con flecha, \lstinline|A -> B|, asociando a la derecha, lo que habilita la aplicación parcial y el estilo currificado. Toda función de Qalc lleva asociada una anotación de tipo obligatoria de la forma \lstinline|nombre :: tipo|, al estilo de Haskell.
+
+\begin{lstlisting}[language={}, caption=Firma y definición de una función de dos argumentos currificada]
+suma :: i32 -> i32 -> i32
+suma a b = a + b
+\end{lstlisting}
+
+  \item \textit{Tipos genéricos} (parametrizados), escritos con parámetros entre ángulos, que permiten definir contenedores y abstracciones polimórficas mediante la palabra reservada \lstinline|type|.
+
+\begin{lstlisting}[language={}, caption=Declaración de un alias de tipo genérico con type]
+type Pila<T> = [T]
+\end{lstlisting}
 \end{itemize}
-
-El lenguaje no incorpora literales booleanos ni de cadena como categorías léxicas propias; los valores de verdad clásicos se modelan como constantes de un tipo definido en la biblioteca.
-
-\subsection{Tipos cuánticos abstractos}
-
-Sobre la base anterior, la biblioteca del lenguaje define tipos cuánticos abstractos de alto nivel. Entre ellos están \lstinline|qbool| (un cúbit lógico interpretado como valor booleano cuántico) y los enteros cuánticos con anchura y signo explícitos, como \lstinline|qi8| o \lstinline|qi16| (registros de 8 o 16 cúbits interpretados como enteros con signo), análogos cuánticos de los enteros clásicos. Todos estos tipos comparten una misma representación interna, pues son, internamente, un \lstinline|qcirc| (el circuito de cúbits), y se diferencian únicamente por la interpretación de alto nivel que cada uno impone sobre ese circuito. Todos son lineales por definición, de modo que toda variable que los habite queda sometida a la disciplina de consumo único.
-
-El lenguaje proporciona además el tipo genérico \lstinline|qio<T>|, un tipo de entrada/salida cuántica que encapsula un cómputo con efectos sobre la QPU cuyo resultado es de tipo \lstinline|T|. Los valores \lstinline|qio| se componen dentro de bloques \lstinline|perform|.
-
-\subsection{Tipos función y genéricos}
-
-Los tipos función se escriben con flecha, \lstinline|A -> B|, asociando a la derecha, lo que habilita la aplicación parcial y el estilo currificado. Toda función de Qalc lleva asociada una anotación de tipo obligatoria de la forma \lstinline|nombre :: tipo|, al estilo de Haskell.
-
-Los tipos genéricos (parametrizados) se escriben con parámetros entre ángulos, por ejemplo \lstinline|List<Int>|, lo que permite definir contenedores y abstracciones polimórficas.
 
 \subsection{La disciplina lineal en el uso de los recursos cuánticos}
 \label{sec:disciplina_lineal_uso}
@@ -208,6 +264,7 @@ qEqConst  :: i16 -> qi16 -> (qi16, qbool)
 La composición se expresa con las herramientas funcionales generales del lenguaje, donde la tubería \lstinline{|>} encadena transformaciones, las lambdas describen subcircuitos parametrizados y el bloque \lstinline|linear| secuencia operaciones que comparten recursos cuánticos respetando la disciplina lineal.
 
 \subsection{El tipo \texttt{qcirc} en el nivel bajo}
+\label{subsec:qcirc-nivel-bajo}
 
 Cuando se necesita programar el circuito explícitamente, se trabaja con el tipo \lstinline|qcirc|, que representa un circuito de $n$ cúbits. La convención de este nivel es que una puerta aplicada a un \lstinline|qcirc| se aplica a todos sus cúbits a la vez; al resto de los cúbits, cuando proceda, se les aplica implícitamente la identidad. Las puertas básicas son, por tanto, transformaciones del circuito completo.
 
