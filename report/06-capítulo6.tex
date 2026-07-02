@@ -4,6 +4,7 @@
 El análisis semántico de Qalc tiene como objetivo dotar a cada nodo del AST de un tipo completamente resuelto, verificando que el programa es coherente desde el punto de vista tipológico antes de que ninguna fase posterior lo transforme en código ejecutable. Este proceso se apoya en dos mecanismos que se ejecutan de forma coordinada, el ámbito léxico, que resuelve a qué declaración se refiere cada identificador, y el inferidor de tipos basado en el algoritmo de Hindley-Milner, que asigna un tipo a cada expresión a partir de esas resoluciones. Este capítulo describe primero la resolución del ámbito léxico, después el algoritmo de inferencia con sus tres fases, la representación interna de los tipos durante la inferencia, el mecanismo de unificación en detalle y la sobrecarga de funciones discriminada por tipo.
 
 \section{Ámbito léxico y declaraciones de nivel superior}
+\label{sec:ambito-lexico}
 
 El primer paso del análisis semántico consiste en resolver el ámbito léxico de las declaraciones, de modo que la fase de inferencia pueda tratar cada identificador exactamente como el símbolo al que se refiere. El módulo \lstinline|qalc-ast/scope.rs| implementa el ámbito léxico del compilador. Un \lstinline|Scope| es un mapa de nombres a vectores de \lstinline|SymbolInfo|, con un puntero opcional al ámbito padre para implementar el encadenamiento léxico:
 
@@ -140,3 +141,45 @@ La sobrecarga está soportada a nivel de ámbito: \lstinline|define_decl| acumul
 La discriminación ocurre tras la generación de restricciones para el primer argumento, cuando su tipo ya está disponible (posiblemente aún como variable fresca parcialmente restringida). En los casos en que el tipo del primer argumento no está suficientemente determinado en ese punto, el compilador difiere la elección hasta después de la unificación y resuelve la sobrecarga en una segunda pasada sobre el AST, manteniendo en el nodo de identificador una referencia al conjunto de candidatos hasta que la sustitución lo resuelve.
 
 Esta estrategia de sobrecarga es deliberadamente más sencilla que los sistemas de clases de tipos de Haskell o los rasgos de Rust~\cite{matsakis_rust_2014}, ya que restringir la discriminación al tipo del primer parámetro garantiza que la resolución es siempre unívoca y que no es necesario un mecanismo de inferencia global adicional. El coste es una menor expresividad, que en el contexto de Qalc es aceptable dado que el objetivo del lenguaje es describir circuitos cuánticos, no implementar abstracciones de propósito general.
+
+\section{Casos de uso}
+\label{sec:casos-uso}
+
+Los siguientes ejemplos recorren el proceso completo de análisis semántico descrito en este capítulo sobre fragmentos de código más cercanos al uso real del lenguaje que los ejemplos aislados de las secciones anteriores, mostrando cómo cooperan la resolución de ámbito, la inferencia de tipos, la unificación y la sobrecarga sobre un mismo programa.
+
+\subsection{Inferencia sobre una operación cuántica compuesta}
+
+Considérese la siguiente declaración, que aplica la puerta Hadamard a dos cúbits de entrada y devuelve ambos resultados en una tupla.
+
+\begin{lstlisting}[language={}, caption=Declaración que combina un bloque let y una tupla sobre valores cuánticos]
+prepara :: qbool -> qbool -> (qbool, qbool)
+prepara a b = let x = H a in (x, H b)
+\end{lstlisting}
+
+La resolución de ámbito (\autoref{sec:ambito-lexico}) registra los parámetros \lstinline|a| y \lstinline|b| con sendas variables frescas $\tau_a$ y $\tau_b$, y resuelve el identificador \lstinline|H| contra la firma \lstinline|qbool -> qbool| que \lstinline|qalc-builtins| inyectó en el ámbito global.
+
+Durante la generación de restricciones (\autoref{sec:constraint-gen}) se combinan cuatro de las reglas descritas en ese apartado. La aplicación \lstinline|H a| impone, según la regla de aplicación de función, la restricción $\mathtt{qbool} \to \mathtt{qbool} = \tau_a \to \tau_{ret_1}$, de la que se derivan $\tau_a = \mathtt{qbool}$ y $\tau_{ret_1} = \mathtt{qbool}$. La regla del bloque \lstinline|let| liga entonces $\tau_x = \tau_{ret_1}$. La segunda aplicación \lstinline|H b| genera de forma análoga $\tau_b = \mathtt{qbool}$ y una variable fresca $\tau_{ret_2} = \mathtt{qbool}$, y la regla de tuplas construye el tipo \lstinline|Tuple|$(\tau_x, \tau_{ret_2})$ para el resultado. Por último, la anotación de la declaración añade la restricción de que el tipo completo coincida con \lstinline|qbool -> qbool -> (qbool, qbool)|.
+
+La unificación (\autoref{sec:unificacion}) resuelve todas las variables anteriores a \lstinline|qbool| sin ningún conflicto, y la sustitución confirma que \lstinline|prepara| tiene exactamente el tipo anotado. El carácter lineal de \lstinline|qbool| viaja con el tipo sin intervención adicional del inferidor, puesto que forma parte del propio campo \lstinline|linear| de la variante \lstinline|Builtin|; comprobar que \lstinline|a| y \lstinline|b| se consumen exactamente una vez es responsabilidad de la fase de comprobación de consumo lineal, posterior al aplanado y descrita en el \autoref{sec:linear-checker}.
+
+\subsection{Resolución de sobrecarga en una llamada concreta}
+
+Retomando la función \lstinline|at| introducida en el \autoref{sec:overloading}, considérense dos llamadas sobre el mismo circuito base.
+
+\begin{lstlisting}[language={}, caption=Dos llamadas a la función sobrecargada at resueltas con distinta firma]
+circuito1 = at 0 H base
+circuito2 = at [0, 1, 2] H base
+\end{lstlisting}
+
+En la primera llamada, la generación de restricciones infiere que el literal \lstinline|0| tiene tipo \lstinline|i32|. Al consultar el vector de definiciones de \lstinline|at| en el ámbito, \lstinline|resolve| encuentra que \lstinline|i32| unifica con el primer parámetro de la firma \lstinline|i32 -> (qcirc -> qcirc) -> qcirc -> qcirc| y descarta la firma cuyo primer parámetro es \lstinline|[i32]|. En la segunda llamada ocurre lo contrario, ya que el literal de slice \lstinline|[0, 1, 2]| tiene tipo \lstinline|[i32]|, que solo unifica con la segunda firma. Ambas llamadas comparten el mismo nombre de función en el código fuente, pero el compilador selecciona una implementación distinta en cada punto de llamada sin ninguna anotación adicional por parte del programador.
+
+\subsection{Detección de un error de tipos en tiempo de compilación}
+
+El sistema de tipos rechaza en tiempo de compilación cualquier programa cuyas restricciones no puedan unificarse, incluso si la operación tendría sentido en un lenguaje de tipado dinámico. Considérese la siguiente declaración incorrecta.
+
+\begin{lstlisting}[language={}, caption=Declaración que produce un error de unificación entre qbool e i32]
+combinar :: qbool -> i32
+combinar x = x + 1
+\end{lstlisting}
+
+La aplicación de \lstinline|+| exige, según su firma \lstinline|i32 -> i32 -> i32|, que su primer operando tenga tipo \lstinline|i32|, de modo que la generación de restricciones añade $\tau_x = \mathtt{i32}$. Sin embargo, la anotación de la declaración ya fijó $\tau_x = \mathtt{qbool}$ mediante la regla de inferencia de declaraciones. Al intentar unificar \lstinline|qbool| con \lstinline|i32| (\autoref{sec:unificacion}), ambos son tipos \lstinline|Builtin| con identificadores distintos, por lo que la unificación falla y el compilador emite un error señalando el span de \lstinline|x| dentro de la expresión \lstinline|x + 1|, junto con los dos tipos incompatibles. Este tipo de error, trivial de introducir por accidente en una biblioteca de tipado dinámico como Qiskit o Cirq (\autoref{sec:estadodelarte}), queda descartado en Qalc antes de que el programa llegue a generarse como circuito.
