@@ -304,22 +304,14 @@
 % Resumen
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{abstract}
-El objetivo de este trabajo ha sido... bla, bla, bla, bla, bla, bla, bla, bla, bla...
+La programación cuántica actual está dominada por herramientas que operan al nivel del circuito, en las que el programador ensambla explícitamente puertas lógicas sobre cúbits individuales sin ninguna garantía formal sobre la corrección física del resultado. Bibliotecas de amplia adopción industrial como Qiskit o Cirq, al estar embebidas en un lenguaje clásico de tipado dinámico, no pueden verificar en tiempo de compilación restricciones fundamentales de la mecánica cuántica, como el teorema de no clonación o la correcta descomputación de los cúbits auxiliares; los errores derivados de su incumplimiento solo se manifiestan en tiempo de ejecución física, con un coste de diagnóstico elevado. Las propuestas académicas más rigurosas, como Silq, Guppy o Twist, incorporan alguna forma de análisis estático sobre estas restricciones, pero ninguna combina un sistema de tipos lineales completo con una salida hacia un formato estándar e interoperable con hardware de múltiples fabricantes.
 
-La competencia [E6], que figura en la guía docente, indica que en la memoria del trabajo se ha de incluir: antecedentes, problemática o estado del arte, objetivos, fases y desarrollo del proyecto, conclusiones, y líneas futuras.
+Este trabajo presenta Qalc, un lenguaje de programación funcional con tipado estático fuerte orientado a la descripción de circuitos cuánticos, junto con la implementación de su compilador en Rust. El sistema de tipos de Qalc combina la inferencia de tipos de Hindley-Milner con una disciplina de tipos lineales que obliga a que cada recurso cuántico se consuma exactamente una vez a lo largo del programa, haciendo imposible en tiempo de compilación tanto la clonación accidental como la fuga de cúbits sin liberar. El modelo de cómputo del lenguaje es deliberadamente no recursivo, en correspondencia directa con la naturaleza finita y estática de los circuitos cuánticos ejecutables sobre hardware NISQ (del inglés \textit{Noisy Intermediate-Scale Quantum}), y expresa la repetición de patrones mediante combinadores de orden superior que el compilador expande en tiempo de compilación.
 
-Se ha incluido el apartado de 'Licencia' con todas las posibles licencias abiertas (Creative Commons). En el caso en que se decida hacer público el contenido de la memoria, habrá que elegir una de ellas (y borrar las demás). La decisión de hacer pública o no la memoria se indica en el momento de subir la memoria a la Sede Electrónica de la ULL, paso necesario en el proceso de presentación del TFG.
-
-El documento de memoria debe tener un máximo de 50 páginas.
-
-No se deben dejar páginas en blanco al comenzar un capítulo, ya que el documento no está pensado para ser impreso sino visionado con un lector de PDF.
-
-También es recomendable usar márgenes pequeños, ya que, al firmar digitalmente por la Sede Electrónica, se coloca un marco alrededor del texto original.
-
-El tipo de letra base ha de ser de 12 pt.
+El compilador se estructura como un pipeline de fases independientes, desde el análisis léxico y sintáctico hasta la generación de código, pasando por la normalización, la inferencia de tipos, la verificación de recursividad, un aplanador perezoso que reduce el programa a una única expresión sin abstracción funcional pendiente, una comprobación de consumo lineal y, finalmente, la generación de código hacia OpenQASM~3 (del inglés \textit{Open Quantum Assembly Language}), el estándar abierto adoptado por los principales proveedores de hardware cuántico. El resultado de este trabajo es un prototipo funcional en el que el frontend del compilador, hasta la inferencia de tipos, está completamente implementado, mientras que las fases del backend se encuentran en un estado experimental suficiente para demostrar el funcionamiento completo del pipeline. Como líneas futuras se identifican la descomputación automática de estructuras de datos cuánticos recursivos y la maduración de las fases del backend hasta cubrir la totalidad del lenguaje diseñado.
 
 \begin{keywords}[Palabras clave]
-Palabra reservada1, Palabra reservada2,...
+Computación cuántica, Lenguajes de programación, Tipos lineales, Inferencia de tipos Hindley-Milner, OpenQASM, Compiladores
 \end{keywords}
 \end{abstract}
 
@@ -328,10 +320,14 @@ Palabra reservada1, Palabra reservada2,...
 \thispagestyle{empty}
 
 \begin{abstract}[Abstract]
-Here should be the abstract in a foreing language...
+Quantum programming today is dominated by tools that operate at the circuit level, where the programmer explicitly assembles logic gates over individual qubits with no formal guarantee about the physical correctness of the result. Widely adopted industrial libraries such as Qiskit or Cirq, being embedded in a dynamically typed classical language, cannot verify fundamental constraints of quantum mechanics at compile time, such as the no-cloning theorem or the correct uncomputation of ancilla qubits; errors arising from violating these constraints only surface at physical runtime, at a high diagnostic cost. The most rigorous academic proposals, such as Silq, Guppy or Twist, incorporate some form of static analysis over these constraints, but none combines a full linear type system with output to a standard, interoperable format supported by multiple hardware vendors.
 
-\begin {keywords}
-Keyword1, Keyword2, Keyword3,...
+This work presents Qalc, a statically and strongly typed functional programming language for describing quantum circuits, together with the implementation of its compiler in Rust. The type system of Qalc combines Hindley-Milner type inference with a linear type discipline that forces every quantum resource to be consumed exactly once throughout the program, making both accidental cloning and unreleased qubit leaks impossible to express at compile time. The computation model of the language is deliberately non-recursive, directly mirroring the finite, static nature of quantum circuits executable on NISQ (Noisy Intermediate-Scale Quantum) hardware, and expresses repeated patterns through higher-order combinators that the compiler unrolls at compile time.
+
+The compiler is structured as a pipeline of independent phases, from lexical and syntax analysis to code generation, passing through normalization, type inference, recursion verification, a lazy flattener that reduces the program to a single expression free of pending functional abstraction, a linear consumption check, and finally code generation targeting OpenQASM~3 (Open Quantum Assembly Language), the open standard adopted by the main quantum hardware providers. The result of this work is a functional prototype in which the compiler frontend, up to type inference, is fully implemented, while the backend phases remain at an experimental stage sufficient to demonstrate the complete pipeline. Future work includes the automatic uncomputation of recursive quantum data structures and maturing the backend phases to cover the full designed language.
+
+\begin{keywords}
+Quantum computing, Programming languages, Linear types, Hindley-Milner type inference, OpenQASM, Compilers
 \end{keywords}
 \end{abstract}
 
