@@ -24,6 +24,25 @@ Las dependencias externas del proyecto son las siguientes.
   \item \texttt{serde\_json.} Biblioteca de serialización y deserialización de JSON. Se usa en \lstinline|qalc-cli| para volcar representaciones intermedias del AST en formato legible durante el desarrollo y la depuración.
 \end{itemize}
 
+\section{Organización en crates}
+\label{sec:organizacion-crates}
+
+El compilador se estructura como un workspace de Cargo con crates de dependencia estrictamente ordenada de abajo hacia arriba.
+
+\begin{itemize}
+  \item \texttt{qalc-utils.} Es la base de la pila. Define \lstinline|Source| (el texto fuente con su nombre de fichero), \lstinline|Span| (intervalo de bytes dentro de un \lstinline|Source|), \lstinline|Diagnostic| (un error o aviso con span y mensaje) y el rasgo \lstinline|CompilerStep|. Ningún otro módulo puede ignorar un span ni construir un error sin una ubicación en el código fuente.
+
+  \item \texttt{qalc-ast.} Define todos los tipos de nodo AST usados a lo largo del pipeline: \lstinline|ConcreteAST|, \lstinline|NormalizedAST|, \lstinline|TypedAST| y los módulos auxiliares de ámbito léxico (\lstinline|scope|) y metadatos de tipo (\lstinline|typed_ast|). Al centralizar los tipos de nodo se evita la proliferación de estructuras de datos redundantes entre crates.
+
+  \item \texttt{qalc-builtins.} Expone el tipo \lstinline|BuiltinDef| y la función \lstinline|standard_builtins()|, que devuelve las definiciones de todas las funciones predefinidas del lenguaje (operaciones aritméticas, comparaciones, etc.) junto con su tipo. Este crate desacopla la definición de los built-ins de la implementación de la inferencia de tipos.
+
+  \item \texttt{qalc-parser.} Implementa el analizador léxico-sintáctico. Depende únicamente de \lstinline|qalc-utils| y \lstinline|qalc-ast|.
+
+  \item \texttt{qalc-analysis.} Contiene el normalizador y el inferidor de tipos basado en el algoritmo de Hindley-Milner. Depende de los cuatro crates anteriores.
+
+  \item \texttt{qalc-cli.} Es el ejecutable. Importa todas las fases, las encadena y presenta los resultados.
+\end{itemize}
+
 \section{Visión general del pipeline}
 
 El compilador de Qalc es un pipeline de transformaciones progresivas. Cada fase toma una representación del programa y produce otra más refinada, enriquecida con información que las fases siguientes necesitan. La cadena completa se muestra en la \autoref{tab:pipeline}.
@@ -75,25 +94,6 @@ pub trait CompilerStep {
 El rasgo establece un contrato uniforme, en el que cada fase recibe su representación de entrada y un vector de diagnósticos acumulable, y devuelve \lstinline|CompilerResult<Output>|, que es \lstinline|Result<Output, Diagnostic>|. Los errores fatales cortan la ejecución del pipeline; los avisos se acumulan en el vector de diagnósticos y se reportan al final. Gracias a este contrato, añadir una nueva fase no requiere modificar las fases existentes; basta con definir un nuevo tipo que implemente \lstinline|CompilerStep| con la entrada y la salida apropiadas.
 
 Cada diagnóstico lleva asociado un \lstinline|Span| (un par de posiciones en el texto fuente) que la biblioteca \texttt{ariadne}~\cite{ariadne} utiliza para renderizar mensajes de error con contexto de código fuente subrayado.
-
-\section{Organización en crates}
-\label{sec:organizacion-crates}
-
-El compilador se estructura como un workspace de Cargo con crates de dependencia estrictamente ordenada de abajo hacia arriba.
-
-\begin{itemize}
-  \item \texttt{qalc-utils.} Es la base de la pila. Define \lstinline|Source| (el texto fuente con su nombre de fichero), \lstinline|Span| (intervalo de bytes dentro de un \lstinline|Source|), \lstinline|Diagnostic| (un error o aviso con span y mensaje) y el rasgo \lstinline|CompilerStep|. Ningún otro módulo puede ignorar un span ni construir un error sin una ubicación en el código fuente.
-
-  \item \texttt{qalc-ast.} Define todos los tipos de nodo AST usados a lo largo del pipeline: \lstinline|ConcreteAST|, \lstinline|NormalizedAST|, \lstinline|TypedAST| y los módulos auxiliares de ámbito léxico (\lstinline|scope|) y metadatos de tipo (\lstinline|typed_ast|). Al centralizar los tipos de nodo se evita la proliferación de estructuras de datos redundantes entre crates.
-
-  \item \texttt{qalc-builtins.} Expone el tipo \lstinline|BuiltinDef| y la función \lstinline|standard_builtins()|, que devuelve las definiciones de todas las funciones predefinidas del lenguaje (operaciones aritméticas, comparaciones, etc.) junto con su tipo. Este crate desacopla la definición de los built-ins de la implementación de la inferencia de tipos.
-
-  \item \texttt{qalc-parser.} Implementa el analizador léxico-sintáctico. Depende únicamente de \lstinline|qalc-utils| y \lstinline|qalc-ast|.
-
-  \item \texttt{qalc-analysis.} Contiene el normalizador y el inferidor de tipos basado en el algoritmo de Hindley-Milner. Depende de los cuatro crates anteriores.
-
-  \item \texttt{qalc-cli.} Es el ejecutable. Importa todas las fases, las encadena y presenta los resultados.
-\end{itemize}
 
 \section{El patrón AST paramétrico}
 \label{sec:ast-parametrico}
