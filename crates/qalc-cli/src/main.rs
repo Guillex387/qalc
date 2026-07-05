@@ -1,6 +1,6 @@
 use std::{env::args, rc::Rc};
 
-use qalc_analysis::{HMInferrer, Inliner, Normalizer, RecursionChecker};
+use qalc_analysis::{HMInferrer, Inliner, LinearChecker, Normalizer, RecursionChecker};
 use qalc_ast::ASTMetadata;
 use qalc_ast::base_ast::{
   Declaration, DeclarationKind, Expression, ExpressionKind, Pattern, PatternKind, SliceExpression,
@@ -8,6 +8,7 @@ use qalc_ast::base_ast::{
 use qalc_ast::flat_ast::{Flat, FlatAST, FlatMark};
 use qalc_ast::typed_ast::{Type, Typed, TypedAST};
 use qalc_builtins::standard_builtins;
+use qalc_codegen::Codegen;
 use qalc_parser::parse_program;
 use qalc_utils::{CompilerStep, Diagnostic, Source};
 use serde_json::{Value, json};
@@ -52,8 +53,10 @@ fn main() {
     }
   };
 
+  // Los volcados intermedios en JSON van a stderr para no ensuciar la salida
+  // OpenQASM 3, que es lo que produce el compilador en stdout.
   let json = ast_to_json(&typed_ast);
-  println!("{}", serde_json::to_string_pretty(&json).unwrap());
+  eprintln!("{}", serde_json::to_string_pretty(&json).unwrap());
 
   let flat_ast = match Inliner::default().transform(typed_ast, &mut diagnostics) {
     Ok(ast) => ast,
@@ -64,7 +67,25 @@ fn main() {
   };
 
   let flat_json = flat_ast_to_json(&flat_ast);
-  println!("{}", serde_json::to_string_pretty(&flat_json).unwrap());
+  eprintln!("{}", serde_json::to_string_pretty(&flat_json).unwrap());
+
+  let flat_ast = match LinearChecker::default().transform(flat_ast, &mut diagnostics) {
+    Ok(ast) => ast,
+    Err(error) => {
+      eprintln!("{}", error);
+      return;
+    }
+  };
+
+  let qasm = match Codegen::default().transform(flat_ast, &mut diagnostics) {
+    Ok(code) => code,
+    Err(error) => {
+      eprintln!("{}", error);
+      return;
+    }
+  };
+
+  println!("{}", qasm);
 }
 
 fn fmt_type(t: &Type) -> String {

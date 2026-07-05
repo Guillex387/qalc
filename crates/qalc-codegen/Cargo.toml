@@ -1,0 +1,13 @@
+[package]
+name = "qalc-codegen"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+qalc-ast = { path = "../qalc-ast" }
+qalc-builtins = { path = "../qalc-builtins" }
+qalc-utils = { path = "../qalc-utils" }
+
+[dev-dependencies]
+qalc-parser = { path = "../qalc-parser" }
+qalc-analysis = { path = "../qalc-analysis" }

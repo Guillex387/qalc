@@ -1,0 +1,2 @@
+main :: f64 -> qio<u8>
+main theta = qcirc 2 |> at 0 H |> controlled 0 1 X |> rz theta |> measure;

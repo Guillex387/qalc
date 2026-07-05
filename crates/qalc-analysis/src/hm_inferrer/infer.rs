@@ -7,7 +7,7 @@ use qalc_ast::{
     PatternKind, SliceExpression, TypeExpression, TypeExpressionKind,
   },
   scope::{Scope, SymbolInfo, SymbolKind},
-  typed_ast::{InferenceMetadata, Inferred, TypeWithUnknow},
+  typed_ast::{InferenceMetadata, Inferred, TypeWithUnknow, is_linear_builtin},
 };
 use qalc_utils::{CompilerResult, Diagnostic, Span, gen_id};
 
@@ -515,14 +515,14 @@ fn infer_expr(
 pub fn type_expr_to_infer_type(te: TypeExpression<Spanned>) -> TypeWithUnknow {
   match te.kind {
     TypeExpressionKind::Identifier(id) => TypeWithUnknow::Builtin {
+      linear: is_linear_builtin(&id),
       id,
       params: vec![],
-      linear: false,
     },
     TypeExpressionKind::IdentifierWithParams { identifier, params } => TypeWithUnknow::Builtin {
+      linear: is_linear_builtin(&identifier),
       id: identifier,
       params: params.into_iter().map(type_expr_to_infer_type).collect(),
-      linear: false,
     },
     TypeExpressionKind::Slice(inner) => {
       TypeWithUnknow::Slice(Box::new(type_expr_to_infer_type(*inner)))

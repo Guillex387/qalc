@@ -1,0 +1,78 @@
+diffuser :: qcirc -> qcirc
+diffuser c = c |> H |> X |> controlled 0 1 Z |> X |> H;
+
+// Sumador ripple-carry de 2 bits. Bit 0 sin acarreo de entrada (2 CNOT + 1
+// Toffoli); bit 1 con acarreo de bit 0 (3 CNOT + 3 Toffoli, el XOR de los 3
+// productos por pares equivale a la mayoría). El acarreo de salida final
+// (desbordamiento) se descarta con uncompute.
+`+` :: qu8 -> qu8 -> (qu8, qu8, qu8)
+`+` a b = linear {
+  ac = qcircOfQu8 a,
+  bc = qcircOfQu8 b,
+  sc = qcircOfQu8 (qu8 0u8),
+  c0 = qcircOfQbool (qbool 0i32),
+  c1 = qcircOfQbool (qbool 0i32),
+  (ac, sc) = crossControlled ac 0i32 sc 0i32,
+  (bc, sc) = crossControlled bc 0i32 sc 0i32,
+  (ac, bc, c0) = crossToffoli ac 0i32 bc 0i32 c0 0i32,
+  (ac, sc) = crossControlled ac 1i32 sc 1i32,
+  (bc, sc) = crossControlled bc 1i32 sc 1i32,
+  (c0, sc) = crossControlled c0 0i32 sc 1i32,
+  (ac, bc, c1) = crossToffoli ac 1i32 bc 1i32 c1 0i32,
+  (ac, c0, c1) = crossToffoli ac 1i32 c0 0i32 c1 0i32,
+  (bc, c0, c1) = crossToffoli bc 1i32 c0 0i32 c1 0i32,
+  uncomputeQbool (qboolOfQcirc c1),
+  uncomputeQbool (qboolOfQcirc c0),
+  return (qu8OfQcirc ac, qu8OfQcirc bc, qu8OfQcirc sc)
+};
+
+// Comparador de igualdad de 2 bits. Sin ancilla que se descarte: usa los
+// propios cúbits de `target` como scratch temporal (CNOT + X para obtener
+// "el bit coincide"), compara ambos bits con un Toffoli hacia un qbool
+// fresco preparado en |-> (para kickback de fase) y deshace el scratch.
+`==` :: qu8 -> qu8 -> (qu8, qu8, qbool)
+`==` sum target = linear {
+  sc = qcircOfQu8 sum,
+  tc = qcircOfQu8 target,
+  rc = qcircOfQbool (qbool 0i32) |> X |> H,
+  (sc, tc) = crossControlled sc 0i32 tc 0i32,
+  tc = tc |> at 0i32 X,
+  (sc, tc) = crossControlled sc 1i32 tc 1i32,
+  tc = tc |> at 1i32 X,
+  (tc, _, rc) = crossToffoli tc 0i32 tc 1i32 rc 0i32,
+  tc = tc |> at 1i32 X,
+  (sc, tc) = crossControlled sc 1i32 tc 1i32,
+  tc = tc |> at 0i32 X,
+  (sc, tc) = crossControlled sc 0i32 tc 0i32,
+  return (qu8OfQcirc sc, qu8OfQcirc tc, qboolOfQcirc rc)
+};
+
+// Oraculo: marca (por kickback de fase, via `==`) los estados de busqueda
+// `a` tales que a + bConst == targetConst. bConst/targetConst son
+// constantes clasicas que vienen de main.
+oracle :: u8 -> u8 -> qcirc -> qcirc
+oracle bConst targetConst c = linear {
+  a = qu8OfQcirc c,
+  b = qu8 bConst,
+  target = qu8 targetConst,
+  (a, b, sum) = a + b,
+  (sum, target, isMatch) = sum == target,
+  uncomputeQbool isMatch,
+  uncomputeQu8 target,
+  uncomputeQu8 sum,
+  uncomputeQu8 b,
+  return qcircOfQu8 a
+};
+
+// Grover generico: n iteraciones, oraculo como parametro de orden superior.
+grover :: i32 -> (qcirc -> qcirc) -> qcirc -> qcirc
+grover n oracleFn c = repeat n ((c) -> c |> oracleFn |> diffuser) c;
+
+// Busca el (unico) a en {0,1,2,3} tal que a + 1 == 3, es decir a = 2.
+// bConst/targetConst son constantes (el constructor `qu8` exige un valor
+// conocido en tiempo de compilacion para poder emitir las puertas X de
+// inicializacion), a diferencia del angulo de `examples/bell.qalc`, que sí
+// es un parametro clasico en tiempo de ejecucion.
+main :: qio<u8>
+main =
+  qcirc 2i32 |> H |> grover 1i32 ((c) -> oracle 1u8 3u8 c) |> measure;

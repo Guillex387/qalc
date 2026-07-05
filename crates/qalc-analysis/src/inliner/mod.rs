@@ -92,6 +92,30 @@ impl CompilerStep for Inliner {
     let result_ty = cursor.clone();
     let result = flat_result_from_type(&result_ty, &main_annotation);
 
+    // Los parámetros y el resultado de 'main' deben ser de tipos clásicos: son
+    // los únicos que se traducen a los modificadores `input`/`output` de
+    // OpenQASM 3. Los valores cuánticos no se reciben ni se devuelven, se
+    // construyen dentro del cuerpo con los built-ins `qcirc`/`qi16`/`qbool`.
+    for param in &params {
+      if !param.ttype.is_classical() {
+        return Err(Diagnostic::error(
+          format!(
+            "el parámetro '{}' de 'main' no es de un tipo clásico",
+            param.name
+          ),
+          "los parámetros de 'main' deben ser clásicos; construye los valores cuánticos dentro del cuerpo con qcirc/qi16/qbool",
+          main_annotation.meta.span.clone(),
+        ));
+      }
+    }
+    if !result_ty.is_classical() {
+      return Err(Diagnostic::error(
+        "el resultado de 'main' no es de un tipo clásico",
+        "el resultado de 'main' debe ser clásico; mide o descomputa los recursos cuánticos antes de devolver el resultado",
+        main_annotation.meta.span.clone(),
+      ));
+    }
+
     let shadowed: HashSet<String> = main_params.iter().cloned().collect();
     let body = inline_expr(main_body, &funcs, &shadowed, &HashMap::new())?;
 

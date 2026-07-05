@@ -21,6 +21,13 @@ impl ASTMetadata for Inferred {
   type TypeMeta = Span;
 }
 
+/// Fuente de verdad única de qué tipos built-in son lineales. Los datos
+/// cuánticos (un circuito o un dato cuántico) deben consumirse exactamente una
+/// vez, mientras que `qio` es solo un envoltorio de efecto y no es lineal.
+pub fn is_linear_builtin(id: &str) -> bool {
+  matches!(id, "qcirc" | "qbool" | "qi16" | "qu8" | "qnum")
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Type {
   Builtin {
@@ -44,6 +51,23 @@ impl Type {
       Type::Arrow(_, _) => false,
       Type::Tuple(types) => types.iter().any(|ttype| ttype.is_linear()),
       Type::Slice(ttype) => ttype.is_linear(),
+    }
+  }
+
+  /// Un tipo es clásico si no es lineal él mismo ni envuelve, directa o
+  /// transitivamente (a través de tuplas, slices o el envoltorio de efecto
+  /// `qio`), ningún tipo lineal. Es la condición que debe cumplir la firma de
+  /// `main`, ya que solo los tipos clásicos pueden traducirse a los
+  /// modificadores `input`/`output` de OpenQASM 3.
+  pub fn is_classical(&self) -> bool {
+    if self.is_linear() {
+      return false;
+    }
+    match self {
+      Type::Builtin { params, .. } => params.iter().all(Type::is_classical),
+      Type::Arrow(_, _) => true,
+      Type::Tuple(types) => types.iter().all(Type::is_classical),
+      Type::Slice(ttype) => ttype.is_classical(),
     }
   }
 }

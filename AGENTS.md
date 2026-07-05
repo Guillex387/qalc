@@ -20,9 +20,15 @@ Código Fuente
     ↓
 [Normalizer] → NormalizedAST
     ↓
+[Recursion Checker] → NormalizedAST
+    ↓
 [HM Type Inferrer] → TypedAST
     ↓
-[Posibles fases futuras]
+[Inliner] → FlatAST
+    ↓
+[Linear Checker] → FlatAST
+    ↓
+[Codegen (qalc-codegen)] → OpenQASM 3
 ```
 
 Cada fase transforma el código a una representación más refinada, añadiendo información semántica y realizando desugaring de características sintácticas.

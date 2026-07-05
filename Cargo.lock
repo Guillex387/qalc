@@ -239,9 +239,21 @@ dependencies = [
  "qalc-analysis",
  "qalc-ast",
  "qalc-builtins",
+ "qalc-codegen",
  "qalc-parser",
  "qalc-utils",
  "serde_json",
+]
+
+[[package]]
+name = "qalc-codegen"
+version = "0.1.0"
+dependencies = [
+ "qalc-analysis",
+ "qalc-ast",
+ "qalc-builtins",
+ "qalc-parser",
+ "qalc-utils",
 ]
 
 [[package]]
