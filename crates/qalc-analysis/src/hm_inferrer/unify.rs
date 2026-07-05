@@ -21,10 +21,9 @@ pub fn apply(subst: &HashMap<usize, TypeWithUnknow>, ty: TypeWithUnknow) -> Type
       Some(resolved) => apply(subst, resolved.clone()),
       None => TypeWithUnknow::Unknow(id),
     },
-    TypeWithUnknow::Arrow(a, b) => TypeWithUnknow::Arrow(
-      Box::new(apply(subst, *a)),
-      Box::new(apply(subst, *b)),
-    ),
+    TypeWithUnknow::Arrow(a, b) => {
+      TypeWithUnknow::Arrow(Box::new(apply(subst, *a)), Box::new(apply(subst, *b)))
+    }
     TypeWithUnknow::Tuple(ts) => {
       TypeWithUnknow::Tuple(ts.into_iter().map(|t| apply(subst, t)).collect())
     }
@@ -106,7 +105,10 @@ fn unify_one(
       Ok(())
     }
     (lhs, rhs) => Err(Diagnostic::error(
-      format!("Type mismatch: `{:?}` is not compatible with `{:?}`", lhs, rhs),
+      format!(
+        "Type mismatch: `{:?}` is not compatible with `{:?}`",
+        lhs, rhs
+      ),
       "These types cannot be unified.",
       span,
     )),

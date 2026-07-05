@@ -62,14 +62,16 @@ pub fn parse_match_block(mut tokens: TokensIter) -> CompilerResult<ConcreteExpre
     })
     .collect::<CompilerResult<Vec<(ConcreteExpression, ConcreteExpression)>>>()?;
 
-  let (default_cases, cases): (Vec<(ConcreteExpression, ConcreteExpression)>, Vec<(ConcreteExpression, ConcreteExpression)>) =
-    cases.iter().cloned().partition(|(predicate, _)| {
-      if let ConcreteExpressionKind::Identifier(identifier) = &predicate.kind {
-        identifier == "_"
-      } else {
-        false
-      }
-    });
+  let (default_cases, cases): (
+    Vec<(ConcreteExpression, ConcreteExpression)>,
+    Vec<(ConcreteExpression, ConcreteExpression)>,
+  ) = cases.iter().cloned().partition(|(predicate, _)| {
+    if let ConcreteExpressionKind::Identifier(identifier) = &predicate.kind {
+      identifier == "_"
+    } else {
+      false
+    }
+  });
 
   if default_cases.len() > 1 {
     let first_default_span = &default_cases.first().unwrap().0.span;

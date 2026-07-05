@@ -1,8 +1,8 @@
 use std::rc::Rc;
 
-use qalc_ast::base_ast::{TypeExpressionKind};
-use qalc_ast::concrete_ast::ConcreteDeclarationKind;
 use qalc_ast::Spanned;
+use qalc_ast::base_ast::TypeExpressionKind;
+use qalc_ast::concrete_ast::ConcreteDeclarationKind;
 use qalc_parser::parse_program;
 use qalc_utils::Source;
 

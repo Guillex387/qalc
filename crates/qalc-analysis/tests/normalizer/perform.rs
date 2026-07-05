@@ -10,7 +10,9 @@ fn normalize_expression(expr: &str) -> ExpressionKind<Spanned> {
   let code = format!("f :: num f = {};", expr);
   let source = Rc::new(Source::memory(code));
   let concrete = parse_program(&source).expect("parse");
-  let normalized = Normalizer.transform(concrete, &mut vec![]).expect("normalize");
+  let normalized = Normalizer
+    .transform(concrete, &mut vec![])
+    .expect("normalize");
   match normalized.declarations.into_iter().next().unwrap().kind {
     DeclarationKind::Function { body, .. } => body.kind,
     _ => panic!("expected function declaration"),
@@ -33,7 +35,9 @@ fn assert_integer_literal(kind: &ExpressionKind<Spanned>, expected: i128) {
   }
 }
 
-fn assert_transform<'a>(kind: &'a ExpressionKind<Spanned>) -> (&'a ExpressionKind<Spanned>, &'a ExpressionKind<Spanned>) {
+fn assert_transform<'a>(
+  kind: &'a ExpressionKind<Spanned>,
+) -> (&'a ExpressionKind<Spanned>, &'a ExpressionKind<Spanned>) {
   match kind {
     ExpressionKind::Transform { callee, param } => (&callee.kind, &param.kind),
     other => panic!("expected Transform, got {:?}", other),
@@ -47,9 +51,7 @@ fn normalize_perform_pure_assignment() {
   let kind = normalize_expression("perform { x = 1, return x }");
   match kind {
     ExpressionKind::LetBlock {
-      strict,
-      assigments,
-      ..
+      strict, assigments, ..
     } => {
       assert!(!strict, "pure assignment must not be strict");
       assert_eq!(assigments.len(), 1);

@@ -10,7 +10,9 @@ fn normalize_expression(expr: &str) -> ExpressionKind<Spanned> {
   let code = format!("f :: num f = {};", expr);
   let source = Rc::new(Source::memory(code));
   let concrete = parse_program(&source).expect("parse");
-  let normalized = Normalizer.transform(concrete, &mut vec![]).expect("normalize");
+  let normalized = Normalizer
+    .transform(concrete, &mut vec![])
+    .expect("normalize");
   match normalized.declarations.into_iter().next().unwrap().kind {
     DeclarationKind::Function { body, .. } => body.kind,
     _ => panic!("expected function declaration"),
@@ -33,7 +35,9 @@ fn assert_integer_literal(kind: &ExpressionKind<Spanned>, expected: i128) {
   }
 }
 
-fn assert_transform(kind: &ExpressionKind<Spanned>) -> (&ExpressionKind<Spanned>, &ExpressionKind<Spanned>) {
+fn assert_transform(
+  kind: &ExpressionKind<Spanned>,
+) -> (&ExpressionKind<Spanned>, &ExpressionKind<Spanned>) {
   match kind {
     ExpressionKind::Transform { callee, param } => (&callee.kind, &param.kind),
     other => panic!("expected Transform, got {:?}", other),
@@ -94,10 +98,16 @@ fn normalize_partial_left_becomes_lambda() {
     ExpressionKind::Lambda { params, body } => {
       assert_eq!(params, vec!["a".to_string()]);
       match body.kind {
-        ExpressionKind::Transform { callee: outer_callee, param: outer_param } => {
+        ExpressionKind::Transform {
+          callee: outer_callee,
+          param: outer_param,
+        } => {
           assert_integer_literal(&outer_param.kind, 1);
           match outer_callee.kind {
-            ExpressionKind::Transform { callee: op, param: inner_param } => {
+            ExpressionKind::Transform {
+              callee: op,
+              param: inner_param,
+            } => {
               assert_identifier(&op.kind, "+");
               assert_identifier(&inner_param.kind, "a");
             }

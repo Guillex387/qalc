@@ -4,7 +4,9 @@ mod numbers;
 mod utils;
 
 use pest::{iterators::Pairs, pratt_parser::PrattParser};
-use qalc_ast::concrete_ast::{BinaryOperator, BinaryOperatorKind, ConcreteExpression, ConcreteExpressionKind};
+use qalc_ast::concrete_ast::{
+  BinaryOperator, BinaryOperatorKind, ConcreteExpression, ConcreteExpressionKind,
+};
 use qalc_utils::CompilerResult;
 
 use crate::expression::atoms::parse_atom_expression;

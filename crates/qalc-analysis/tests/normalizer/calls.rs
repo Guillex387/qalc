@@ -10,7 +10,9 @@ fn normalize_expression(expr: &str) -> ExpressionKind<Spanned> {
   let code = format!("f :: num f = {};", expr);
   let source = Rc::new(Source::memory(code));
   let concrete = parse_program(&source).expect("parse");
-  let normalized = Normalizer.transform(concrete, &mut vec![]).expect("normalize");
+  let normalized = Normalizer
+    .transform(concrete, &mut vec![])
+    .expect("normalize");
   match normalized.declarations.into_iter().next().unwrap().kind {
     DeclarationKind::Function { body, .. } => body.kind,
     _ => panic!("expected function declaration"),
@@ -33,7 +35,9 @@ fn assert_integer_literal(kind: &ExpressionKind<Spanned>, expected: i128) {
   }
 }
 
-fn assert_transform(kind: &ExpressionKind<Spanned>) -> (&ExpressionKind<Spanned>, &ExpressionKind<Spanned>) {
+fn assert_transform(
+  kind: &ExpressionKind<Spanned>,
+) -> (&ExpressionKind<Spanned>, &ExpressionKind<Spanned>) {
   match kind {
     ExpressionKind::Transform { callee, param } => (&callee.kind, &param.kind),
     other => panic!("expected Transform, got {:?}", other),

@@ -9,7 +9,9 @@ use qalc_utils::{CompilerStep, Source};
 fn infer_program(src: &str) -> TypedAST {
   let source = Rc::new(Source::memory(src.to_string()));
   let concrete = parse_program(&source).expect("parse");
-  let normalized = Normalizer.transform(concrete, &mut vec![]).expect("normalize");
+  let normalized = Normalizer
+    .transform(concrete, &mut vec![])
+    .expect("normalize");
   HMInferrer::default()
     .transform(normalized, &mut vec![])
     .expect("infer")

@@ -141,7 +141,9 @@ fn parse_function_identifier() {
 
 #[test]
 fn parse_multiple_declarations() {
-  let source = Rc::new(Source::memory("f :: num f = 1; g :: num g = 2;".to_string()));
+  let source = Rc::new(Source::memory(
+    "f :: num f = 1; g :: num g = 2;".to_string(),
+  ));
   let program = parse_program(&source).expect("parse program");
   assert_eq!(program.declarations.len(), 2);
 

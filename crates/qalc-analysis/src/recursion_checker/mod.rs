@@ -23,7 +23,11 @@ impl CompilerStep for RecursionChecker {
   type Input = NormalizedAST;
   type Output = NormalizedAST;
 
-  fn transform(&self, input: NormalizedAST, _: &mut Vec<Diagnostic>) -> CompilerResult<NormalizedAST> {
+  fn transform(
+    &self,
+    input: NormalizedAST,
+    _: &mut Vec<Diagnostic>,
+  ) -> CompilerResult<NormalizedAST> {
     let global_fns = collect_global_functions(&input);
     let graph = build_graph(&input, &global_fns);
     detect_cycles(&graph)?;
@@ -52,7 +56,13 @@ fn build_graph(
   let mut graph: HashMap<String, Vec<(String, Span)>> = HashMap::new();
 
   for decl in &ast.declarations {
-    if let DeclarationKind::Function { identifier, params, body, .. } = &decl.kind {
+    if let DeclarationKind::Function {
+      identifier,
+      params,
+      body,
+      ..
+    } = &decl.kind
+    {
       let mut local_bindings: HashSet<String> = params.iter().cloned().collect();
       let mut deps: Vec<(String, Span)> = Vec::new();
       collect_deps_in_expr(body, global_fns, &mut local_bindings, &mut deps);
@@ -86,7 +96,9 @@ fn collect_deps_in_expr(
       }
       collect_deps_in_expr(body, global_fns, &mut lambda_bindings, deps);
     }
-    ExpressionKind::LetBlock { assigments, value, .. } => {
+    ExpressionKind::LetBlock {
+      assigments, value, ..
+    } => {
       let mut let_bindings = local_bindings.clone();
       for (pattern, rhs) in assigments {
         collect_deps_in_expr(rhs, global_fns, &mut let_bindings, deps);
@@ -96,7 +108,11 @@ fn collect_deps_in_expr(
       }
       collect_deps_in_expr(value, global_fns, &mut let_bindings, deps);
     }
-    ExpressionKind::IfElseBlock { test, consequent, alternative } => {
+    ExpressionKind::IfElseBlock {
+      test,
+      consequent,
+      alternative,
+    } => {
       collect_deps_in_expr(test, global_fns, local_bindings, deps);
       collect_deps_in_expr(consequent, global_fns, local_bindings, deps);
       collect_deps_in_expr(alternative, global_fns, local_bindings, deps);
@@ -130,8 +146,10 @@ fn collect_pattern_vars(pattern: &Pattern<Spanned>) -> Vec<String> {
 }
 
 fn detect_cycles(graph: &HashMap<String, Vec<(String, Span)>>) -> CompilerResult<()> {
-  let mut states: HashMap<String, NodeState> =
-    graph.keys().map(|k| (k.clone(), NodeState::Unvisited)).collect();
+  let mut states: HashMap<String, NodeState> = graph
+    .keys()
+    .map(|k| (k.clone(), NodeState::Unvisited))
+    .collect();
 
   let function_names: Vec<String> = graph.keys().cloned().collect();
   for name in function_names {
@@ -151,7 +169,9 @@ fn dfs(
   path: &mut Vec<String>,
 ) -> CompilerResult<()> {
   if states.get(current) == Some(&NodeState::Visiting) {
-    let prev = path.last().expect("path must not be empty when a cycle is detected");
+    let prev = path
+      .last()
+      .expect("path must not be empty when a cycle is detected");
     let span = graph[prev]
       .iter()
       .find(|(name, _)| name == current)
@@ -199,7 +219,9 @@ mod tests {
   fn check(src: &str) -> bool {
     let source = Rc::new(Source::memory(src.to_string()));
     let concrete = parse_program(&source).expect("parse");
-    let normalized = Normalizer.transform(concrete, &mut vec![]).expect("normalize");
+    let normalized = Normalizer
+      .transform(concrete, &mut vec![])
+      .expect("normalize");
     RecursionChecker.transform(normalized, &mut vec![]).is_ok()
   }
 

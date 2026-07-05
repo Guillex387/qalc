@@ -43,7 +43,10 @@ fn scope_resolve_undefined_returns_none() {
 fn scope_define_duplicate_fails() {
   let scope = Scope::new(None);
   assert!(scope.define(make_symbol("x")), "first define");
-  assert!(!scope.define(make_symbol("x")), "duplicate define must return false");
+  assert!(
+    !scope.define(make_symbol("x")),
+    "duplicate define must return false"
+  );
 }
 
 #[test]
@@ -84,14 +87,21 @@ fn scope_child_shadows_parent() {
   });
 
   let resolved = child.resolve("x").unwrap();
-  assert_eq!(resolved.kind, SymbolKind::Parameter, "child symbol shadows parent");
+  assert_eq!(
+    resolved.kind,
+    SymbolKind::Parameter,
+    "child symbol shadows parent"
+  );
 }
 
 #[test]
 fn scope_define_decl_allows_overloading() {
   let scope = Scope::new(None);
   assert!(scope.define_decl(make_symbol("f")), "first define_decl");
-  assert!(scope.define_decl(make_symbol("f")), "second define_decl with same name");
+  assert!(
+    scope.define_decl(make_symbol("f")),
+    "second define_decl with same name"
+  );
 
   let resolved = scope.resolve("f");
   assert!(resolved.is_some(), "must resolve the first overload");

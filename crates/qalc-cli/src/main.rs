@@ -1,10 +1,12 @@
 use std::{env::args, rc::Rc};
 
-use qalc_analysis::{HMInferrer, Normalizer, RecursionChecker};
+use qalc_analysis::{HMInferrer, Inliner, Normalizer, RecursionChecker};
+use qalc_ast::ASTMetadata;
 use qalc_ast::base_ast::{
   Declaration, DeclarationKind, Expression, ExpressionKind, Pattern, PatternKind, SliceExpression,
 };
-use qalc_ast::typed_ast::{Type, TypedAST, Typed};
+use qalc_ast::flat_ast::{Flat, FlatAST, FlatMark};
+use qalc_ast::typed_ast::{Type, Typed, TypedAST};
 use qalc_builtins::standard_builtins;
 use qalc_parser::parse_program;
 use qalc_utils::{CompilerStep, Diagnostic, Source};
@@ -32,7 +34,8 @@ fn main() {
     }
   };
 
-  let normalized_ast = match RecursionChecker::default().transform(normalized_ast, &mut diagnostics) {
+  let normalized_ast = match RecursionChecker::default().transform(normalized_ast, &mut diagnostics)
+  {
     Ok(ast) => ast,
     Err(error) => {
       eprintln!("{}", error);
@@ -51,6 +54,17 @@ fn main() {
 
   let json = ast_to_json(&typed_ast);
   println!("{}", serde_json::to_string_pretty(&json).unwrap());
+
+  let flat_ast = match Inliner::default().transform(typed_ast, &mut diagnostics) {
+    Ok(ast) => ast,
+    Err(error) => {
+      eprintln!("{}", error);
+      return;
+    }
+  };
+
+  let flat_json = flat_ast_to_json(&flat_ast);
+  println!("{}", serde_json::to_string_pretty(&flat_json).unwrap());
 }
 
 fn fmt_type(t: &Type) -> String {
@@ -62,7 +76,10 @@ fn fmt_type(t: &Type) -> String {
       params.iter().map(fmt_type).collect::<Vec<_>>().join(", ")
     ),
     Type::Arrow(a, b) => format!("{} -> {}", fmt_type_parens(a), fmt_type(b)),
-    Type::Tuple(ts) => format!("({})", ts.iter().map(fmt_type).collect::<Vec<_>>().join(", ")),
+    Type::Tuple(ts) => format!(
+      "({})",
+      ts.iter().map(fmt_type).collect::<Vec<_>>().join(", ")
+    ),
     Type::Slice(t) => format!("[{}]", fmt_type(t)),
   }
 }
@@ -74,13 +91,11 @@ fn fmt_type_parens(t: &Type) -> String {
   }
 }
 
-fn pattern_to_json(p: &Pattern<Typed>) -> Value {
+fn pattern_to_json<M: ASTMetadata>(p: &Pattern<M>) -> Value {
   match &p.kind {
     PatternKind::Variable(name) => json!(name),
     PatternKind::Wildcard => json!("_"),
-    PatternKind::Tuple(pats) => {
-      Value::Array(pats.iter().map(pattern_to_json).collect())
-    }
+    PatternKind::Tuple(pats) => Value::Array(pats.iter().map(pattern_to_json).collect()),
   }
 }
 
@@ -108,7 +123,11 @@ fn expr_to_json(expr: &Expression<Typed>) -> Value {
       },
       "type": t,
     }),
-    ExpressionKind::LetBlock { strict, assigments, value } => {
+    ExpressionKind::LetBlock {
+      strict,
+      assigments,
+      value,
+    } => {
       let bindings: Vec<Value> = assigments
         .iter()
         .map(|(pat, expr)| json!({ "pat": pattern_to_json(pat), "val": expr_to_json(expr) }))
@@ -122,7 +141,11 @@ fn expr_to_json(expr: &Expression<Typed>) -> Value {
         "type": t,
       })
     }
-    ExpressionKind::IfElseBlock { test, consequent, alternative } => json!({
+    ExpressionKind::IfElseBlock {
+      test,
+      consequent,
+      alternative,
+    } => json!({
       "if": {
         "test": expr_to_json(test),
         "then": expr_to_json(consequent),
@@ -145,7 +168,12 @@ fn expr_to_json(expr: &Expression<Typed>) -> Value {
 
 fn decl_to_json(decl: &Declaration<Typed>) -> Value {
   match &decl.kind {
-    DeclarationKind::Function { identifier, params, body, .. } => json!({
+    DeclarationKind::Function {
+      identifier,
+      params,
+      body,
+      ..
+    } => json!({
       "fn": identifier,
       "params": params,
       "type": fmt_type(&decl.meta.ttype),
@@ -158,5 +186,90 @@ fn decl_to_json(decl: &Declaration<Typed>) -> Value {
 fn ast_to_json(ast: &TypedAST) -> Value {
   json!({
     "declarations": ast.declarations.iter().map(decl_to_json).collect::<Vec<_>>(),
+  })
+}
+
+fn flat_expr_to_json(expr: &Expression<Flat>) -> Value {
+  let t = fmt_type(&expr.meta.ttype);
+  match &expr.kind {
+    ExpressionKind::Identifier(name) => json!({ "ident": name, "type": t }),
+    ExpressionKind::IntegerLiteral { number, .. } => json!({ "int": number, "type": t }),
+    ExpressionKind::FloatLiteral { number, .. } => json!({ "float": number, "type": t }),
+    ExpressionKind::Tuple(exprs) => json!({
+      "tuple": exprs.iter().map(flat_expr_to_json).collect::<Vec<_>>(),
+      "type": t,
+    }),
+    ExpressionKind::Transform { callee, param } => json!({
+      "app": {
+        "fn": flat_expr_to_json(callee),
+        "arg": flat_expr_to_json(param),
+      },
+      "type": t,
+    }),
+    ExpressionKind::Lambda { params, body } => {
+      let mut node = json!({
+        "lambda": {
+          "params": params,
+          "body": flat_expr_to_json(body),
+        },
+        "type": t,
+      });
+      if expr.meta.mark == FlatMark::ResidualLambda {
+        node["residual"] = json!(true);
+      }
+      node
+    }
+    ExpressionKind::LetBlock {
+      strict,
+      assigments,
+      value,
+    } => {
+      let bindings: Vec<Value> = assigments
+        .iter()
+        .map(|(pat, expr)| json!({ "pat": pattern_to_json(pat), "val": flat_expr_to_json(expr) }))
+        .collect();
+      json!({
+        "let": {
+          "strict": strict,
+          "bindings": bindings,
+          "in": flat_expr_to_json(value),
+        },
+        "type": t,
+      })
+    }
+    ExpressionKind::IfElseBlock {
+      test,
+      consequent,
+      alternative,
+    } => json!({
+      "if": {
+        "test": flat_expr_to_json(test),
+        "then": flat_expr_to_json(consequent),
+        "else": flat_expr_to_json(alternative),
+      },
+      "type": t,
+    }),
+    ExpressionKind::Slice(slice) => match slice {
+      SliceExpression::Items(items) => json!({
+        "slice": items.iter().map(flat_expr_to_json).collect::<Vec<_>>(),
+        "type": t,
+      }),
+      SliceExpression::Range(start, end) => json!({
+        "range": { "start": flat_expr_to_json(start), "end": flat_expr_to_json(end) },
+        "type": t,
+      }),
+    },
+  }
+}
+
+fn flat_ast_to_json(ast: &FlatAST) -> Value {
+  json!({
+    "params": ast
+      .params
+      .iter()
+      .map(|p| json!({ "name": p.name, "type": fmt_type(&p.ttype) }))
+      .collect::<Vec<_>>(),
+    "result": { "arity": ast.result.arity, "qio": ast.result.qio },
+    "body": flat_expr_to_json(&ast.body),
   })
 }
