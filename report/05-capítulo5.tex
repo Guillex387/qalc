@@ -45,33 +45,14 @@ El compilador se estructura como un workspace de Cargo con crates de dependencia
 
 \section{Visión general del pipeline}
 
-El compilador de Qalc es un pipeline de transformaciones progresivas. Cada fase toma una representación del programa y produce otra más refinada, enriquecida con información que las fases siguientes necesitan. La cadena completa se muestra en la \autoref{tab:pipeline}.
+El compilador de Qalc es un pipeline de transformaciones progresivas. Cada fase toma una representación del programa y produce otra más refinada, enriquecida con información que las fases siguientes necesitan. La cadena completa se muestra en la \autoref{fig:pipeline-qalc}.
 
-\begin{table}[h]
+\begin{figure}[h]
 \centering
+\includegraphics[width=\textwidth]{images/pipeline-qalc}
 \caption{Fases del pipeline del compilador de Qalc}
-\label{tab:pipeline}
-\small
-\begin{tabularx}{\textwidth}{|l|l|X|}
-\hline
-\textbf{Fase} & \textbf{Crate / módulo} & \textbf{Transformación} \\
-\hline
-Análisis sintáctico & \lstinline|qalc-parser| & Texto fuente $\to$ \lstinline|ConcreteAST| \\
-\hline
-Normalización & \lstinline|qalc-analysis/normalizer| & \lstinline|ConcreteAST| $\to$ \lstinline|NormalizedAST| \\
-\hline
-Inferencia de tipos & \lstinline|qalc-analysis/hm_inferrer| & \lstinline|NormalizedAST| $\to$ \lstinline|TypedAST| \\
-\hline
-Verificación de recursividad & \lstinline|qalc-analysis| & \lstinline|TypedAST| $\to$ \lstinline|TypedAST| \\
-\hline
-Aplanador perezoso & \lstinline|qalc-analysis| & \lstinline|TypedAST| $\to$ \lstinline|FlatAST| \\
-\hline
-Comprobación de consumo lineal & \lstinline|qalc-analysis| & \lstinline|FlatAST| $\to$ \lstinline|FlatAST| \\
-\hline
-Generación de código & \lstinline|qalc-codegen| & \lstinline|FlatAST| $\to$ OpenQASM~3 \\
-\hline
-\end{tabularx}
-\end{table}
+\label{fig:pipeline-qalc}
+\end{figure}
 
 El punto de entrada ejecutable reside en el crate \lstinline|qalc-cli|, que encadena todas las fases y emite el resultado final por la salida estándar.
 

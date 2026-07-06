@@ -236,6 +236,29 @@ La interacción entre el software clásico y el hardware cuántico se estructura
 \section{Alcance del proyecto}
 \label{sec:alcance}
 
-El presente trabajo abarca el diseño completo del lenguaje, detallado en el \autoref{ch:diseno}, y la implementación de su compilador en Rust hasta un prototipo funcional. El alcance de esa implementación no es uniforme a lo largo del pipeline, pues el núcleo del compilador (el análisis léxico y sintáctico, la normalización, la inferencia de tipos de Hindley-Milner con su resolución de ámbito y su sobrecarga de funciones, y la verificación de recursividad, descritos en los \autoref{ch:arquitectura} y \autoref{ch:analisis-semantico}) está completamente implementado, mientras que las fases del backend (el aplanador perezoso, la comprobación de consumo lineal y la generación de código hacia OpenQASM~3, descritas en el \autoref{ch:backend}) existen en un estado experimental o de demostración, suficiente para mostrar el funcionamiento del pipeline completo, pero no para cubrir la totalidad del lenguaje diseñado.
+El presente trabajo abarca el diseño completo de un lenguaje de programación cuántico de alto nivel y la implementación de su compilador en Rust hasta un prototipo funcional. El alcance de esa implementación no es uniforme a lo largo del pipeline, pues el núcleo del compilador (el análisis léxico y sintáctico, la normalización, la inferencia de tipos de Hindley-Milner con su resolución de ámbito y su sobrecarga de funciones, y la verificación de recursividad) está completamente implementado, mientras que las fases del backend (el aplanador, la comprobación de consumo lineal y la generación de código hacia OpenQASM~3) existen en un estado experimental o de demostración, suficiente para mostrar el funcionamiento del pipeline completo, pero no para cubrir la totalidad del lenguaje diseñado.
 
-Quedan fuera del alcance de este prototipo, y se retoman con más detalle como líneas de trabajo futuro en el \autoref{ch:conclusiones}, tres frentes, a saber, la gestión automática de la descomputación de recursos cuánticos auxiliares, la maduración de las fases del backend hasta alcanzar la misma cobertura que el frontend, y la ampliación de la librería estándar de tipos y operaciones predefinidas más allá del catálogo ilustrativo usado en los ejemplos de este documento.
+Quedan fuera del alcance de este prototipo tres frentes, a saber, la gestión automática de la descomputación de recursos cuánticos auxiliares, la maduración de las fases del backend hasta alcanzar la misma cobertura que el frontend, y la ampliación de la librería estándar de tipos y operaciones predefinidas más allá del catálogo ilustrativo usado en los ejemplos de este documento. Las tres son exclusiones deliberadas y no objetivos incumplidos, motivadas por acotar el prototipo a una extensión abordable sin comprometer el rigor de las partes que sí se implementan por completo.
+
+\section{Estructura de la memoria}
+\label{sec:estructura-memoria}
+
+El resto de la memoria se organiza en los capítulos siguientes.
+
+\begin{itemize}
+  \item El \autoref{ch:diseno} presenta el diseño del lenguaje Qalc como una especificación independiente del estado de la implementación, cubriendo sus principios de diseño, el modelo de recursos lineales, el sistema de tipos, la sintaxis del lenguaje y la composición de circuitos cuánticos.
+
+  \item El \autoref{ch:arquitectura} describe la organización del compilador como un workspace de crates de Rust y el pipeline de fases que lo atraviesa, desde el análisis léxico y sintáctico hasta la generación de código.
+
+  \item El \autoref{ch:analisis-semantico} profundiza en el análisis semántico, detallando la resolución del ámbito léxico, el algoritmo de inferencia de tipos de Hindley-Milner y la sobrecarga de funciones discriminada por tipo.
+
+  \item El \autoref{ch:backend} recorre las tres fases finales del pipeline, el aplanador, la comprobación de consumo lineal y la generación de código hacia OpenQASM~3, incluida la arquitectura del generador de código y su mecanismo de extensión a nuevos backends.
+
+  \item El \autoref{ch:demostracion} desarrolla de principio a fin un programa Qalc completo, una búsqueda con el algoritmo de Grover sobre un espacio de dos cúbits, que ejercita en conjunto todas las fases descritas en los capítulos anteriores.
+
+  \item El \autoref{ch:conclusiones} recoge las conclusiones del trabajo y las líneas futuras identificadas, con una versión en inglés en el \autoref{ch:conclusions}.
+
+  \item El \autoref{ch:presupuesto} estima el coste del proyecto en recursos materiales y mano de obra.
+
+  \item Cierran la memoria dos apéndices, el \autoref{ch:gramatica-ebnf}, que recoge la gramática completa del lenguaje en notación EBNF, y el \autoref{ch:grover-qasm}, que recoge el código OpenQASM~3 completo generado para la demostración del capítulo anterior.
+\end{itemize}
