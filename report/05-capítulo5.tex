@@ -92,7 +92,7 @@ pub trait ASTMetadata {
 
 El crate \lstinline|qalc-ast| define dos implementaciones de este rasgo que se emplean a lo largo del pipeline. La implementación \lstinline|Spanned| (en la que todos los campos meta son \lstinline|Span|) se usa en el AST concreto y en el AST normalizado. La implementación \lstinline|Typed| (en la que los campos meta son \lstinline|TypeMetadata \{ span, ttype, scope \}| con el tipo completamente resuelto) se usa en el AST tipado.
 
-Existe además \lstinline|Inferred| (con \lstinline|TypeWithUnknow| en lugar de \lstinline|Type|), que se usa internamente durante la inferencia de tipos antes de que la unificación resuelva todas las variables de tipo. La conversión de \lstinline|Inferred| a \lstinline|Typed| ocurre en la fase de aplicación de sustituciones descrita en el \autoref{ch:analisis-semantico}.
+Existe además \lstinline|Inferred| (con \lstinline|TypeWithUnknow| en lugar de \lstinline|Type|), que se usa internamente durante la inferencia de tipos antes de que la unificación resuelva todas las variables de tipo. La conversión de \lstinline|Inferred| a \lstinline|Typed| ocurre en la fase de aplicación de sustituciones descrita en el Capítulo~\ref{ch:analisis-semantico}.
 
 Gracias a este patrón, los tipos de nodo se definen una sola vez y se reutilizan sin modificación en todas las fases. Añadir una nueva fase, por ejemplo una que propague información de linealidad, implica únicamente definir un nuevo \lstinline|ASTMetadata| sin tocar los nodos existentes.
 
@@ -154,4 +154,4 @@ El diseño de la fase consiste en construir el grafo de llamadas del programa a 
 
 Esta fase actúa como una validación pura, es decir, no modifica el AST ni produce una representación nueva. Su única salida observable es la aprobación o el rechazo del programa con el diagnóstico correspondiente. Al situarse después de la inferencia de tipos, el grafo de llamadas ya tiene información de tipos resuelta, lo que permitirá en el futuro extender la verificación para detectar también ciclos de valor mutuamente dependientes en el sentido de la evaluación perezosa.
 
-Las tres fases finales del pipeline, el aplanador perezoso, la comprobación de consumo lineal y la generación de código, se describen en detalle en el \autoref{ch:backend}.
+Las tres fases finales del pipeline, el aplanador perezoso, la comprobación de consumo lineal y la generación de código, se describen en detalle en el Capítulo~\ref{ch:backend}.

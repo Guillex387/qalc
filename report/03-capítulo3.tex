@@ -23,7 +23,7 @@ Una restricción de diseño fundamental, impuesta por las limitaciones del hardw
 
 En consecuencia, Qalc es un lenguaje funcional en el que el resultado se describe mediante la composición de transformaciones no recursivas, y no a través de la recursión característica de los lenguajes funcionales clásicos. La repetición de un patrón sobre una estructura de tamaño conocido (por ejemplo, aplicar una puerta a cada cúbit de un registro) se expresa mediante combinadores de orden superior (como \lstinline|map|) cuyo número de pasos queda fijado al compilar, de modo que el circuito resultante es siempre finito y materializable. Esta decisión no es una carencia del lenguaje, sino el reflejo directo, en su modelo de cómputo, de lo que el sustrato físico puede ejecutar.
 
-La disciplina lineal impone una segunda particularidad que se hace visible en el estilo de programación, y que se detalla en la \autoref{sec:disciplina_lineal_uso}. Dado que cada variable cuántica se consume al usarse, encadenar varias operaciones sobre un mismo recurso obligaría, en código funcional ordinario, a re-enlazar el resultado con un nombre distinto tras cada paso. Para evitar este renombramiento sistemático, Qalc introduce los bloques \lstinline|linear| y \lstinline|perform|, descritos en la \autoref{sec:linear}, que automatizan ese re-enlazado sin añadir semántica nueva al lenguaje.
+La disciplina lineal impone una segunda particularidad que se hace visible en el estilo de programación, y que se detalla en la Sección~\ref{sec:disciplina_lineal_uso}. Dado que cada variable cuántica se consume al usarse, encadenar varias operaciones sobre un mismo recurso obligaría, en código funcional ordinario, a re-enlazar el resultado con un nombre distinto tras cada paso. Para evitar este renombramiento sistemático, Qalc introduce los bloques \lstinline|linear| y \lstinline|perform|, descritos en la Subsección~\ref{sec:linear}, que automatizan ese re-enlazado sin añadir semántica nueva al lenguaje.
 
 \section{El cúbit como recurso lineal}
 \label{sec:modelo-lineal}
@@ -36,7 +36,7 @@ El teorema de no clonación establece que no existe ninguna operación física c
 
 \subsection{Variables cuánticas como circuitos en construcción}
 
-La reconciliación con la inmutabilidad funcional se obtiene mediante un cambio de interpretación. Una variable de tipo cuántico no denota un estado físico mutable, sino el cable o la línea de un circuito en construcción. Aplicar una puerta no muta el estado, sino que produce una nueva descripción de circuito que extiende la anterior. Como el valor original deja de estar disponible una vez transformado, no hay mutación observable y se preserva la transparencia referencial propia del paradigma funcional. El precio de esta interpretación es que el valor original debe quedar inaccesible tras su uso, lo que dota a las variables cuánticas de la disciplina lineal detallada en la \autoref{sec:disciplina_lineal_uso}.
+La reconciliación con la inmutabilidad funcional se obtiene mediante un cambio de interpretación. Una variable de tipo cuántico no denota un estado físico mutable, sino el cable o la línea de un circuito en construcción. Aplicar una puerta no muta el estado, sino que produce una nueva descripción de circuito que extiende la anterior. Como el valor original deja de estar disponible una vez transformado, no hay mutación observable y se preserva la transparencia referencial propia del paradigma funcional. El precio de esta interpretación es que el valor original debe quedar inaccesible tras su uso, lo que dota a las variables cuánticas de la disciplina lineal detallada en la Sección~\ref{sec:disciplina_lineal_uso}.
 
 \section{Sistema de tipos}
 
@@ -89,7 +89,7 @@ esPositivo :: i32 -> bool
 esPositivo n = n > 0i32
 \end{lstlisting}
 
-  \item \textit{\lstinline|qbool|,} un cúbit lógico interpretado como valor booleano cuántico, lineal por definición, de modo que toda variable que lo habite queda sometida a la disciplina de consumo único detallada en la \autoref{sec:disciplina_lineal_uso}.
+  \item \textit{\lstinline|qbool|,} un cúbit lógico interpretado como valor booleano cuántico, lineal por definición, de modo que toda variable que lo habite queda sometida a la disciplina de consumo único detallada en la Sección~\ref{sec:disciplina_lineal_uso}.
 
 \begin{lstlisting}[language={}, caption=Firma de una función sobre qbool]
 moneda :: qbool -> qbool
@@ -107,7 +107,7 @@ registro :: qi16 -> qi16
 medir :: qbool -> qio<u8>
 \end{lstlisting}
 
-  \item \textit{\lstinline|qcirc|,} el circuito de cúbits sobre el que se representan internamente todos los tipos cuánticos anteriores, descrito con sus propios ejemplos en la \autoref{subsec:qcirc-nivel-bajo}.
+  \item \textit{\lstinline|qcirc|,} el circuito de cúbits sobre el que se representan internamente todos los tipos cuánticos anteriores, descrito con sus propios ejemplos en la Subsección~\ref{subsec:qcirc-nivel-bajo}.
 
   \item \textit{Tipos función,} escritos con flecha, \lstinline|A -> B|, asociando a la derecha, lo que habilita la aplicación parcial y el estilo currificado. Toda función de Qalc lleva asociada una anotación de tipo obligatoria de la forma \lstinline|nombre :: tipo|, al estilo de Haskell.
 
@@ -165,7 +165,7 @@ Una estructura que contenga, aunque sea indirectamente, algún valor cuántico h
 
 En la práctica, el compilador lleva la cuenta, para cada variable cuántica dentro de su ámbito, de si ya ha sido consumida. Si una variable se usa una segunda vez, o si su ámbito termina sin que se haya usado, se produce un error de compilación. Esta contabilidad es lo que convierte la no clonación y la ausencia de fugas en garantías estáticas; los programas que las violarían sencillamente no compilan, y el error se detecta antes de llegar a la QPU, no durante una ejecución costosa.
 
-Aplicar manualmente esta disciplina obliga a re-enlazar el recurso tras cada operación, lo que resulta tedioso. El bloque \lstinline|linear| (véase la \autoref{sec:linear}) automatiza ese re-enlazado y es, por tanto, la forma idiomática de escribir secuencias de operaciones sobre recursos cuánticos sin incurrir en errores de uso.
+Aplicar manualmente esta disciplina obliga a re-enlazar el recurso tras cada operación, lo que resulta tedioso. El bloque \lstinline|linear| (véase la Subsección~\ref{sec:linear}) automatiza ese re-enlazado y es, por tanto, la forma idiomática de escribir secuencias de operaciones sobre recursos cuánticos sin incurrir en errores de uso.
 
 \section{Léxico y estructura de un programa}
 

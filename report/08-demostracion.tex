@@ -1,7 +1,7 @@
 \chapter{Demostración de búsqueda con el algoritmo de Grover}
 \label{ch:demostracion}
 
-Este capítulo desarrolla un único programa Qalc\footnote{Código fuente disponible en \url{https://github.com/Guillex387/qalc}.} de principio a fin, \lstinline|examples/grover_2bit.qalc|, que ejercita en conjunto todas las fases descritas en los capítulos anteriores, el sistema de tipos lineal del \autoref{ch:analisis-semantico}, el aplanador y la comprobación de consumo lineal del \autoref{ch:backend}, y la generación de código hacia OpenQASM~3 de la \autoref{sec:codegen}, sobre un caso concreto y completo en vez de fragmentos aislados. El programa implementa una búsqueda con el algoritmo de Grover sobre un espacio de 2 cúbits, y usa exclusivamente características del lenguaje ya implementadas a fecha de este capítulo.
+Este capítulo desarrolla un único programa Qalc\footnote{Código fuente disponible en \url{https://github.com/Guillex387/qalc}.} de principio a fin, \lstinline|examples/grover_2bit.qalc|, que ejercita en conjunto todas las fases descritas en los capítulos anteriores, el sistema de tipos lineal del Capítulo~\ref{ch:analisis-semantico}, el aplanador y la comprobación de consumo lineal del Capítulo~\ref{ch:backend}, y la generación de código hacia OpenQASM~3 de la Sección~\ref{sec:codegen}, sobre un caso concreto y completo en vez de fragmentos aislados. El programa implementa una búsqueda con el algoritmo de Grover sobre un espacio de 2 cúbits, y usa exclusivamente características del lenguaje ya implementadas a fecha de este capítulo.
 
 \section{Planteamiento del problema de búsqueda}
 \label{sec:grover-problema}
@@ -75,7 +75,7 @@ diffuser c = c |> H |> X |> controlled 0 1 Z |> X |> H;
 \section{Punto de entrada y despliegue con repeat}
 \label{sec:grover-main}
 
-\lstinline|grover| encadena el oráculo y el difusor mediante el built-in \lstinline|repeat| introducido en el \autoref{sec:repeat}, recibiendo el número de iteraciones y el propio oráculo como parámetros de orden superior.
+\lstinline|grover| encadena el oráculo y el difusor mediante el built-in \lstinline|repeat| introducido en la Subsección~\ref{sec:repeat}, recibiendo el número de iteraciones y el propio oráculo como parámetros de orden superior.
 
 \begin{lstlisting}[language={}, caption=Iteración de Grover parametrizada por el número de rondas y el oráculo]
 grover :: i32 -> (qcirc -> qcirc) -> qcirc -> qcirc
@@ -86,7 +86,7 @@ main =
   qcirc 2i32 |> H |> grover 1i32 ((c) -> oracle 1u8 3u8 c) |> measure;
 \end{lstlisting}
 
-Las constantes del oráculo, \lstinline|1u8| y \lstinline|3u8|, deben conocerse en tiempo de compilación, ya que fijan las puertas \lstinline|X| que inicializan los registros \lstinline|qu8| correspondientes (\autoref{sec:entry-point}); por eso \lstinline|main| no toma ningún parámetro clásico en este programa, a diferencia de un circuito que reciba, por ejemplo, un ángulo de rotación en tiempo de ejecución. La única iteración de Grover que exige el \autoref{sec:grover-problema} se pasa igualmente como constante al invocar \lstinline|grover|, y es \lstinline|eval_repeat| (\autoref{sec:repeat}) quien la despliega en tiempo de compilación, sustituyendo la lambda \lstinline|(c) -> c |> oracleFn |> diffuser| por una única aplicación directa de \lstinline|oracle| seguida de \lstinline|diffuser|.
+Las constantes del oráculo, \lstinline|1u8| y \lstinline|3u8|, deben conocerse en tiempo de compilación, ya que fijan las puertas \lstinline|X| que inicializan los registros \lstinline|qu8| correspondientes (Subsección~\ref{sec:entry-point}); por eso \lstinline|main| no toma ningún parámetro clásico en este programa, a diferencia de un circuito que reciba, por ejemplo, un ángulo de rotación en tiempo de ejecución. La única iteración de Grover que exige la Sección~\ref{sec:grover-problema} se pasa igualmente como constante al invocar \lstinline|grover|, y es \lstinline|eval_repeat| (Subsección~\ref{sec:repeat}) quien la despliega en tiempo de compilación, sustituyendo la lambda \lstinline|(c) -> c |> oracleFn |> diffuser| por una única aplicación directa de \lstinline|oracle| seguida de \lstinline|diffuser|.
 
 \section{Resultado de la compilación}
 \label{sec:grover-resultado}
@@ -112,7 +112,7 @@ cx q1[1], q3[1];
 cx q4[0], q3[1];
 \end{lstlisting}
 
-El listado completo, incluyendo la preparación de constantes, el comparador de igualdad, la descomputación de cada recurso auxiliar y el difusor final, se recoge en el \autoref{ch:grover-qasm}. La \autoref{fig:grover-circuito} muestra el diagrama de circuito correspondiente, generado a partir de ese mismo texto OpenQASM~3 con \lstinline|scripts/render_qasm.py|, un script que carga el circuito con \lstinline|qiskit.qasm3.loads| y lo dibuja con Qiskit.
+El listado completo, incluyendo la preparación de constantes, el comparador de igualdad, la descomputación de cada recurso auxiliar y el difusor final, se recoge en el Capítulo~\ref{ch:grover-qasm}. La \autoref{fig:grover-circuito} muestra el diagrama de circuito correspondiente, generado a partir de ese mismo texto OpenQASM~3 con \lstinline|scripts/render_qasm.py|, un script que carga el circuito con \lstinline|qiskit.qasm3.loads| y lo dibuja con Qiskit.
 
 \begin{figure}[H]
   \centering
@@ -128,4 +128,4 @@ Las líneas de comentario \lstinline|// uncompute qN| que aparecen en el listado
 
 Ninguna de las funciones de este capítulo, \lstinline|`+`|, \lstinline|`==`|, \lstinline|oracle|, \lstinline|diffuser| ni \lstinline|grover|, es un built-in del compilador. Todas están escritas en Qalc ordinario, en el propio fichero del ejemplo, apoyándose únicamente en el pequeño núcleo de built-ins ya presentado en capítulos anteriores, las puertas cuánticas básicas, \lstinline|crossControlled|/\lstinline|crossToffoli| para cruzar registros, \lstinline|repeat| para la iteración genérica, y las conversiones de identidad entre \lstinline|qcirc| y los tipos de alto nivel. Esto demuestra que esa superficie de built-ins ya es suficiente para construir, con las herramientas ordinarias del lenguaje, componentes reutilizables de un nivel de abstracción considerablemente más alto que una puerta individual.
 
-El prototipo actual, sin embargo, obliga a redefinir estas funciones en cada programa que las necesite, ya que no existe todavía ninguna biblioteca de funciones compartida entre programas Qalc distintos. La línea futura \textit{Ampliación de la librería estándar de tipos y operaciones}, ya identificada en el \autoref{ch:conclusiones}, encuentra en \lstinline|`+`|, \lstinline|`==`|, \lstinline|diffuser| y \lstinline|grover| un punto de partida concreto, ya que son exactamente el tipo de operación reutilizable (aritmética modular sobre registros de tamaño fijo y bloques estándar de algoritmos de búsqueda) que una biblioteca estándar debería distribuir junto con el compilador en vez de dejar que cada programa las reimplemente desde cero.
+El prototipo actual, sin embargo, obliga a redefinir estas funciones en cada programa que las necesite, ya que no existe todavía ninguna biblioteca de funciones compartida entre programas Qalc distintos. La línea futura \textit{Ampliación de la librería estándar de tipos y operaciones}, ya identificada en el Capítulo~\ref{ch:conclusiones}, encuentra en \lstinline|`+`|, \lstinline|`==`|, \lstinline|diffuser| y \lstinline|grover| un punto de partida concreto, ya que son exactamente el tipo de operación reutilizable (aritmética modular sobre registros de tamaño fijo y bloques estándar de algoritmos de búsqueda) que una biblioteca estándar debería distribuir junto con el compilador en vez de dejar que cada programa las reimplemente desde cero.

@@ -108,12 +108,12 @@ Los algoritmos cuánticos explotan este mecanismo para diseñar circuitos en los
 
 El orden y la elección de las puertas cuánticas en un circuito determinan el patrón de interferencia y, en última instancia, la corrección del algoritmo. Esta dependencia refuerza la necesidad de una representación formal del circuito que preserve el orden de las operaciones y haga imposible la reordenación accidental de puertas, algo que la construcción funcional de Qalc garantiza por diseño.
 
-Los principios descritos en los apartados anteriores no son solo fenómenos físicos, sino restricciones que cualquier lenguaje de programación cuántica debe respetar para que los programas que genera sean físicamente ejecutables y correctos. La imposibilidad de clonar un estado cuántico se traduce en un requisito de unicidad en el sistema de tipos. La irreversibilidad de la medición exige separar el cómputo cuántico puro de la interacción con el entorno. La necesidad de descomputar los cúbits auxiliares convierte el ciclo de vida de los recursos en un problema central del compilador. La interferencia cuántica impone que el orden de las operaciones sea parte esencial de la semántica del programa. La \autoref{sec:estadodelarte} evalúa en qué medida los lenguajes existentes han incorporado estas restricciones en su diseño.
+Los principios descritos en los apartados anteriores no son solo fenómenos físicos, sino restricciones que cualquier lenguaje de programación cuántica debe respetar para que los programas que genera sean físicamente ejecutables y correctos. La imposibilidad de clonar un estado cuántico se traduce en un requisito de unicidad en el sistema de tipos. La irreversibilidad de la medición exige separar el cómputo cuántico puro de la interacción con el entorno. La necesidad de descomputar los cúbits auxiliares convierte el ciclo de vida de los recursos en un problema central del compilador. La interferencia cuántica impone que el orden de las operaciones sea parte esencial de la semántica del programa. La Sección~\ref{sec:estadodelarte} evalúa en qué medida los lenguajes existentes han incorporado estas restricciones en su diseño.
 
 \section{Lenguajes de programación cuántica existentes}
 \label{sec:estadodelarte}
 
-El rápido crecimiento del hardware cuántico durante la última década ha estimulado una proliferación paralela de lenguajes y entornos de programación cuántica. Sin embargo, este ecosistema presenta una fractura evidente, pues mientras los entornos dominantes de la industria ofrecen amplio soporte de hardware pero carecen de seguridad formal, las propuestas académicas más rigurosas adolecen de adopción limitada, rigidez semántica o rendimiento clásico insuficiente para escenarios de producción. Las subsecciones siguientes clasifican los actores principales por paradigma y los evalúan sobre los fundamentos físicos introducidos en la \autoref{sec:fundamentos}.
+El rápido crecimiento del hardware cuántico durante la última década ha estimulado una proliferación paralela de lenguajes y entornos de programación cuántica. Sin embargo, este ecosistema presenta una fractura evidente, pues mientras los entornos dominantes de la industria ofrecen amplio soporte de hardware pero carecen de seguridad formal, las propuestas académicas más rigurosas adolecen de adopción limitada, rigidez semántica o rendimiento clásico insuficiente para escenarios de producción. Las subsecciones siguientes clasifican los actores principales por paradigma y los evalúan sobre los fundamentos físicos introducidos en la Sección~\ref{sec:fundamentos}.
 
 \subsection{Lenguajes imperativos de alto nivel}
 \label{subsec:imperativos}
@@ -170,7 +170,7 @@ Este grupo se aparta del modelo de circuitos sobre cúbits discretos que compart
 \subsection{Análisis comparativo}
 \label{subsec:comparativa}
 
-La Tabla~\ref{tab:comparativa} sintetiza las dimensiones de diseño más relevantes para evaluar la idoneidad de cada tecnología como base para un lenguaje cuántico de alto nivel con garantías formales, evaluadas en función de los fundamentos físicos de la \autoref{sec:fundamentos}. Antes de leerla conviene precisar qué mide cada columna, ya que varias proceden de conceptos propios del diseño de compiladores que no son de uso común fuera de ese ámbito.
+La Tabla~\ref{tab:comparativa} sintetiza las dimensiones de diseño más relevantes para evaluar la idoneidad de cada tecnología como base para un lenguaje cuántico de alto nivel con garantías formales, evaluadas en función de los fundamentos físicos de la Sección~\ref{sec:fundamentos}. Antes de leerla conviene precisar qué mide cada columna, ya que varias proceden de conceptos propios del diseño de compiladores que no son de uso común fuera de ese ámbito.
 
 \begin{itemize}
   \item \textit{Abstracción.} Cuánto detalle físico del circuito tiene que manejar el programador. Una abstracción alta significa que se describen transformaciones sobre datos cuánticos sin mencionar puertas ni cúbits concretos; una abstracción baja significa que el programador ensambla explícitamente cada puerta sobre cada cúbit, de forma similar a programar en ensamblador clásico.
@@ -218,7 +218,7 @@ De la comparativa emergen dos patrones claros. Los entornos industriales más ad
 Del análisis precedente se extraen tres observaciones sobre el estado actual del ecosistema que configuran el contexto en el que surge Qalc.
 
 \begin{itemize}
-  \item \textit{Descomputación automática.} Silq automatiza la descomputación únicamente para escalares cuánticos derivados de funciones clásicas deterministas. Para estructuras de datos recursivas en superposición (como árboles de búsqueda binaria cuánticos) no existe hoy ninguna herramienta que sintetice automáticamente el operador unitario de destrucción $U^\dagger$ a partir del grafo topológico del estado. Este es un problema abierto de investigación que requiere combinar análisis de alcance estático, síntesis de circuitos adjuntos y una representación del grafo cuántico suficientemente rica. La versión de Qalc entregada en este trabajo no implementa este mecanismo. No obstante, la arquitectura modular del compilador (detallada en el \autoref{ch:arquitectura}) está diseñada explícitamente para que esta capacidad pueda incorporarse como una pasada adicional del proceso de compilación en trabajos futuros, sin necesidad de modificar el resto del compilador.
+  \item \textit{Descomputación automática.} Silq automatiza la descomputación únicamente para escalares cuánticos derivados de funciones clásicas deterministas. Para estructuras de datos recursivas en superposición (como árboles de búsqueda binaria cuánticos) no existe hoy ninguna herramienta que sintetice automáticamente el operador unitario de destrucción $U^\dagger$ a partir del grafo topológico del estado. Este es un problema abierto de investigación que requiere combinar análisis de alcance estático, síntesis de circuitos adjuntos y una representación del grafo cuántico suficientemente rica. La versión de Qalc entregada en este trabajo no implementa este mecanismo. No obstante, la arquitectura modular del compilador (detallada en el Capítulo~\ref{ch:arquitectura}) está diseñada explícitamente para que esta capacidad pueda incorporarse como una pasada adicional del proceso de compilación en trabajos futuros, sin necesidad de modificar el resto del compilador.
 
   \item \textit{Sistema de tipos afines sin penalización de rendimiento.} Guppy demuestra la viabilidad de los tipos lineales en lenguajes cuánticos, pero su embebido en Python introduce una capa de indirección clásica y limita la flexibilidad semántica para ciertos algoritmos dinámicos. Un sistema de tipos afines implementado en un compilador de propósito específico puede ofrecer las mismas garantías con mayor expresividad. Esta observación constituye uno de los objetivos de diseño de Qalc.
 
@@ -246,19 +246,19 @@ Quedan fuera del alcance de este prototipo tres frentes, a saber, la gestión au
 El resto de la memoria se organiza en los capítulos siguientes.
 
 \begin{itemize}
-  \item El \autoref{ch:diseno} presenta el diseño del lenguaje Qalc como una especificación independiente del estado de la implementación, cubriendo sus principios de diseño, el modelo de recursos lineales, el sistema de tipos, la sintaxis del lenguaje y la composición de circuitos cuánticos.
+  \item El Capítulo~\ref{ch:diseno} presenta el diseño del lenguaje Qalc como una especificación independiente del estado de la implementación, cubriendo sus principios de diseño, el modelo de recursos lineales, el sistema de tipos, la sintaxis del lenguaje y la composición de circuitos cuánticos.
 
-  \item El \autoref{ch:arquitectura} describe la organización del compilador como un workspace de crates de Rust y el pipeline de fases que lo atraviesa, desde el análisis léxico y sintáctico hasta la generación de código.
+  \item El Capítulo~\ref{ch:arquitectura} describe la organización del compilador como un workspace de crates de Rust y el pipeline de fases que lo atraviesa, desde el análisis léxico y sintáctico hasta la generación de código.
 
-  \item El \autoref{ch:analisis-semantico} profundiza en el análisis semántico, detallando la resolución del ámbito léxico, el algoritmo de inferencia de tipos de Hindley-Milner y la sobrecarga de funciones discriminada por tipo.
+  \item El Capítulo~\ref{ch:analisis-semantico} profundiza en el análisis semántico, detallando la resolución del ámbito léxico, el algoritmo de inferencia de tipos de Hindley-Milner y la sobrecarga de funciones discriminada por tipo.
 
-  \item El \autoref{ch:backend} recorre las tres fases finales del pipeline, el aplanador, la comprobación de consumo lineal y la generación de código hacia OpenQASM~3, incluida la arquitectura del generador de código y su mecanismo de extensión a nuevos backends.
+  \item El Capítulo~\ref{ch:backend} recorre las tres fases finales del pipeline, el aplanador, la comprobación de consumo lineal y la generación de código hacia OpenQASM~3, incluida la arquitectura del generador de código y su mecanismo de extensión a nuevos backends.
 
-  \item El \autoref{ch:demostracion} desarrolla de principio a fin un programa Qalc completo, una búsqueda con el algoritmo de Grover sobre un espacio de dos cúbits, que ejercita en conjunto todas las fases descritas en los capítulos anteriores.
+  \item El Capítulo~\ref{ch:demostracion} desarrolla de principio a fin un programa Qalc completo, una búsqueda con el algoritmo de Grover sobre un espacio de dos cúbits, que ejercita en conjunto todas las fases descritas en los capítulos anteriores.
 
-  \item El \autoref{ch:conclusiones} recoge las conclusiones del trabajo y las líneas futuras identificadas, con una versión en inglés en el \autoref{ch:conclusions}.
+  \item El Capítulo~\ref{ch:conclusiones} recoge las conclusiones del trabajo y las líneas futuras identificadas, con una versión en inglés en el Capítulo~\ref{ch:conclusions}.
 
-  \item El \autoref{ch:presupuesto} estima el coste del proyecto en recursos materiales y mano de obra.
+  \item El Capítulo~\ref{ch:presupuesto} estima el coste del proyecto en recursos materiales y mano de obra.
 
-  \item Cierran la memoria dos apéndices, el \autoref{ch:gramatica-ebnf}, que recoge la gramática completa del lenguaje en notación EBNF, y el \autoref{ch:grover-qasm}, que recoge el código OpenQASM~3 completo generado para la demostración del capítulo anterior.
+  \item Cierran la memoria dos apéndices, el Capítulo~\ref{ch:gramatica-ebnf}, que recoge la gramática completa del lenguaje en notación EBNF, y el Capítulo~\ref{ch:grover-qasm}, que recoge el código OpenQASM~3 completo generado para la demostración del capítulo anterior.
 \end{itemize}
