@@ -8,7 +8,7 @@ La computación cuántica lleva décadas prometiendo resolver problemas que esca
 
 El ecosistema actual de programación cuántica está dominado por herramientas que operan al nivel del circuito cuántico, donde el desarrollador construye su algoritmo ensamblando explícitamente puertas lógicas sobre cúbits individuales. Este modelo tiene sentido como representación de bajo nivel para el hardware, pero resulta inadecuado como abstracción de programación para cualquier algoritmo de complejidad moderada.
 
-Los entornos más extendidos, como Qiskit (IBM) o Cirq (Google), se presentan como bibliotecas Python que construyen circuitos de este modo. Su principal limitación no es la falta de funcionalidades, sino la ausencia total de garantías estáticas sobre la corrección física del código. Al ser bibliotecas de un lenguaje clásico de tipado dinámico, no pueden verificar en tiempo de compilación reglas fundamentales de la mecánica cuántica. El teorema de no clonación~\cite{wootters_zurek_1982} prohíbe duplicar el estado de un cúbit arbitrario, pero nada en Python impide que un programador asigne la misma variable cuántica a dos operaciones simultáneas; el error solo aparecerá en tiempo de ejecución, a menudo en forma de resultados silenciosamente incorrectos. La gestión manual de la topología del chip, la secuencia de pulsos o el ciclo de vida de cada cúbit traslada al programador una responsabilidad que debería pertenecer al compilador.
+Los entornos más extendidos, como Qiskit~\cite{qiskit_2024} (IBM) o Cirq~\cite{cirq} (Google), se presentan como bibliotecas Python que construyen circuitos de este modo. Su principal limitación no es la falta de funcionalidades, sino la ausencia total de garantías estáticas sobre la corrección física del código. Al ser bibliotecas de un lenguaje clásico de tipado dinámico, no pueden verificar en tiempo de compilación reglas fundamentales de la mecánica cuántica. El teorema de no clonación~\cite{wootters_zurek_1982} prohíbe duplicar el estado de un cúbit arbitrario, pero nada en Python impide que un programador asigne la misma variable cuántica a dos operaciones simultáneas; el error solo aparecerá en tiempo de ejecución, a menudo en forma de resultados silenciosamente incorrectos. La gestión manual de la topología del chip, la secuencia de pulsos o el ciclo de vida de cada cúbit traslada al programador una responsabilidad que debería pertenecer al compilador.
 
 El resultado es un ecosistema donde la complejidad accidental supera con frecuencia a la complejidad esencial del problema. Escribir el algoritmo de Grover~\cite{grover_1996} o la transformada cuántica de Fourier en Qiskit requiere más líneas de código de bajo nivel que de lógica algorítmica, y cualquier refactorización puede introducir errores físicos difíciles de detectar.
 
@@ -17,7 +17,7 @@ El resultado es un ecosistema donde la complejidad accidental supera con frecuen
 
 Antes de analizar los lenguajes de programación cuántica existentes y presentar la propuesta de Qalc, es necesario establecer los conceptos físicos sobre los que se asienta este trabajo. Los principios que se describen a continuación no son solo curiosidades de la mecánica cuántica, sino restricciones que cualquier herramienta de programación cuántica debe respetar, y que determinan directamente las decisiones de diseño que se discuten en los capítulos siguientes.
 
-\subsection{El cúbit y la superposición}
+\subsection{Cúbit y superposición}
 \label{subsec:cubit}
 
 La unidad fundamental de información en la computación cuántica es el cúbit. A diferencia del bit clásico, que en todo momento tiene un valor concreto (cero o uno), el cúbit puede estar en una superposición de ambos estados a la vez. La forma más sencilla de entender esto es imaginar que el cúbit lleva asociados dos pesos, uno para el estado cero y otro para el estado uno, que indican con qué probabilidad se obtendrá cada resultado al medirlo.
@@ -65,7 +65,7 @@ Un fenómeno relacionado, la decoherencia, ocurre cuando el cúbit interactúa i
 
 Estas propiedades imponen dos restricciones sobre los lenguajes cuánticos. En primer lugar, el resultado de una medición no puede reutilizarse como estado cuántico, porque la superposición ya ha colapsado. En segundo lugar, la ejecución clásica intercalada dentro de un circuito consume tiempo de coherencia, por lo que los flujos híbridos clásico-cuántico deben concentrarse en puntos específicos del algoritmo.
 
-\subsection{El teorema de no clonación}
+\subsection{Teorema de no clonación}
 \label{subsec:noclonacion}
 
 El teorema de no clonación establece que es imposible copiar el estado de un cúbit arbitrario desconocido sin destruirlo. Intuitivamente, copiar información cuántica implicaría conocerla primero, pero medirla para conocerla destruye la superposición. Formalmente, no existe ninguna operación cuántica $U$ que satisfaga
@@ -147,20 +147,34 @@ La programación funcional cuántica aborda el cómputo libre de efectos secunda
 \subsection{Paradigmas alternativos}
 \label{subsec:alternativos}
 
-\paragraph{Sistemas de variables continuas (Strawberry Fields y Blackbird)}
-Xanadu opera sobre estados de la luz en lugar de cúbits discretos. Blackbird actúa como lenguaje ensamblador específico del dominio fotónico. Su modelo matemático (operadores de posición y momento cuántico en lugar de matrices de Pauli) es incompatible con los lenguajes cuánticos basados en cúbits analizados en las subsecciones anteriores.
+Este grupo se aparta del modelo de circuitos sobre cúbits discretos que comparten el resto de lenguajes analizados en esta sección, adoptando otros modelos físicos o computacionales.
 
-\paragraph{Sistemas de recocido cuántico (D-Wave y QMASM)}
-Prescinden del modelo de circuitos para resolver problemas de optimización combinatoria mapeados a modelos de Ising o formulaciones QUBO (del inglés \textit{Quadratic Unconstrained Binary Optimization}). QMASM (del inglés \textit{Quantum Macro Assembler}) es el ensamblador de referencia para expresar este tipo de formulaciones sobre hardware D-Wave. Su aplicabilidad se limita a la optimización heurística cuántica, sin satisfacer la completitud de Turing cuántica.
+\begin{itemize}
+  \item \textit{Sistemas de variables continuas (Strawberry Fields y Blackbird).} Xanadu opera sobre estados de la luz en lugar de cúbits discretos. Blackbird actúa como lenguaje ensamblador específico del dominio fotónico. Su modelo matemático (operadores de posición y momento cuántico en lugar de matrices de Pauli) es incompatible con los lenguajes cuánticos basados en cúbits analizados en las subsecciones anteriores.
+
+  \item \textit{Sistemas de recocido cuántico (D-Wave y QMASM).} Prescinden del modelo de circuitos para resolver problemas de optimización combinatoria mapeados a modelos de Ising o formulaciones QUBO (del inglés \textit{Quadratic Unconstrained Binary Optimization}). QMASM (del inglés \textit{Quantum Macro Assembler}) es el ensamblador de referencia para expresar este tipo de formulaciones sobre hardware D-Wave. Su aplicabilidad se limita a la optimización heurística cuántica, sin satisfacer la completitud de Turing cuántica.
+\end{itemize}
 
 \subsection{Análisis comparativo}
 \label{subsec:comparativa}
 
-La siguiente tabla sintetiza las dimensiones de diseño más relevantes para evaluar la idoneidad de cada tecnología como base para un lenguaje cuántico de alto nivel con garantías formales, evaluadas en función de los fundamentos físicos de la \autoref{sec:fundamentos}.
+La Tabla~\ref{tab:comparativa} sintetiza las dimensiones de diseño más relevantes para evaluar la idoneidad de cada tecnología como base para un lenguaje cuántico de alto nivel con garantías formales, evaluadas en función de los fundamentos físicos de la \autoref{sec:fundamentos}. Antes de leerla conviene precisar qué mide cada columna, ya que varias proceden de conceptos propios del diseño de compiladores que no son de uso común fuera de ese ámbito.
+
+\begin{itemize}
+  \item \textit{Abstracción.} Cuánto detalle físico del circuito tiene que manejar el programador. Una abstracción alta significa que se describen transformaciones sobre datos cuánticos sin mencionar puertas ni cúbits concretos; una abstracción baja significa que el programador ensambla explícitamente cada puerta sobre cada cúbit, de forma similar a programar en ensamblador clásico.
+
+  \item \textit{No clonación.} Si la tecnología impide, y en qué momento, que el programador duplique por error el estado de un cúbit, algo prohibido por la física. El valor \textit{estática} significa que el propio compilador lo detecta antes de ejecutar el programa; \textit{manual} o \textit{tardía} significa que la responsabilidad recae en el programador, y el error solo se manifiesta al ejecutar el circuito.
+
+  \item \textit{Descomputación.} Si al terminar de usar un cúbit auxiliar (uno que solo sirvió como paso intermedio de un cálculo) la propia tecnología se encarga de devolverlo a un estado neutro para poder liberarlo, o si esa limpieza corre por cuenta del programador mediante operaciones explícitas.
+
+  \item \textit{Post-medición.} Si el sistema de tipos distingue formalmente un cúbit medido (cuyo resultado ya es un valor clásico ordinario) de uno todavía cuántico, evitando que el programador siga operando sobre él como si conservara superposición.
+
+  \item \textit{Backend.} El formato al que compila finalmente cada tecnología. OpenQASM es un ensamblador cuántico estándar adoptado por varios fabricantes de hardware, mientras que QIR/LLVM reutiliza la infraestructura de los compiladores clásicos (LLVM) a través de una representación intermedia cuántica (QIR) previa a la generación de código nativo; ambos se retoman con más detalle más adelante en este mismo capítulo. Los valores \textit{simulador} y \textit{circuitos} indican que la tecnología no compila hacia ningún formato estándar interoperable con hardware de terceros, sino hacia una representación propia o directamente hacia un simulador software.
+\end{itemize}
 
 \begin{table}[h]
 \centering
-\caption{Comparativa de lenguajes y entornos cuánticos según el tratamiento de los fundamentos físicos}
+\caption{Comparativa de lenguajes o entornos cuánticos}
 \label{tab:comparativa}
 \small
 \begin{tabularx}{\textwidth}{|l|C|C|C|C|C|}

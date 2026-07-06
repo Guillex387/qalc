@@ -17,8 +17,6 @@ pub struct Scope {
 
 Hay dos operaciones de inserción con semánticas distintas. La primera, \lstinline|define(&self, symbol)|, registra un nombre nuevo y, si el nombre ya existe en el ámbito local, devuelve \lstinline|false| sin sobreescribirlo (se usa para parámetros y variables \lstinline|let|, donde la redefinición en el mismo ámbito es un error). La segunda, \lstinline|define_decl(&self, symbol)|, añade la definición al vector del nombre sin rechazar las entradas previas, lo que permite acumular varias definiciones para el mismo nombre (se usa para declaraciones de función de nivel superior, donde el mismo nombre puede tener varias definiciones con firmas de tipo distintas; la resolución de la sobrecarga se describe en la \autoref{sec:overloading}).
 
-\subsection{Inyección de built-ins y declaraciones anticipadas}
-
 Al inicio de la inferencia, el \lstinline|HMInferrer| realiza dos operaciones preparatorias sobre el ámbito global antes de visitar ninguna declaración del programa.
 
 En primer lugar, inyecta todas las funciones predefinidas del crate \lstinline|qalc-builtins|. Cada \lstinline|BuiltinDef| contiene el nombre de la función y su tipo completo expresado como \lstinline|TypeWithUnknow|, de modo que el inferidor puede resolver referencias a built-ins exactamente igual que referencias a funciones definidas por el usuario.
@@ -74,7 +72,7 @@ La separación entre \lstinline|TypeWithUnknow| y \lstinline|Type| garantiza, a 
 
 La función \lstinline|infer_expr| recorre el AST normalizado en profundidad y produce un par \lstinline|(Expression<Inferred>, Vec<TypeConstraint>)|: el nodo anotado con su variable de tipo y el conjunto de restricciones que impone la estructura de ese nodo.
 
-Las reglas más relevantes son las siguientes.
+Las reglas más relevantes son las siguientes:
 
 \begin{itemize}
   \item \textit{Literales.} Los literales enteros y flotantes producen directamente el tipo concreto determinado por su sufijo: \lstinline|42i32| produce \lstinline|Builtin("i32")|, \lstinline|3.14f64| produce \lstinline|Builtin("f64")|. Los literales sin sufijo explícito se tipan por defecto como \lstinline|i32| y \lstinline|f64| respectivamente.
@@ -94,8 +92,6 @@ Las reglas más relevantes son las siguientes.
 
   \item \textit{Slices.} Se genera una variable fresca $\tau_{elem}$ y se añade la restricción $\tau_{elem} = \tau_{e_i}$ para cada elemento, exigiendo homogeneidad del slice.
 \end{itemize}
-
-\subsection{Inferencia de declaraciones}
 
 La función \lstinline|infer_decl| maneja las declaraciones de función. Cada declaración tiene una anotación de tipo explícita escrita por el programador. El inferidor convierte esa anotación en un \lstinline|TypeWithUnknow| mediante \lstinline|type_expr_to_infer_type| y añade la restricción:
 \[\tau_{inferida} = \tau_{anotada}\]

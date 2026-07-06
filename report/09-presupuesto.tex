@@ -1,31 +1,31 @@
 \chapter{Presupuesto}
 \label{ch:presupuesto}
 
-Este capítulo recoge una estimación del coste total del proyecto, desglosada en recursos materiales y coste de mano de obra. Todos los importes se expresan en euros. La suscripción a herramientas de inteligencia artificial se contrató en dólares estadounidenses y se ha convertido aplicando un tipo de cambio aproximado de 1~USD~$\approx$~0,92~EUR.
+Este capítulo recoge una estimación del coste total del proyecto, desglosada en recursos materiales y coste de mano de obra. Todos los importes se expresan en euros.
 
 \section{Recursos y herramientas}
 
-El equipamiento principal del proyecto es el ordenador portátil empleado para el desarrollo. Su coste se amortiza proporcionalmente a la duración del proyecto, estimada en seis meses, sobre una vida útil de cuatro años (48 meses), lo que resulta en una fracción amortizable de 6/48. Adicionalmente, durante tres meses del desarrollo se utilizó una suscripción mensual a herramientas de asistencia mediante inteligencia artificial, contratada a 20~\$/mes (aproximadamente 18,50~€/mes al tipo de cambio indicado).
+El equipamiento principal del proyecto es el ordenador portátil empleado para el desarrollo. Su coste se amortiza proporcionalmente a la duración del proyecto, estimada en seis meses, sobre una vida útil de cuatro años (48 meses), lo que resulta en una fracción amortizable de 6/48. Adicionalmente, durante tres meses del desarrollo se utilizó una suscripción mensual a herramientas de asistencia mediante inteligencia artificial, contratada a 18,50~€/mes.
 
 \begin{table}[!ht]
 \centering
 \caption{Recursos y herramientas}
 \label{tbl:recursos}
-\begin{tabularx}{0.85\textwidth}{Xcr}
+\begin{tabularx}{0.85\textwidth}{Xccr}
     \toprule
-    \textbf{Descripción} & \textbf{Cantidad} & \textbf{Coste (€)} \\
+    \textbf{Descripción} & \textbf{Coste mensual (€)} & \textbf{Meses} & \textbf{Coste (€)} \\
     \midrule
-    Portátil de desarrollo (amortización 6/48 meses sobre 1.000,00~€) & 1 & 125,00 \\
-    Suscripción a herramientas de IA (3 meses × 18,50~€/mes) & 3 meses & 55,50 \\
+    Amortización portátil & 20,83 & 6 & 125,00 \\
+    Suscripción de IA & 18,50 & 3 & 55,50 \\
     \midrule
-    \textbf{Subtotal} & & \textbf{180,50} \\
+    \textbf{Subtotal} & & & \textbf{180,50} \\
     \bottomrule
 \end{tabularx}
 \end{table}
 
 \section{Mano de obra}
 
-El desarrollo del proyecto ha requerido aproximadamente 300 horas de trabajo distribuidas en tres fases: investigación del dominio y diseño del lenguaje, implementación del compilador en Rust y redacción de la presente memoria. La tarifa aplicada es de 15,00~€ por hora, correspondiente a un perfil de ingeniero de software junior en España.
+El desarrollo del proyecto ha requerido aproximadamente 300 horas de trabajo distribuidas en tres fases: investigación del dominio y diseño del lenguaje, implementación del compilador en Rust y redacción de la presente memoria. Las dos primeras fases se retribuyen a 15,00~€ por hora, correspondiente a un perfil de ingeniero de software junior en España, mientras que la redacción de la memoria se retribuye a 10,00~€ por hora, una tarifa de redacción técnica más baja al tratarse de un perfil distinto al de desarrollo de software.
 
 \begin{table}[!ht]
 \centering
@@ -37,9 +37,9 @@ El desarrollo del proyecto ha requerido aproximadamente 300 horas de trabajo dis
     \midrule
     Investigación y diseño & 80 & 15,00 & 1.200,00 \\
     Desarrollo del compilador & 150 & 15,00 & 2.250,00 \\
-    Redacción de la memoria & 70 & 15,00 & 1.050,00 \\
+    Redacción de la memoria & 70 & 10,00 & 700,00 \\
     \midrule
-    \textbf{Total} & \textbf{300} & & \textbf{4.500,00} \\
+    \textbf{Total} & \textbf{300} & & \textbf{4.150,00} \\
     \bottomrule
 \end{tabularx}
 \end{table}
@@ -55,9 +55,9 @@ El desarrollo del proyecto ha requerido aproximadamente 300 horas de trabajo dis
     \textbf{Concepto} & \textbf{Coste (€)} \\
     \midrule
     Recursos y herramientas & 180,50 \\
-    Mano de obra & 4.500,00 \\
+    Mano de obra & 4.150,00 \\
     \midrule
-    \textbf{Coste total del proyecto} & \textbf{4.680,50} \\
+    \textbf{Coste total del proyecto} & \textbf{4.330,50} \\
     \bottomrule
 \end{tabularx}
 \end{table}

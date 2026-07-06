@@ -19,8 +19,6 @@ El análisis del estado del arte realizado en el capítulo anterior evidencia un
 
 La tensión central que estos principios deben resolver es la aparente incompatibilidad entre la inmutabilidad funcional y la naturaleza de los circuitos cuánticos, que transforman el estado. La sección siguiente describe el modelo conceptual que reconcilia ambas.
 
-\subsection{Particularidades del lenguaje}
-
 Una restricción de diseño fundamental, impuesta por las limitaciones del hardware cuántico actual y por el modelo de ejecución de OpenQASM~3 (el formato de destino del compilador), es que Qalc no admite recursividad. Un circuito cuántico es, en última instancia, una estructura finita y estática de puertas que debe quedar completamente determinada en tiempo de compilación, pues no existe sobre la QPU una pila de llamadas ni un mecanismo de invocación dinámica que permita que una función se invoque a sí misma un número de veces no acotado a priori. Por ello, OpenQASM~3 carece de recursión y exige que toda repetición sea acotada y desplegable estáticamente en una secuencia concreta de operaciones.
 
 En consecuencia, Qalc es un lenguaje funcional en el que el resultado se describe mediante la composición de transformaciones no recursivas, y no a través de la recursión característica de los lenguajes funcionales clásicos. La repetición de un patrón sobre una estructura de tamaño conocido (por ejemplo, aplicar una puerta a cada cúbit de un registro) se expresa mediante combinadores de orden superior (como \lstinline|map|) cuyo número de pasos queda fijado al compilar, de modo que el circuito resultante es siempre finito y materializable. Esta decisión no es una carencia del lenguaje, sino el reflejo directo, en su modelo de cómputo, de lo que el sustrato físico puede ejecutar.
@@ -32,7 +30,7 @@ La disciplina lineal impone una segunda particularidad que se hace visible en el
 
 El núcleo semántico de Qalc consiste en tratar las variables cuánticas no como valores reutilizables, sino como recursos lineales, es decir, entidades que representan un circuito en construcción y que deben consumirse exactamente una vez.
 
-\subsection{El problema del aliasing y la no clonación}
+\subsection{Problema del aliasing y no clonación}
 
 El teorema de no clonación establece que no existe ninguna operación física capaz de duplicar un estado cuántico arbitrario desconocido. En un lenguaje con semántica de valores convencional, la simple reutilización de una variable introduce aliasing (dos referencias al mismo estado). Una expresión tan inocua como usar \lstinline|q| dos veces sugeriría duplicar la información cuántica que \lstinline|q| representa, lo cual no tiene contrapartida física válida. Cualquier lenguaje cuántico de alto nivel debe impedir esta situación; la diferencia entre propuestas reside en cuándo y cómo la impide. Qalc opta por impedirla estáticamente.
 
@@ -120,7 +118,6 @@ suma a b = a + b
 
 \end{itemize}
 
-\subsection{La disciplina lineal en el uso de los recursos cuánticos}
 \label{sec:disciplina_lineal_uso}
 
 El sistema de tipos divide los valores de un programa en dos categorías según cómo pueden usarse. Los valores clásicos (enteros, flotantes, booleanos clásicos, etc.) son ordinarios y pueden copiarse, reutilizarse cuantas veces se quiera o no usarse en absoluto. Los valores cuánticos (\lstinline|qbool|, \lstinline|qi16| y demás tipos cuánticos) son lineales, por lo que cada uno debe usarse exactamente una vez.
