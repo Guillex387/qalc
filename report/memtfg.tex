@@ -67,6 +67,9 @@
     \newfontfamily{\lmromanfont}{Latin Modern Roman}
 \fi
 
+% Las ecuaciones se numeran por capítulo (1.1, 1.2, ...), igual que tablas y figuras
+\numberwithin{equation}{chapter}
+
 % Configuración de listas (bullets — \setlist se aplica tras cargar enumitem)
 \setkomafont{itemizelabel}{\lmromanfont}
 \renewcommand{\labelitemi}{\textbullet}

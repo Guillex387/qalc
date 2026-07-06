@@ -20,28 +20,37 @@ Antes de analizar los lenguajes de programación cuántica existentes y presenta
 \subsection{Cúbit y superposición}
 \label{subsec:cubit}
 
-La unidad fundamental de información en la computación cuántica es el cúbit. A diferencia del bit clásico, que en todo momento tiene un valor concreto (cero o uno), el cúbit puede estar en una superposición de ambos estados a la vez. La forma más sencilla de entender esto es imaginar que el cúbit lleva asociados dos pesos, uno para el estado cero y otro para el estado uno, que indican con qué probabilidad se obtendrá cada resultado al medirlo.
+La unidad fundamental de información en la computación cuántica es el cúbit. A diferencia del bit clásico, que en todo momento tiene un valor concreto (0 o 1), el cúbit puede estar en una superposición de ambos estados a la vez. La forma más sencilla de entender esto es imaginar que el cúbit lleva asociados dos pesos, uno para el estado 0 y otro para el estado 1, que indican con qué probabilidad se obtendrá cada resultado al medirlo.
 
-Formalmente, esos pesos son dos números complejos $\alpha$ y $\beta$, y el estado del cúbit se expresa mediante la notación de Dirac
+Formalmente, esos pesos son dos números complejos $\alpha$ y $\beta$, y el estado del cúbit se expresa mediante la notación de Dirac.
 
-\[
+\begin{equation}
+\label{eq:cubit-superposicion}
 |\psi\rangle = \alpha|0\rangle + \beta|1\rangle
-\]
+\end{equation}
+\begin{center}
+\small\textit{Estado general de un cúbit en superposición}
+\end{center}
+Esta notación, como se indica en la Ecuación~\ref{eq:cubit-superposicion}, es la forma general del estado de un cúbit.
 
-La única restricción es que las probabilidades deben sumar el cien por cien, es decir, $|\alpha|^2 + |\beta|^2 = 1$. Al medir, se obtiene cero con probabilidad $|\alpha|^2$ y uno con probabilidad $|\beta|^2$. La superposición no es una simple ignorancia del valor real, sino una propiedad física que permite explotar los dos estados en paralelo hasta el momento en que se realiza la medición.
+Al medir se obtiene 0 con probabilidad $|\alpha|^2$ y 1 con probabilidad $|\beta|^2$. La única restricción es que las probabilidades deben sumar 1, es decir, $|\alpha|^2 + |\beta|^2 = 1$. La superposición no es una simple ignorancia del valor real, sino una propiedad física que permite explotar los dos estados en paralelo hasta el momento en que se realiza la medición.
 
 Con $n$ cúbits el efecto se multiplica, de modo que un sistema de $n$ cúbits puede representar $2^n$ combinaciones de pesos de forma simultánea, lo que abre la posibilidad de procesar en paralelo espacios de estados de tamaño exponencial con circuitos de profundidad relativamente corta.
 
 \subsection{Entrelazamiento cuántico}
 \label{subsec:entrelazamiento}
 
-Cuando dos o más cúbits interactúan, pueden quedar en un estado conjunto que no puede describirse como el producto de sus estados individuales. Este fenómeno se denomina entrelazamiento. El ejemplo más conocido es el primer estado de Bell, $|\Phi^+\rangle$
+Cuando dos o más cúbits interactúan, pueden quedar en un estado conjunto que no puede describirse como el producto de sus estados individuales. Este fenómeno se denomina entrelazamiento. El ejemplo más conocido es el primer estado de Bell.
 
-\[
+\begin{equation}
+\label{eq:bell}
 |\Phi^+\rangle = \frac{1}{\sqrt{2}}\left(|00\rangle + |11\rangle\right)
-\]
+\end{equation}
+\begin{center}
+\small\textit{Primer estado de Bell}
+\end{center}
 
-que se lee como "cero-cero y uno-uno con igual probabilidad". En este estado, ninguno de los dos cúbits tiene un valor propio definido, pero si se mide uno y se obtiene cero, el otro colapsará instantáneamente a cero también, independientemente de la distancia física entre ellos. El entrelazamiento subyace a algunas de las ventajas computacionales más relevantes de la computación cuántica, entre ellas la teleportación cuántica y la aceleración de ciertos algoritmos de búsqueda y factorización.
+Este estado, como se indica en la Ecuación~\ref{eq:bell}, se lee como \textit{00 y 11 con igual probabilidad}. En este estado, ninguno de los dos cúbits tiene un valor propio definido, pero si se mide uno y se obtiene 0, el otro colapsará instantáneamente a 0 también, independientemente de la distancia física entre ellos. El entrelazamiento subyace a algunas de las ventajas computacionales más relevantes de la computación cuántica, entre ellas la teleportación cuántica y la aceleración de ciertos algoritmos de búsqueda y factorización.
 
 Desde el punto de vista del diseño de lenguajes, el entrelazamiento implica que los cúbits no son recursos independientes. Modificar o medir un cúbit puede alterar el estado de cualquier otro con el que esté entrelazado, lo que hace que el análisis estático sobre el estado cuántico sea significativamente más complejo que en la computación clásica.
 
@@ -59,7 +68,7 @@ La conexión con el paradigma funcional es directa. Una puerta cuántica es una 
 \subsection{Medición y decoherencia}
 \label{subsec:medicion}
 
-Medir un cúbit es la única operación que no puede deshacerse. Al observar el estado de un cúbit en superposición, este elige instantáneamente entre devolver cero (con probabilidad $|\alpha|^2$) o uno (con probabilidad $|\beta|^2$). La superposición desaparece en ese instante y, desde ese momento, el cúbit se comporta como un bit clásico ordinario; las amplitudes que tenía antes de la medición se pierden de forma irrecuperable.
+Medir un cúbit es la única operación que no puede deshacerse. Al observar el estado de un cúbit en superposición, este instantáneamente devuelve 0 (con probabilidad $|\alpha|^2$) o 1 (con probabilidad $|\beta|^2$). La superposición desaparece en ese instante y, desde ese momento, el cúbit se comporta como un bit clásico ordinario; las amplitudes que tenía antes de la medición se pierden de forma irrecuperable.
 
 Un fenómeno relacionado, la decoherencia, ocurre cuando el cúbit interactúa involuntariamente con su entorno físico (vibraciones térmicas, campos electromagnéticos ambientales, vibraciones mecánicas). Cada interacción no controlada hace que las amplitudes se mezclen con el entorno y el cúbit pierda gradualmente su comportamiento cuántico, degradándose hacia un estado donde ya no hay superposición y los resultados son simplemente probabilísticos al modo clásico. Los cúbits físicos actuales aguantan en superposición entre microsegundos y milisegundos antes de que la decoherencia los degrade, lo que limita severamente la duración de los circuitos ejecutables.
 
@@ -68,13 +77,16 @@ Estas propiedades imponen dos restricciones sobre los lenguajes cuánticos. En p
 \subsection{Teorema de no clonación}
 \label{subsec:noclonacion}
 
-El teorema de no clonación establece que es imposible copiar el estado de un cúbit arbitrario desconocido sin destruirlo. Intuitivamente, copiar información cuántica implicaría conocerla primero, pero medirla para conocerla destruye la superposición. Formalmente, no existe ninguna operación cuántica $U$ que satisfaga
+El teorema de no clonación establece que es imposible copiar el estado de un cúbit arbitrario desconocido sin destruirlo. Intuitivamente, copiar información cuántica implicaría conocerla primero, pero medirla para conocerla destruye la superposición. Formalmente, no existe ninguna operación cuántica $U$ que satisfaga la siguiente igualdad.
 
-\[
-U\bigl(|\psi\rangle \otimes |0\rangle\bigr) = |\psi\rangle \otimes |\psi\rangle \quad \text{para todo } |\psi\rangle
-\]
-
-La razón es que todas las operaciones cuánticas (al ser reversibles) deben comportarse de forma lineal, y la copia no es lineal. Si $U$ copiase correctamente $|0\rangle$ y $|1\rangle$ por separado, al aplicarla a $\alpha|0\rangle + \beta|1\rangle$ produciría $\alpha(|00\rangle) + \beta(|11\rangle)$, que es un estado entrelazado diferente de tener dos copias independientes del estado original $(\alpha|0\rangle + \beta|1\rangle) \otimes (\alpha|0\rangle + \beta|1\rangle)$.
+\begin{equation}
+\label{eq:no-clonacion}
+U\bigl(|\psi\rangle \otimes |0\rangle\bigr) = |\psi\rangle \otimes |\psi\rangle \quad, \text{para todo } |\psi\rangle
+\end{equation}
+\begin{center}
+\small\textit{Igualdad que ninguna operación cuántica puede satisfacer (no clonación)}
+\end{center}
+Esta imposibilidad se formaliza en la Ecuación~\ref{eq:no-clonacion}. La razón es que todas las operaciones cuánticas (al ser reversibles) deben comportarse de forma lineal, y la copia no es lineal. Si $U$ copiase correctamente $|0\rangle$ y $|1\rangle$ por separado, al aplicarla a $\alpha|0\rangle + \beta|1\rangle$ produciría $\alpha(|00\rangle) + \beta(|11\rangle)$, que es un estado entrelazado diferente de tener dos copias independientes del estado original $(\alpha|0\rangle + \beta|1\rangle) \otimes (\alpha|0\rangle + \beta|1\rangle)$.
 
 Este principio tiene una consecuencia directa en el diseño de lenguajes de programación. Los lenguajes clásicos asumen implícitamente la semántica de copia para sus variables, de forma que leer una variable dos veces produce dos copias independientes del valor. Esta semántica es físicamente imposible para los cúbits. Un lenguaje cuántico sin mecanismos para controlar el uso de cada cúbit permite, sin ningún error de compilación, que una variable cuántica sea pasada a dos operaciones distintas, lo que equivale a intentar clonar su estado. El error solo se manifiesta en tiempo de ejecución física, con consecuencias difícilmente diagnosticables sobre el estado del procesador cuántico (QPU, del inglés \textit{Quantum Processing Unit}).
 
@@ -181,11 +193,11 @@ La Tabla~\ref{tab:comparativa} sintetiza las dimensiones de diseño más relevan
 \hline
 \textbf{Tecnología} & \textbf{Abstracción} & \textbf{No clonación} & \textbf{Descomputación} & \textbf{Post-medición} & \textbf{Backend} \\
 \hline
-Silq & Alta & Estática (\lstinline|qfree|) & Automática & Parcial & Simulador \\
+Silq & Alta & Estática & Automática & Parcial & Simulador \\
 \hline
-Q\# & Alta & Manual/tardía & Manual (\lstinline|Reset|) & No & QIR/LLVM \\
+Q\# & Alta & Manual & Manual & No & QIR/LLVM \\
 \hline
-Guppy & Alta & Estática lineal & Estática afín & Sí & QIR/LLVM \\
+Guppy & Alta & Estática & Estática & Sí & QIR/LLVM \\
 \hline
 Qiskit & Baja & Ninguna & Manual & No & OpenQASM \\
 \hline
@@ -193,7 +205,7 @@ Cirq & Baja & Ninguna & Manual & No & OpenQASM \\
 \hline
 Quipper & Alta & Manual/Estática & Manual & Parcial & Circuitos \\
 \hline
-Twist & Media-alta & Estática+dinámica & Manual & Sí & Simulador \\
+Twist & Media-alta & Estática & Manual & Sí & Simulador \\
 \hline
 \end{tabularx}
 \end{table}
@@ -213,7 +225,7 @@ Del análisis precedente se extraen tres observaciones sobre el estado actual de
   \item \textit{Ausencia de backend estándar e interoperable en los lenguajes formales de alto nivel.} Los lenguajes funcionales y lógicos de mayor rigor formal (Quipper, Silq, Twist) generan como salida representaciones propietarias o simuladores internos que no son directamente ejecutables en hardware cuántico real. Concretamente, Quipper produce grafos de circuitos abstractos en Haskell, mientras que Silq y Twist solo operan sobre sus propios simuladores. Esto aísla al programador del ecosistema industrial y obliga a una retranscripción manual antes de poder ejecutar un programa en una QPU física.
 \end{itemize}
 
-OpenQASM~3 es el estándar abierto de facto para la descripción de circuitos cuánticos \cite{openqasm3_2022}. A diferencia de las versiones anteriores, OpenQASM~3 incorpora soporte para control de flujo clásico (condicionales y bucles basados en resultados de medición), lo que lo convierte en una representación de salida adecuada para programas cuánticos modernos. Los principales proveedores de hardware (IBM Quantum, IonQ, Rigetti) aceptan OpenQASM~3 de forma nativa o a través de sus transpiladores, lo que permite ejecutar el mismo circuito en múltiples arquitecturas físicas sin recompilación. Los entornos industriales que sí generan OpenQASM (Qiskit, Cirq) carecen de las garantías formales analizadas anteriormente. Esta observación constituye el segundo objetivo de diseño de Qalc.
+OpenQASM~3 es el estándar abierto de facto para la descripción de circuitos cuánticos \cite{openqasm3_2022}. A diferencia de las versiones anteriores, este incorpora soporte para control de flujo clásico (condicionales y bucles basados en resultados de medición), lo que lo convierte en una representación de salida adecuada para programas cuánticos modernos. Los principales proveedores de hardware (IBM Quantum, IonQ, Rigetti) aceptan OpenQASM~3 de forma nativa o a través de sus transpiladores, lo que permite ejecutar el mismo circuito en múltiples arquitecturas físicas sin recompilación. Los entornos industriales que sí lo generan (Qiskit, Cirq) carecen de las garantías formales analizadas anteriormente. Esta observación constituye el segundo objetivo de diseño de Qalc.
 
 Qalc propone un lenguaje de programación cuántico de alto nivel con paradigma funcional, inspirado en la sintaxis de Haskell, que aborda simultáneamente las dos últimas observaciones. El modelo funcional trata los circuitos como valores: las operaciones no modifican estado global sino que devuelven nuevas representaciones del circuito en construcción. El lenguaje expone tipos de datos abstractos como \lstinline|qint| o \lstinline|qbool|, y permite componer operaciones mediante el operador pipe (\lstinline{|>}) y funciones de orden superior.
 
