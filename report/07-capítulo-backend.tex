@@ -1,66 +1,113 @@
 \chapter{Backend del compilador}
 \label{ch:backend}
 
-Este capítulo describe las tres fases finales del pipeline de Qalc, que transforman el \lstinline|TypedAST| ya verificado en el texto OpenQASM~3 que se ejecuta sobre hardware o simulador cuántico. El aplanador perezoso reduce el \lstinline|TypedAST| a un \lstinline|FlatAST|, una única expresión sin abstracción funcional pendiente. Sobre esa expresión aplanada, la comprobación de consumo lineal verifica que cada recurso cuántico se usa exactamente una vez, cerrando en tiempo de compilación la disciplina lineal presentada en el \autoref{sec:disciplina_lineal_uso}. Por último, la generación de código traduce el \lstinline|FlatAST| ya validado a instrucciones OpenQASM~3. La \autoref{tab:pipeline} sitúa estas tres fases dentro del pipeline completo del compilador.
+Este capítulo describe las tres fases finales del pipeline de Qalc, que transforman el \lstinline|TypedAST| ya verificado en el texto OpenQASM~3 que se ejecuta sobre hardware o simulador cuántico. El aplanador reduce el \lstinline|TypedAST| a un \lstinline|FlatAST|, una única expresión sin abstracción funcional pendiente. Sobre esa expresión aplanada, la comprobación de consumo lineal verifica que cada recurso cuántico se usa exactamente una vez, cerrando en tiempo de compilación la disciplina lineal presentada en el \autoref{sec:disciplina_lineal_uso}. Por último, la generación de código traduce el \lstinline|FlatAST| ya validado a instrucciones OpenQASM~3, tomando como punto de partida el propio \lstinline|main| del programa como circuito paramétrico. La \autoref{tab:pipeline} sitúa estas tres fases dentro del pipeline completo del compilador.
 
-\section{Aplanador perezoso}
+\section{Aplanador}
 \label{sec:inliner}
 
-El aplanador perezoso transforma el \lstinline|TypedAST| en un \lstinline|FlatAST|, una representación aplanada orientada directamente a la generación de código. La motivación es que el código OpenQASM~3 que se emitirá en la fase siguiente no tiene noción de abstracción funcional, pues es una secuencia plana de instrucciones de puerta sobre registros concretos. El aplanador cierra esa brecha materializando, en tiempo de compilación, todas las aplicaciones de función.
+El aplanador transforma el \lstinline|TypedAST| en un \lstinline|FlatAST|, una representación aplanada orientada directamente a la generación de código. La motivación es que el código OpenQASM~3 que se emitirá en la fase siguiente no tiene noción de abstracción funcional, pues es una secuencia plana de instrucciones de puerta sobre registros concretos. El aplanador cierra esa brecha materializando, en tiempo de compilación, todas las aplicaciones de función de usuario.
 
-El mecanismo consiste en interpretar el \lstinline|TypedAST| mediante una evaluación perezosa simbólica. El aplanador recorre el AST como si fuera un intérprete, pero en lugar de producir valores concretos, produce nodos del \lstinline|FlatAST|. El uso de thunks tiene un doble propósito. Por un lado, las expresiones que dependen de parámetros cuánticos de entrada, cuyo valor solo existe en tiempo de ejecución cuántica, se envuelven en thunks, es decir, nodos suspendidos del \lstinline|FlatAST| que representan un cómputo diferido y que el codegen traducirá directamente a secuencias de puertas. Por otro lado, la pereza permite omitir por completo el cómputo de las ramas o subexpresiones cuyo resultado nunca llega a demandarse, evitando así trabajo redundante que un aplanador estricto realizaría igualmente. Las expresiones cuyo valor puede determinarse completamente en tiempo de compilación (literales, aplicaciones de funciones conocidas sobre argumentos conocidos) se reducen directamente a su forma normal.
+El mecanismo es una sustitución sintáctica y estricta sobre el árbol, es decir, una beta-reducción clásica. El aplanador recorre el \lstinline|TypedAST| una única vez; cada vez que encuentra una aplicación completamente saturada de una función de usuario o de una lambda, sustituye directamente los parámetros por los argumentos y continúa recorriendo el cuerpo resultante. El resultado de esta fase es un único \lstinline|FlatAST|, una sola expresión que representa la totalidad del programa y que las dos fases siguientes de este capítulo recorren y transforman. Esta expresión contiene únicamente referencias a built-ins con sus argumentos concretos, composiciones secuenciales de operaciones y condicionales clásicos basados en resultados de medición. No existe ningún bloque \lstinline|let| estricto pendiente de una función definida por el usuario, pues todas las funciones han sido aplanadas y sus cuerpos sustituidos en el punto de llamada.
 
-La estrategia perezosa es necesaria porque el lenguaje usa combinadores de orden superior como \lstinline|map| para expresar la aplicación repetida de una operación a un slice de cúbits. El aplanador despliega estos combinadores en tiempo de compilación conociendo la longitud del slice (que es estática, ya que el tamaño de los registros cuánticos es fijo), produciendo una secuencia plana de aplicaciones de puerta sin ninguna abstracción pendiente.
+Toda aplicación curricada del árbol se clasifica antes de procesarla, según si su cabeza es una función de usuario o una lambda local con la aridad exacta del número de argumentos aplicados (reducible), con una aridad distinta (currificación parcial o sobreaplicación, todavía fuera de alcance y rechazada con un error de compilación) o si su cabeza es un built-in o un parámetro (se conserva tal cual, recorriendo únicamente sus subexpresiones).
 
-El resultado de esta fase es un único \lstinline|FlatAST|, una sola expresión que representa la totalidad del programa y que las dos fases siguientes de este capítulo recorren y transforman. Esa expresión contiene únicamente referencias a built-ins con sus argumentos concretos, composiciones secuenciales de operaciones, condicionales clásicos basados en resultados de medición y los thunks descritos a continuación. No existe ningún nodo lambda, ningún bloque \lstinline|let| ni ninguna referencia a funciones definidas por el usuario: todas han sido aplanadas y sus cuerpos sustituidos en el punto de llamada.
-
-Un thunk es la unidad básica que sostiene la pereza del aplanador, es decir, una celda que representa un cómputo que puede estar todavía sin realizar. En Rust, un thunk se modela como una enumeración con un estado explícito, de modo que el aplanador puede distinguir en todo momento si una subexpresión ya está resuelta, si es una operación irreducible o si sigue pendiente de forzarse.
-
-\begin{lstlisting}[language={}, caption=Esbozo del tipo Thunk que sostiene la pereza del aplanador]
-pub enum Thunk {
-    Value(FlatValue),
-    Atomic(BuiltinCall),
-    Pending(Box<Expression<Inferred>>),
-    Executed(Box<FlatValue>),
+\begin{lstlisting}[language={}, caption=Clasificación de una aplicación antes de aplanarla]
+enum TransformClass {
+    Reducible,
+    Curry,
+    Other,
 }
 \end{lstlisting}
 
-Cada variante corresponde a uno de los estados que puede atravesar una subexpresión durante el aplanado.
+Reducir una aplicación consiste en alfa-renombrar cada parámetro de la función a un nombre nuevo, para evitar capturas si ese mismo nombre aparece libre en algún argumento, y ligar cada nombre nuevo a su argumento aplanado mediante un \lstinline|LetBlock| marcado como no estricto, antes de continuar aplanando el cuerpo ya renombrado.
 
-\begin{itemize}
-  \item \lstinline|Value(FlatValue)|. La subexpresión ya es un valor conocido en tiempo de compilación (un literal o el resultado de reducir una aplicación de built-ins sobre argumentos conocidos) y no requiere ninguna evaluación diferida.
-  \item \lstinline|Atomic(BuiltinCall)|. La subexpresión es una única aplicación de built-in sobre argumentos ya resueltos, sin subexpresiones adicionales que evaluar; es la forma mínima que el codegen puede traducir directamente a una instrucción.
-  \item \lstinline|Pending(Box<Expression<Inferred>>)|. La subexpresión todavía no se ha forzado. Guarda una referencia al fragmento del \lstinline|TypedAST| pendiente de interpretar, que el aplanador evaluará únicamente cuando otra parte del programa demande su resultado.
-  \item \lstinline|Executed(Box<FlatValue>)|. El cómputo ya se forzó una vez y su resultado queda cacheado, de modo que una segunda demanda sobre el mismo thunk no repite el trabajo ni duplica las instrucciones emitidas.
-\end{itemize}
+\begin{lstlisting}[language={}, caption=Ligadura de argumentos tras alfa-renombrar los parámetros]
+Expression {
+    kind: ExpressionKind::LetBlock {
+        strict: false,
+        assigments,
+        value: Box::new(value),
+    },
+    meta: flat_meta(result_meta, FlatMark::Normal),
+}
+\end{lstlisting}
 
-La implementación actual de esta fase es bastante experimental. Cubre el aplanado de los combinadores de orden superior y el ciclo de vida del thunk descrito arriba para los casos más comunes del lenguaje, pero todavía no garantiza el aplanado correcto de todas las combinaciones posibles de bloques \lstinline|linear|, \lstinline|perform| y funciones de orden superior anidadas.
+Ese \lstinline|let| no estricto es únicamente la representación sintáctica de la ligadura dentro del árbol aplanado, y no un mecanismo de pereza real, ya que el aplanador no difiere ni memoiza ningún cómputo, sino que se limita a introducir un nombre para el argumento antes de sustituirlo. Un evaluador que respetara esa marca de no estrictura, forzando cada ligadura solo cuando su valor se demande, es una extensión futura que todavía no existe.
+
+El aplanador también tiene que resolver las funciones de orden superior del lenguaje, ya que un built-in como \lstinline|repeat| recibe como argumento una función en vez de un valor. Cuando una lambda se pasa como argumento de un built-in y no se puede reducir en el propio aplanador, se conserva en el \lstinline|FlatAST| como un nodo \lstinline|Lambda| residual, marcado con \lstinline|FlatMark::ResidualLambda|, aunque su cuerpo sí se aplana recursivamente por dentro. Cuando, en cambio, una lambda se pasa como argumento de una función de usuario, el aplanador la propaga internamente asociada al nombre de su parámetro y acaba beta-reduciéndola por completo en el punto en que esa función la aplica, de modo que ninguna lambda de este segundo tipo sobrevive hasta el \lstinline|FlatAST| final. Una lambda residual llega así intacta hasta la generación de código, que es la fase encargada de desplegarla en tiempo de compilación (\autoref{sec:repeat}); el \autoref{ch:demostracion} desarrolla un ejemplo completo de esta distinción.
+
+La implementación actual de esta fase es bastante experimental. Cubre el aplanado de aplicaciones saturadas y el tratamiento de lambdas residuales descrito arriba para los casos más comunes del lenguaje, pero la currificación parcial y la sobreaplicación de funciones todavía se rechazan con un error de compilación en vez de resolverse.
 
 \section{Comprobación de consumo único de recursos lineales}
 \label{sec:linear-checker}
 
 El \autoref{sec:disciplina_lineal_uso} establece que toda variable cuántica debe consumirse exactamente una vez a lo largo de su ámbito, sin poder descartarse ni duplicarse. Esta fase es la que hace cumplir esa garantía en tiempo de compilación, recorriendo el \lstinline|FlatAST| producido por el aplanador antes de que la generación de código emita ninguna instrucción.
 
-La comprobación se sitúa deliberadamente después del aplanador y no antes, sobre el \lstinline|TypedAST|. Antes de aplanar, un recurso lineal puede pasar de una función a otra a través de llamadas todavía no resueltas, de modo que contar sus usos exigiría seguir el flujo de valores a través de fronteras de función. Una vez aplanado el programa en una única expresión sin abstracciones pendientes, cada recurso lineal aparece directamente como argumento concreto de una aplicación de built-in, lo que permite contar sus apariciones de forma puramente sintáctica sobre el árbol.
+La comprobación se sitúa deliberadamente después del aplanador y no antes, sobre el \lstinline|TypedAST|. Antes de aplanar, un recurso lineal puede pasar de una función a otra a través de llamadas todavía no resueltas, de modo que contar sus usos exigiría seguir el flujo de valores a través de clausulas de funciones. Una vez aplanado el programa en una única expresión sin abstracciones pendientes, cada recurso lineal aparece directamente como argumento concreto de una aplicación de built-in, lo que permite contar sus apariciones de forma puramente sintáctica sobre el árbol.
 
-El diseño de esta fase es análogo en espíritu al \autoref{sec:recursivity-checker}: es una validación pura que no produce una representación nueva, sino que aprueba o rechaza el \lstinline|FlatAST| tal cual, de modo que la transformación es \lstinline|FlatAST| $\to$ \lstinline|FlatAST|. El comprobador recorre la expresión única del \lstinline|FlatAST| y mantiene, para cada identificador de tipo lineal en el ámbito, un contador de apariciones. Un recurso que termina su ámbito con un contador en cero indica una fuga, es decir, un cúbit que nunca se midió ni se liberó. Un contador mayor que uno indica una duplicación, que equivaldría a clonar información cuántica, algo prohibido por el teorema de no clonación. En cualquiera de los dos casos se emite un error de compilación con el span del recurso implicado, indicando si el problema es una fuga o una duplicación.
+El diseño de esta fase es análogo al \autoref{sec:recursivity-checker}, es decir, es una validación pura que no produce una representación nueva, sino que aprueba o rechaza el \lstinline|FlatAST| tal cual, de modo que la transformación es \lstinline|FlatAST| $\to$ \lstinline|FlatAST|. El comprobador recorre la expresión única del \lstinline|FlatAST| y mantiene, para cada identificador de tipo lineal en el ámbito, un contador de apariciones. Un recurso que termina su ámbito con un contador en cero indica una fuga, es decir, un cúbit que nunca se midió ni se liberó. Un contador mayor que uno indica una duplicación, que equivaldría a clonar información cuántica, algo prohibido por el teorema de no clonación. En cualquiera de los dos casos se emite un error de compilación con el span del recurso implicado, indicando si el problema es una fuga o una duplicación.
 
-Los thunks que introduce el aplanador reciben un tratamiento particular: un recurso lineal referenciado dentro de un thunk cuenta como usado en el punto en que el thunk se construye, no en el punto en que posteriormente se fuerza. De no ser así, un thunk forzado más de una vez internamente por el codegen produciría un conteo de usos incorrecto que no refleja el consumo real del programa fuente.
+Las lambdas residuales que introduce el aplanador reciben un tratamiento particular, ya que un recurso lineal referenciado dentro de una lambda residual cuenta como usado en el punto en que la lambda se construye, no en el punto en que posteriormente se despliega. De no ser así, una lambda desplegada más de una vez internamente por el codegen, como ocurre con el cuerpo de \lstinline|repeat|, produciría un conteo de usos incorrecto que no refleja el consumo real del programa fuente.
 
-Al igual que el aplanador, la implementación actual de esta fase es bastante experimental. El conteo de apariciones descrito arriba cubre las expresiones que el aplanador reduce a los nodos habituales del \lstinline|FlatAST|, pero la interacción entre el conteo y los casos menos comunes de thunks anidados todavía no está completamente cubierta por pruebas.
+Al igual que el aplanador, la implementación actual de esta fase es bastante experimental. El conteo de apariciones descrito arriba cubre las expresiones que el aplanador reduce a los nodos habituales del \lstinline|FlatAST|, pero la interacción entre el conteo y los casos menos comunes de lambdas residuales anidadas todavía no está completamente cubierta por pruebas.
 
 \section{Generación de código}
 \label{sec:codegen}
 
 La fase de generación de código toma el \lstinline|FlatAST| producido por el aplanador y emite texto OpenQASM~3 válido. OpenQASM~3 es el estándar abierto de descripción de circuitos cuánticos, adoptado por IBM Quantum, IonQ y Rigetti, entre otros proveedores~\cite{openqasm3_2022}. A diferencia de versiones anteriores, OpenQASM~3 incorpora construcciones de control de flujo clásico (condicionales y bucles acotados basados en resultados de medición) que se corresponden directamente con los nodos del \lstinline|FlatAST|.
 
-El diseño del codegen se estructura en dos partes. El preámbulo del fichero de salida declara la versión de OpenQASM~3, los registros cuánticos y clásicos necesarios, y las definiciones de las puertas derivadas de los built-ins que no están incluidas en el conjunto estándar de OpenQASM~3. Cada \lstinline|BuiltinDef| del crate \lstinline|qalc-builtins| tiene asociada una plantilla de emisión: para las operaciones aritméticas clásicas se emiten expresiones de OpenQASM~3; para las puertas cuánticas básicas (Hadamard, Pauli-X, CNOT, etc.) se emiten las instrucciones de puerta estándar del lenguaje.
+\subsection{Punto de entrada del programa}
+\label{sec:entry-point}
 
-El cuerpo del circuito se genera recorriendo el \lstinline|FlatAST| en orden topológico y emitiendo para cada nodo la instrucción OpenQASM~3 correspondiente: aplicaciones de puerta sobre cúbits concretos, mediciones con asignación a bits clásicos, y bloques \lstinline|if| condicionados a resultados de medición para el control de flujo clásico-cuántico. La correspondencia entre nodos del \lstinline|FlatAST| e instrucciones OpenQASM~3 es, por diseño, casi uno a uno; el trabajo de aplanar y especializar el programa ya ha sido realizado por el aplanador, de modo que el codegen puede limitarse a traducir sin necesidad de realizar transformaciones adicionales.
+\lstinline|main| es la única puerta de entrada de un programa Qalc, y el aplanador exige que tanto sus parámetros como su tipo de resultado sean clásicos, es decir, que no contengan en ningún punto un tipo lineal de los descritos en el \autoref{sec:disciplina_lineal_uso}. Esa comprobación se realiza justo después de desenvolver la cadena de flechas del tipo de \lstinline|main| en sus parámetros individuales, mediante \lstinline|Type::is_classical()|.
 
-La emisión de cada built-in se resuelve mediante una extensión del tipo \lstinline|BuiltinDef| introducido en la \autoref{sec:organizacion-crates}, que además del nombre y la firma de tipo incorpora el propio mecanismo de traducción al formato de salida.
+\begin{lstlisting}[language={}, caption=Comprobación de que los parámetros y el resultado de main son clásicos]
+for param in &params {
+    if !param.ttype.is_classical() {
+        return Err(Diagnostic::error(..., main_annotation.meta.span.clone()));
+    }
+}
+if !result_ty.is_classical() {
+    return Err(Diagnostic::error(..., main_annotation.meta.span.clone()));
+}
+\end{lstlisting}
 
-\begin{lstlisting}[language={}, caption=Esbozo de BuiltinDef parametrizado por backend y su emisión a OpenQASM 3]
+Esta restricción tiene una consecuencia directa en el estilo de programación en Qalc, ya que ningún valor cuántico se recibe ni se devuelve a través de \lstinline|main|. Un circuito, en cambio, se construye dentro del propio cuerpo mediante built-ins nombrados según el tipo que construyen (\lstinline|qcirc|, \lstinline|qi16|, \lstinline|qu8|, \lstinline|qbool|), cuyo argumento fija la anchura del registro o su valor inicial. Restringir \lstinline|main| a tipos clásicos es precisamente lo que permite a la generación de código traducir su firma directamente a los modificadores \lstinline|input|/\lstinline|output| de OpenQASM~3, obteniendo así un circuito paramétrico que se puede ejecutar con distintos valores clásicos de entrada sin recompilar.
+
+Cada parámetro clásico de \lstinline|main| se traduce en una línea \lstinline|input| indexada por su tipo (un \lstinline|f64|, por ejemplo, se traduce en \lstinline|input float[64]|), y el resultado final se traduce en una o varias líneas \lstinline|output|, según la aridad calculada al pelar el tipo de retorno (\autoref{sec:codegen}). Cuando ninguna de las constantes que necesita el programa depende de una entrada en tiempo de ejecución, \lstinline|main| puede no tomar ningún parámetro en absoluto; el \autoref{ch:demostracion} desarrolla un programa real donde esto ocurre, con su traducción completa a OpenQASM~3.
+
+\subsection{Arquitectura del emisor}
+\label{sec:emitter}
+
+La generación de código sigue un modelo de evaluación por efecto en el que cada valor cuántico es un alias de un registro físico recién reservado, y cada aplicación de built-in emite su instrucción correspondiente a la vez que devuelve el valor con el que continuar hilando el circuito. Todo ese estado mutable vive en un único emisor, que acumula el entorno de valores ya resueltos, los registros cuánticos y clásicos declarados, las definiciones de puerta no estándar que hay que emitir en el preámbulo y las instrucciones del cuerpo ya generadas.
+
+\begin{lstlisting}[language={}, caption=Estado mutable del emisor durante la generación de código]
+struct Emitter {
+    registry: HashMap<&'static str, OpenQasm3Transpilable>,
+    env: HashMap<String, QasmValue>,
+    qregs: Vec<(String, usize)>,
+    classical: Vec<ClassicalReg>,
+    gate_defs: BTreeSet<String>,
+    body: Vec<String>,
+    qreg_counter: usize,
+    measurement_counter: usize,
+    output_counter: usize,
+}
+\end{lstlisting}
+
+El emisor recorre la única expresión del \lstinline|FlatAST| con una función \lstinline|eval| que se ramifica según la forma del nodo, tal y como se explicó de forma general al principio de esta sección, produciendo en cada aplicación un \lstinline|QasmValue|, es decir, la forma ya reducida de un valor durante la emisión, ya sea la referencia a un registro cuántico completo, el índice de un cúbit concreto, una constante entera o de coma flotante, el nombre de una puerta pasada como valor a un combinador de orden superior, un fragmento clásico como el bit de una medición, o una tupla de cualquiera de los anteriores.
+
+Dentro de las aplicaciones de built-in, el emisor distingue dos grupos con arquitecturas distintas. Las puertas básicas sin estado (\lstinline|H|, \lstinline|X|, \lstinline|Y|, \lstinline|Z|, \lstinline|at|, \lstinline|controlled|, \lstinline|toffoli|, las rotaciones \lstinline|rx|/\lstinline|ry|/\lstinline|rz|) se resuelven mediante emisores puros registrados por nombre en un registro aparte (\autoref{sec:transpilable}), que reciben los argumentos ya evaluados y devuelven directamente el fragmento de texto de la instrucción, sin tocar ningún estado del emisor. Los built-ins que en cambio necesitan reservar registros nuevos o consultar el estado de emisión (los constructores de tipos cuánticos, la medición, las conversiones \lstinline|uncompute|, y las puertas que cruzan registro \lstinline|crossControlled|/\lstinline|crossToffoli|) se resuelven directamente como casos especiales dentro del propio emisor, ya que su comportamiento no puede expresarse como una función pura de sus argumentos.
+
+Construir un dato cuántico, por ejemplo, exige que su argumento (la anchura de un \lstinline|qcirc| o el valor inicial de un \lstinline|qi16|/\lstinline|qu8|/\lstinline|qbool|) sea una constante conocida en tiempo de compilación, ya que fija la anchura de una declaración \lstinline|qubit[N]| en el preámbulo del fichero; si el argumento resulta ser un valor clásico solo disponible en tiempo de ejecución (por ejemplo un parámetro de \lstinline|main|), el emisor rechaza el programa con un error de compilación en vez de generar un circuito inválido.
+
+\subsection{El rasgo Transpilable y la separación de registros de built-ins}
+\label{sec:transpilable}
+
+El diseño de las puertas puras se apoya en una extensión mínima que se añade sobre el emisor, no sobre \lstinline|BuiltinDef|, formada por un rasgo marcador \lstinline|Backend| que identifica un formato de salida soportado por el compilador y un rasgo \lstinline|Transpilable<B>| parametrizado sobre ese \lstinline|Backend|, cuyo único método recibe los argumentos ya evaluados de un built-in y devuelve el fragmento de código que lo representa.
+
+\begin{lstlisting}[language={}, caption=Firmas Backend y Transpilable y su implementación para OpenQASM 3]
 pub trait Backend {}
 
 pub struct OpenQasm3;
@@ -70,28 +117,53 @@ pub struct Quil;
 impl Backend for Quil {}
 
 pub trait Transpilable<B: Backend> {
-    fn transpile(&self, args: &[FlatValue]) -> String;
-}
-
-pub struct BuiltinDef<B: Backend> {
-    pub name: &'static str,
-    pub signature: TypeWithUnknow,
-    pub body: Box<dyn Transpilable<B>>,
+    fn transpile(&self, args: &[QasmValue]) -> String;
 }
 
 pub struct OpenQasm3Transpilable {
-    pub emit: fn(&[FlatValue]) -> String,
+    pub emit: fn(&[QasmValue]) -> String,
 }
 
 impl Transpilable<OpenQasm3> for OpenQasm3Transpilable {
-    fn transpile(&self, args: &[FlatValue]) -> String {
+    fn transpile(&self, args: &[QasmValue]) -> String {
         (self.emit)(args)
     }
 }
 \end{lstlisting}
 
-\lstinline|Backend| es un rasgo marcador, sin métodos propios, que identifica un formato de salida soportado por el compilador. \lstinline|OpenQasm3| es el struct que lo implementa para el backend actual; \lstinline|Quil|, el lenguaje de ensamblado cuántico de Rigetti, se incluye como ejemplo de un segundo backend hipotético para ilustrar la extensión. El rasgo \lstinline|Transpilable| se parametriza sobre ese \lstinline|Backend|, de modo que un mismo built-in puede tener una implementación de transpilación distinta para cada formato de salida sin que ambas compartan tipo. \lstinline|BuiltinDef| se parametriza igualmente, así que el compilador podría mantener un \lstinline|BuiltinDef<OpenQasm3>| y, en el futuro, un \lstinline|BuiltinDef<Quil>| para el mismo built-in, cada uno con su propia lógica de emisión, sin duplicar el resto de la definición. Todo built-in, sin excepción, se define mediante una implementación concreta del rasgo \lstinline|Transpilable|, cuyo único método, \lstinline|transpile|, recibe los argumentos ya aplanados del built-in y devuelve directamente el fragmento de código que lo representa. \lstinline|OpenQasm3Transpilable| es la implementación concreta que usa el backend actual e implementa \lstinline|Transpilable<OpenQasm3>|, envolviendo simplemente la función Rust que compone el fragmento de OpenQASM~3 de salida para ese built-in en particular, ya sea el nombre de una instrucción de puerta estándar o una expresión aritmética compuesta.
+\lstinline|OpenQasm3| es el struct que implementa \lstinline|Backend| para el backend actual; \lstinline|Quil|, el lenguaje de ensamblado cuántico de Rigetti, se incluye como ejemplo de un segundo backend hipotético para ilustrar la extensión, sin que exista todavía ninguna implementación de \lstinline|Transpilable<Quil>|. Parametrizar \lstinline|Transpilable| sobre el backend responde directamente al objetivo de diseño, ya mencionado en el \autoref{ch:arquitectura}, de mantener la arquitectura del compilador modular y extensible, ya que añadir soporte para un backend nuevo no exigiría modificar estos dos rasgos, sino únicamente definir el struct que marca el nuevo backend y aportar, para cada puerta pura, la implementación de \lstinline|Transpilable| correspondiente a ese backend. \lstinline|OpenQasm3Transpilable| es la implementación concreta que usa el backend actual, y envuelve simplemente la función Rust que compone el fragmento de OpenQASM~3 de salida para una puerta en particular.
 
-Parametrizar \lstinline|Transpilable| y \lstinline|BuiltinDef| sobre el backend responde directamente al objetivo de diseño, ya mencionado en el \autoref{ch:arquitectura}, de mantener la arquitectura del compilador modular y extensible. Añadir soporte para un backend nuevo no exigiría modificar \lstinline|BuiltinDef| ni \lstinline|Transpilable|, ni tocar \lstinline|qalc-builtins| ni el resto del pipeline, sino únicamente definir el struct que marca el nuevo backend y aportar, para cada built-in, la implementación de \lstinline|Transpilable| correspondiente a ese backend.
+Es importante no confundir este registro de emisión con el registro de firmas de tipos que consume el inferenciador de tipos (\lstinline|BuiltinDef|, introducido en el \autoref{sec:organizacion-crates}), ya que ambos están completamente desacoplados. \lstinline|BuiltinDef| solo transporta el nombre de un built-in y su firma de tipo, y no tiene ninguna relación con \lstinline|Transpilable| ni con el emisor. Añadir un built-in nuevo exige por tanto declarar su firma una vez en \lstinline|qalc-builtins|, para que el inferenciador de tipos lo acepte, y aportar por separado su lógica de emisión en \lstinline|qalc-codegen|, ya sea como una entrada en el registro de puertas puras o como un caso especial en el emisor. Esta separación es deliberada, ya que el cuerpo de un built-in es código Rust ordinario y no una expresión de Qalc, por lo que nunca pasa por las fases de comprobación de tipos ni de consumo lineal descritas en los capítulos anteriores, que solo recorren el AST del programa del usuario.
 
-El cuerpo de un built-in es código Rust ordinario y no una expresión de Qalc, por lo que nunca pasa por las fases de comprobación de tipos ni de consumo lineal descritas en los capítulos anteriores, que solo recorren el AST del programa del usuario. Esta asimetría es deliberada, ya que al quedar el cuerpo de los built-ins fuera del alcance de esas validaciones, la implementación de un built-in puede incorporar comportamientos ocultos o convenientes que no serían expresables ni permitidos en código Qalc ordinario, como gestionar registros clásicos o cúbits auxiliares que el programador no declaró explícitamente, o consultar contexto adicional del proceso de emisión. Esta libertad es la que permitirá, en implementaciones futuras del rasgo \lstinline|Transpilable|, resolver built-ins que necesiten comportamientos especiales para funcionar correctamente sin comprometer la disciplina que sí se exige al resto del programa.
+\subsection{Ensamblado final y promoción de salidas}
+\label{sec:assemble}
+
+Una vez evaluado el cuerpo de \lstinline|main|, ensamblar el fichero de salida es una operación puramente mecánica de concatenación de texto sobre estado ya decidido, en un orden fijo.
+
+\begin{enumerate}
+  \item La cabecera de versión.
+  \item Las definiciones de puerta no estándar.
+  \item Las líneas \lstinline|input| de los parámetros clásicos.
+  \item Las declaraciones \lstinline|qubit[N]| de los registros cuánticos reservados.
+  \item Las declaraciones \lstinline|output| o locales de los registros clásicos.
+  \item El cuerpo de instrucciones.
+\end{enumerate}
+
+Ninguna decisión sobre qué registro es entrada, salida o variable local se toma en esta fase, sino en el paso anterior.
+
+Esa decisión ocurre al traducir el valor final devuelto por \lstinline|eval| a los modificadores de salida de OpenQASM~3, recorriendo el tipo de resultado de \lstinline|main| en paralelo con la estructura del valor devuelto, para poder destructurar tuplas. Si el valor resultante es un registro clásico que ya está declarado, como el bit de una medición previa, ese registro se promociona in situ a \lstinline|output| en vez de declarar una variable nueva; si en cambio el valor es un literal o un registro sin declarar, se sintetiza un registro de salida nuevo con un nombre nuevo (\lstinline|out0|, \lstinline|out1|, \ldots) y se le asigna el valor mediante una instrucción de asignación adicional en el cuerpo. Esta promoción in situ es la que hace que un programa que termina con una medición exponga directamente el registro de esa medición como \lstinline|output|, en vez de declarar una variable de salida distinta que se limite a copiar su valor; el \autoref{ch:demostracion} muestra un caso real de esta promoción.
+
+\subsection{Iteración genérica con repeat}
+\label{sec:repeat}
+
+Qalc no tiene recursión, ya que el comprobador de recursión del \autoref{sec:recursivity-checker} la rechaza para garantizar que el aplanador termine, ni tiene tampoco combinadores de iteración genéricos como \lstinline|map| o \lstinline|fold|. Esto deja al built-in \lstinline|repeat :: i32 -> (qcirc -> qcirc) -> qcirc -> qcirc| como el único mecanismo del lenguaje capaz de dar a una función un parámetro de repetición genuino, es decir, un número de iteraciones que no está fijado de antemano en el código de la función sino que llega como argumento.
+
+Como se explicó en el \autoref{sec:inliner}, la lambda que se pasa a \lstinline|repeat| sobrevive al aplanador como un nodo \lstinline|Lambda| residual, ya que se pasa a un built-in y no a una función de usuario. La evaluación genérica de expresiones del emisor rechaza cualquier nodo \lstinline|Lambda| que llegue a evaluarse fuera de este caso, precisamente porque el emisor no sabe traducir combinadores de orden superior arbitrarios a instrucciones concretas. Por eso, antes de evaluar genéricamente los argumentos de una aplicación, el emisor comprueba primero si su cabeza es \lstinline|repeat| y, si lo es, desvía el control a un caso especial que sí sabe tratar la lambda como tal.
+
+\begin{lstlisting}[language={}, caption=Intercepción de repeat antes de la evaluación genérica de argumentos]
+if name == "repeat" {
+    return self.eval_repeat(&arg_exprs, expr.meta.span.clone());
+}
+\end{lstlisting}
+
+Ese caso especial exige que el número de iteraciones sea una constante conocida en tiempo de compilación, extrae la lambda literal de un único parámetro del segundo argumento y despliega su cuerpo tantas veces como iteraciones se pidan, encadenando cada resultado como el valor de entrada de la siguiente iteración. El resultado es una secuencia de instrucciones en línea recta, sin ningún bucle en el propio texto OpenQASM~3; el \autoref{sec:grover-main} desarrolla un ejemplo completo de este despliegue sobre un algoritmo real.

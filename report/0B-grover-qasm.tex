@@ -1,0 +1,54 @@
+\chapter{Código OpenQASM 3 de la demostración de Grover}
+\label{ch:grover-qasm}
+
+Este apéndice recoge el texto OpenQASM~3 completo que emite el compilador para \lstinline|examples/grover_2bit.qalc|, comentado y descrito en el \autoref{ch:demostracion}. Se reproduce tal cual lo produce \lstinline|qalc-cli|, sin ninguna edición manual salvo el ajuste de los saltos de línea para que quepa en el ancho de la página.
+
+\begin{lstlisting}[language={}, caption=Salida OpenQASM 3 completa de la demostración de Grover]
+OPENQASM 3.0;
+include "stdgates.inc";
+qubit[2] q0;
+qubit[2] q1;
+qubit[2] q2;
+qubit[2] q3;
+qubit[1] q4;
+qubit[1] q5;
+qubit[1] q6;
+output bit[2] c0;
+
+h q0;
+x q1[0];
+x q2[0];
+x q2[1];
+cx q0[0], q3[0];
+cx q1[0], q3[0];
+ccx q0[0], q1[0], q4[0];
+cx q0[1], q3[1];
+cx q1[1], q3[1];
+cx q4[0], q3[1];
+ccx q0[1], q1[1], q5[0];
+ccx q0[1], q4[0], q5[0];
+ccx q1[1], q4[0], q5[0];
+// uncompute q5
+// uncompute q4
+x q6;
+h q6;
+cx q3[0], q2[0];
+x q2[0];
+cx q3[1], q2[1];
+x q2[1];
+ccx q2[0], q2[1], q6[0];
+x q2[1];
+cx q3[1], q2[1];
+x q2[0];
+cx q3[0], q2[0];
+// uncompute q6
+// uncompute q2
+// uncompute q3
+// uncompute q1
+h q0;
+x q0;
+cz q0[0], q0[1];
+x q0;
+h q0;
+c0 = measure q0;
+\end{lstlisting}
