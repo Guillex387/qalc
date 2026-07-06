@@ -184,29 +184,23 @@ La Tabla~\ref{tab:comparativa} sintetiza las dimensiones de diseño más relevan
   \item \textit{Backend.} El formato al que compila finalmente cada tecnología. OpenQASM es un ensamblador cuántico estándar adoptado por varios fabricantes de hardware, mientras que QIR/LLVM reutiliza la infraestructura de los compiladores clásicos (LLVM) a través de una representación intermedia cuántica (QIR) previa a la generación de código nativo; ambos se retoman con más detalle más adelante en este mismo capítulo. Los valores \textit{simulador} y \textit{circuitos} indican que la tecnología no compila hacia ningún formato estándar interoperable con hardware de terceros, sino hacia una representación propia o directamente hacia un simulador software.
 \end{itemize}
 
-\begin{table}[h]
+\begin{table}[!ht]
 \centering
 \caption{Comparativa de lenguajes o entornos cuánticos}
 \label{tab:comparativa}
 \small
-\begin{tabularx}{\textwidth}{|l|C|C|C|C|C|}
-\hline
+\begin{tabularx}{\textwidth}{lCCCCC}
+\toprule
 \textbf{Tecnología} & \textbf{Abstracción} & \textbf{No clonación} & \textbf{Descomputación} & \textbf{Post-medición} & \textbf{Backend} \\
-\hline
+\midrule
 Silq & Alta & Estática & Automática & Parcial & Simulador \\
-\hline
 Q\# & Alta & Manual & Manual & No & QIR/LLVM \\
-\hline
 Guppy & Alta & Estática & Estática & Sí & QIR/LLVM \\
-\hline
 Qiskit & Baja & Ninguna & Manual & No & OpenQASM \\
-\hline
 Cirq & Baja & Ninguna & Manual & No & OpenQASM \\
-\hline
 Quipper & Alta & Manual/Estática & Manual & Parcial & Circuitos \\
-\hline
 Twist & Media-alta & Estática & Manual & Sí & Simulador \\
-\hline
+\bottomrule
 \end{tabularx}
 \end{table}
 
