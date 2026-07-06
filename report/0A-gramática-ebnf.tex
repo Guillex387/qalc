@@ -12,7 +12,7 @@ La transcripción conserva los nombres de regla originales, pero conviene tener 
 
 A lo largo de la gramática se emplean los siguientes auxiliares para las clases de caracteres.
 
-\begin{lstlisting}[language=EBNF, caption=Clases de caracteres auxiliares]
+\begin{lstlisting}[language={}, caption=Clases de caracteres auxiliares]
 letter          = ? carácter alfabético ASCII, a-z o A-Z ? ;
 digit           = ? dígito decimal ASCII, 0-9 ? ;
 hex_digit       = ? dígito hexadecimal ASCII, 0-9 a-f A-F ? ;
@@ -28,7 +28,7 @@ end_of_input    = ? fin de la entrada (EOI) ? ;
 
 Estas reglas definen qué secuencias de caracteres se ignoran entre tokens y cómo se delimitan los dos estilos de comentario del lenguaje, el de línea y el de bloque, este último anidable.
 
-\begin{lstlisting}[language=EBNF, caption=Reglas de espacios en blanco y comentarios]
+\begin{lstlisting}[language={}, caption=Reglas de espacios en blanco y comentarios]
 whitespace    = " " | tab | carriage_return | newline ;
 block_comment = "/*" , { block_comment | ( any_character - "*/" ) } , "*/" ;
 line_comment  = ( "//" | "#" ) , { any_character - newline } ,
@@ -41,7 +41,7 @@ comment       = line_comment | block_comment ;
 
 Estas reglas fijan las palabras clave reservadas del lenguaje y la forma que debe tener un identificador simple para no coincidir con ninguna de ellas.
 
-\begin{lstlisting}[language=EBNF, caption=Reglas de palabras reservadas e identificadores]
+\begin{lstlisting}[language={}, caption=Reglas de palabras reservadas e identificadores]
 keyword           = "if" | "else" | "let" | "type" | "in" | "then"
                   | "match" | "perform" | "linear" | "where" | "return" ;
 simple_identifier = ( ( letter | "_" ) , { letter | digit | "_" } )
@@ -53,7 +53,7 @@ simple_identifier = ( ( letter | "_" ) , { letter | digit | "_" } )
 
 Estas reglas cubren la sintaxis de los literales numéricos del lenguaje, tanto los enteros, escribibles en base decimal, hexadecimal o binaria y con un sufijo opcional que fija su anchura y signo, como los literales en coma flotante.
 
-\begin{lstlisting}[language=EBNF, caption=Reglas de literales numéricos]
+\begin{lstlisting}[language={}, caption=Reglas de literales numéricos]
 dec_integer    = digit , { digit } ;
 hex_integer    = "0x" , hex_digit , { hex_digit } ;
 bin_integer    = "0b" , ( "0" | "1" ) , { "0" | "1" } ;
@@ -86,7 +86,7 @@ literal        = f32_float | f64_float | unknow_float
 
 Estas reglas enumeran los símbolos de los operadores binarios del lenguaje y distinguen el subconjunto sobrecargable, es decir, el que puede declararse como una función de usuario con nombre de operador entre acentos graves. Los operadores de aplicación (\lstinline|$|) y de tubería (\lstinline{|>}) quedan fuera de ese subconjunto, ya que su significado es fijo.
 
-\begin{lstlisting}[language=EBNF, caption=Reglas de operadores]
+\begin{lstlisting}[language={}, caption=Reglas de operadores]
 apply_operator         = "$" ;
 pipe_operator          = "|>" ;
 logic_or_operator      = "||" ;
@@ -128,7 +128,7 @@ binary_operators = pipe_operator | apply_operator
 
 Estas reglas describen las expresiones átomo del lenguaje, es decir, las expresiones que todavía no contienen ningún operador binario en su nivel superior, como los identificadores, los literales, las tuplas, los slices, las lambdas y las distintas formas de aplicación de función.
 
-\begin{lstlisting}[language=EBNF, caption=Reglas de las expresiones átomo]
+\begin{lstlisting}[language={}, caption=Reglas de las expresiones átomo]
 operator_identifier     = "`" , overloadable_operators , "`" ;
 identifier              = simple_identifier | operator_identifier ;
 pattern                 = simple_identifier
@@ -157,7 +157,7 @@ slice_expression        = slice_items_expression | slice_range_expression ;
 
 Estas reglas describen las expresiones de bloque del lenguaje, es decir, \lstinline|let|, \lstinline|if|-\lstinline|else|, \lstinline|match| y los dos bloques monádicos, \lstinline|perform| y \lstinline|linear|, que comparten la misma estructura de cuerpo delimitado por llaves con enunciados separados por comas.
 
-\begin{lstlisting}[language=EBNF, caption=Reglas de las expresiones de bloque]
+\begin{lstlisting}[language={}, caption=Reglas de las expresiones de bloque]
 assigment_expression = pattern , "=" , expression ;
 let_block            = "let" , assigment_expression ,
                        { "," , assigment_expression } , "in" , expression ;
@@ -184,7 +184,7 @@ block_expression     = let_block | if_else_block | match_block
 
 Estas reglas cierran la gramática de expresiones combinando las expresiones átomo de la sección anterior mediante los operadores binarios, dando lugar a la producción \lstinline|expression| que emplea el resto de la gramática para referirse a una expresión completa del lenguaje.
 
-\begin{lstlisting}[language=EBNF, caption=Reglas de las expresiones binarias]
+\begin{lstlisting}[language={}, caption=Reglas de las expresiones binarias]
 expression_atom = block_expression | lambda_expression
                | partial_operation_right | partial_operation_left
                | call_expression | ( "(" , expression , ")" )
@@ -197,7 +197,7 @@ expression      = expression_atom , { binary_operators , expression_atom } ;
 
 Estas reglas describen la sintaxis de las anotaciones de tipo del lenguaje, incluidos los tipos con parámetros entre ángulos, las tuplas de tipos, los slices y los tipos función construidos con la flecha \lstinline|->|.
 
-\begin{lstlisting}[language=EBNF, caption=Reglas del sistema de tipos]
+\begin{lstlisting}[language={}, caption=Reglas del sistema de tipos]
 type_inner       = "(" , type , ")" ;
 type_slice       = "[" , type , "]" ;
 type_tuple       = ( "(" , type ,
@@ -214,7 +214,7 @@ type             = type_atom , { "->" , type_atom } ;
 
 Estas reglas cierran la gramática con las declaraciones de nivel superior, funciones y tipos, y con \lstinline|program|, la producción inicial que constituye el punto de entrada del analizador sintáctico, delimitada por los anclajes \lstinline|SOI| y \lstinline|EOI|.
 
-\begin{lstlisting}[language=EBNF, caption=Reglas de declaraciones y producción inicial]
+\begin{lstlisting}[language={}, caption=Reglas de declaraciones y producción inicial]
 type_function_annotation = identifier , "::" , type ;
 type_restriction         = "linear" ;
 type_declaration         = "type" , simple_identifier , "{" ,

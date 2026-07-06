@@ -292,7 +292,7 @@ bell c = c |> at 0 H |> controlled 0 1 X;
 
 El algoritmo de búsqueda de Grover ilustra cómo el lenguaje combina tipos lineales, el bloque \lstinline|linear| y la composición funcional en el nivel alto. El elemento característico del algoritmo es el oráculo, es decir, una función que marca las soluciones del problema. Aquí se busca el conjunto de valores \lstinline|x| que satisfacen $x^3 = 125$. En Qalc, el oráculo es una función ordinaria.
 
-\begin{lstlisting}[language={}, caption=Oráculo de Grover para la condición x^3 = 125]
+\begin{lstlisting}[language={}, caption={Oráculo de Grover para la condición $x^3 = 125$}]
 oracle :: qi16 -> (qi16, qbool)
 oracle x = linear {
   cube <- qPowConst 3i16 x,         // x^3

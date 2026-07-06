@@ -61,6 +61,15 @@ El modelo de circuitos cuánticos es la abstracción de cómputo estándar en la
 
 Algunas puertas fundamentales son la puerta Hadamard (H), que lleva un cúbit del estado base $|0\rangle$ a la superposición uniforme $\frac{1}{\sqrt{2}}(|0\rangle + |1\rangle)$; la puerta CNOT (del inglés \textit{Controlled NOT}), que invierte el segundo cúbit si y solo si el primero vale uno, creando entrelazamiento entre ambos; y la puerta de Toffoli, que extiende la lógica clásica reversible a tres cúbits y es la base de la aritmética cuántica. El conjunto formado por las puertas Hadamard, T y CNOT es suficiente para expresar cualquier operación cuántica posible con la precisión deseada, lo que hace de estas tres puertas un juego de construcción completo para cualquier algoritmo.
 
+La \autoref{fig:bell-circuito} muestra el circuito más sencillo que ilustra ambas ideas a la vez, una puerta Hadamard sobre el primer cúbit seguida de una puerta CNOT entre ambos, que prepara precisamente el estado de Bell presentado en la Subsección~\ref{subsec:entrelazamiento}.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.6\textwidth]{images/bell_circuit}
+  \caption{Circuito cuántico de dos cúbits que prepara un estado de Bell}
+  \label{fig:bell-circuito}
+\end{figure}
+
 El hardware cuántico actual se enmarca en el paradigma NISQ~\cite{preskill_2018}, que designa procesadores con decenas o pocos cientos de cúbits sin corrección de errores cuántica. Esta realidad impone restricciones directas sobre la profundidad de los circuitos que pueden ejecutarse con resultados útiles, y hace que la eficiencia en la generación de código sea un criterio relevante para el compilador.
 
 La conexión con el paradigma funcional es directa. Una puerta cuántica es una función pura que recibe un estado como entrada y devuelve uno nuevo sin efectos laterales. Un circuito cuántico es, en consecuencia, la composición secuencial y paralela de tales funciones, exactamente el modelo que Qalc adopta para la construcción de programas.
