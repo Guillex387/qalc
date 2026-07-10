@@ -132,8 +132,8 @@ pub(super) fn inline_expr(
           meta: flat_meta(meta, FlatMark::Normal),
         }),
         TransformClass::Curry => Err(Diagnostic::error(
-          "aplicación parcial o sobre-aplicación de función no soportada todavía",
-          "la currificación está fuera de alcance por ahora",
+          "partial application or over-application of a function is not supported yet",
+          "currying is out of scope for now",
           meta.span,
         )),
         TransformClass::Reducible => {
@@ -184,9 +184,9 @@ pub(super) fn inline_expr(
         } else {
           Err(Diagnostic::error(
             format!(
-              "referencia a la función '{name}' sin aplicar (orden superior) no soportada todavía"
+              "reference to function '{name}' without applying it (higher-order) is not supported yet"
             ),
-            "sólo se soportan llamadas completamente aplicadas por ahora",
+            "only fully applied calls are supported for now",
             meta.span,
           ))
         }

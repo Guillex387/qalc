@@ -1,0 +1,12 @@
+// ERROR INTENCIONADO (error de tipos).
+//
+// La anotación fija que `x` es `qbool`, pero la función aritmética `add` exige
+// `i32`. La inferencia de Hindley-Milner no puede unificar `qbool` con `i32` y
+// el compilador rechaza el programa señalando el punto exacto:
+//
+//   Error: Type mismatch: `i32` is not compatible with `qbool`
+combinar :: qbool -> i32
+combinar x = add x 1i32;
+
+main :: qio<u8>
+main = qcirc 1i32 |> H |> measure;

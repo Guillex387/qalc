@@ -213,8 +213,8 @@ impl Emitter {
         alternative,
       } => self.eval_if(test, consequent, alternative),
       ExpressionKind::Lambda { .. } => Err(Diagnostic::error(
-        "lambda residual no soportada por la generación de código",
-        "el codegen no traduce todavía combinadores de orden superior con lambdas",
+        "residual lambda not supported by code generation",
+        "codegen does not translate higher-order combinators with lambdas yet",
         expr.meta.span.clone(),
       )),
     }
@@ -235,8 +235,8 @@ impl Emitter {
 
     let ExpressionKind::Identifier(name) = &head.kind else {
       return Err(Diagnostic::error(
-        "cabeza de aplicación no soportada por la generación de código",
-        "se esperaba la aplicación de un built-in",
+        "application head not supported by code generation",
+        "expected the application of a built-in",
         expr.meta.span.clone(),
       ));
     };
@@ -267,8 +267,8 @@ impl Emitter {
   ) -> CompilerResult<QasmValue> {
     if arg_exprs.len() != 3 {
       return Err(Diagnostic::error(
-        "'repeat' espera exactamente 3 argumentos",
-        "uso: repeat n ronda valorInicial",
+        "'repeat' expects exactly 3 arguments",
+        "usage: repeat n round initialValue",
         span,
       ));
     }
@@ -277,23 +277,23 @@ impl Emitter {
     let n = self.require_const_int(&[n_value], "repeat", &span)?;
     let n = usize::try_from(n).map_err(|_| {
       Diagnostic::error(
-        "el número de iteraciones de 'repeat' debe ser un entero no negativo",
-        "no se puede desplegar un número negativo de veces",
+        "the iteration count of 'repeat' must be a non-negative integer",
+        "cannot unroll a negative number of times",
         span.clone(),
       )
     })?;
 
     let ExpressionKind::Lambda { params, body } = &arg_exprs[1].kind else {
       return Err(Diagnostic::error(
-        "el segundo argumento de 'repeat' debe ser una lambda literal",
-        "se esperaba una función de un parámetro (qcirc -> qcirc)",
+        "the second argument of 'repeat' must be a literal lambda",
+        "expected a one-parameter function (qcirc -> qcirc)",
         span,
       ));
     };
     let [param_name] = params.as_slice() else {
       return Err(Diagnostic::error(
-        "la lambda de 'repeat' debe tener exactamente un parámetro",
-        "se esperaba una función de un parámetro (qcirc -> qcirc)",
+        "the lambda of 'repeat' must have exactly one parameter",
+        "expected a one-parameter function (qcirc -> qcirc)",
         span,
       ));
     };
@@ -342,8 +342,8 @@ impl Emitter {
     }
 
     Err(Diagnostic::error(
-      format!("built-in sin emisor de código '{name}'"),
-      "no hay plantilla de emisión OpenQASM 3 para este built-in",
+      format!("built-in without a code emitter '{name}'"),
+      "there is no OpenQASM 3 emission template for this built-in",
       span,
     ))
   }
@@ -366,9 +366,9 @@ impl Emitter {
       .ok_or_else(|| {
         Diagnostic::error(
           format!(
-            "el argumento de '{builtin}' debe ser una constante entera conocida en tiempo de compilación"
+            "the argument of '{builtin}' must be an integer constant known at compile time"
           ),
-          "el tamaño o el valor inicial de un dato cuántico debe conocerse en tiempo de compilación para declararlo en OpenQASM 3",
+          "the size or initial value of a quantum datum must be known at compile time to declare it in OpenQASM 3",
           span.clone(),
         )
       })
@@ -412,8 +412,8 @@ impl Emitter {
     let width = self.require_const_int(args, "qcirc", span)?;
     let width = usize::try_from(width).map_err(|_| {
       Diagnostic::error(
-        "el tamaño de un 'qcirc' debe ser un entero no negativo",
-        "un registro cuántico no puede declararse con anchura negativa",
+        "the size of a 'qcirc' must be a non-negative integer",
+        "a quantum register cannot be declared with negative width",
         span.clone(),
       )
     })?;
@@ -461,8 +461,8 @@ impl Emitter {
       .map(str::to_string)
       .ok_or_else(|| {
         Diagnostic::error(
-          format!("argumento de registro inválido para '{builtin}'"),
-          "se esperaba un valor qcirc en esta posición",
+          format!("invalid register argument for '{builtin}'"),
+          "expected a qcirc value at this position",
           span.clone(),
         )
       })?;
@@ -471,8 +471,8 @@ impl Emitter {
       .and_then(QasmValue::as_index)
       .ok_or_else(|| {
         Diagnostic::error(
-          format!("argumento de índice inválido para '{builtin}'"),
-          "se esperaba un entero conocido en esta posición",
+          format!("invalid index argument for '{builtin}'"),
+          "expected a known integer at this position",
           span.clone(),
         )
       })?;
@@ -637,8 +637,8 @@ impl Emitter {
         Ok(())
       }
       (_, other) => Err(Diagnostic::error(
-        format!("no se pudo traducir el resultado de 'main' a una salida OpenQASM 3: {other:?}"),
-        "el resultado de 'main' debe reducirse a un valor clásico",
+        format!("could not translate the result of 'main' to an OpenQASM 3 output: {other:?}"),
+        "the result of 'main' must reduce to a classical value",
         span.clone(),
       )),
     }

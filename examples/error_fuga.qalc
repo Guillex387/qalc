@@ -1,0 +1,13 @@
+// ERROR INTENCIONADO (fuga de recurso).
+//
+// El recurso cuántico `d` se construye pero nunca se consume (ni se mide ni se
+// libera), dejando un cúbit "colgado". La disciplina lineal obliga a usar cada
+// recurso cuántico exactamente una vez, así que el comprobador lo rechaza:
+//
+//   Error: linear resource 'd' is never consumed (leak)
+main :: qio<u8>
+main = linear {
+  c = qcirc 1i32,
+  d = qcirc 1i32 |> H,
+  return measure c
+};

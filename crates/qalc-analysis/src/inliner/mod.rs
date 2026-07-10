@@ -61,8 +61,8 @@ impl CompilerStep for Inliner {
 
     let main = funcs.get("main").ok_or_else(|| {
       Diagnostic::error(
-        "no se encontró la función 'main'",
-        "el aplanado necesita una función de entrada llamada 'main'",
+        "function 'main' was not found",
+        "flattening requires an entry function named 'main'",
         fallback_span.clone(),
       )
     })?;
@@ -83,8 +83,8 @@ impl CompilerStep for Inliner {
         cursor = to;
       } else {
         return Err(Diagnostic::error(
-          "el tipo de 'main' no concuerda con su número de parámetros",
-          "no se pudo pelar el tipo función",
+          "the type of 'main' does not match its number of parameters",
+          "could not peel the function type",
           fallback_span,
         ));
       }
@@ -100,18 +100,18 @@ impl CompilerStep for Inliner {
       if !param.ttype.is_classical() {
         return Err(Diagnostic::error(
           format!(
-            "el parámetro '{}' de 'main' no es de un tipo clásico",
+            "parameter '{}' of 'main' is not of a classical type",
             param.name
           ),
-          "los parámetros de 'main' deben ser clásicos; construye los valores cuánticos dentro del cuerpo con qcirc/qi16/qbool",
+          "the parameters of 'main' must be classical; build quantum values inside the body with qcirc/qi16/qbool",
           main_annotation.meta.span.clone(),
         ));
       }
     }
     if !result_ty.is_classical() {
       return Err(Diagnostic::error(
-        "el resultado de 'main' no es de un tipo clásico",
-        "el resultado de 'main' debe ser clásico; mide o descomputa los recursos cuánticos antes de devolver el resultado",
+        "the result of 'main' is not of a classical type",
+        "the result of 'main' must be classical; measure or uncompute the quantum resources before returning the result",
         main_annotation.meta.span.clone(),
       ));
     }

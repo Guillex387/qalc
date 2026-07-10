@@ -1,0 +1,14 @@
+// ERROR INTENCIONADO (no clonación).
+//
+// El recurso cuántico `c` se mide dos veces. Medir consume el recurso lineal,
+// así que usarlo por segunda vez equivaldría a clonar su estado, algo prohibido
+// por el teorema de no clonación. El comprobador de consumo lineal lo rechaza:
+//
+//   Error: linear resource 'c' is used 2 times (duplication)
+main :: qio<u8>
+main = linear {
+  c = qcirc 1i32,
+  a = measure c,
+  b = measure c,
+  return a
+};

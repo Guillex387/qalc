@@ -135,13 +135,13 @@ fn ensure_single_use(name: &str, count: usize, span: Span) -> CompilerResult<()>
   match count {
     1 => Ok(()),
     0 => Err(Diagnostic::error(
-      format!("el recurso lineal '{name}' nunca se consume (fuga)"),
-      "este recurso cuántico debe usarse exactamente una vez",
+      format!("linear resource '{name}' is never consumed (leak)"),
+      "this quantum resource must be used exactly once",
       span,
     )),
     n => Err(Diagnostic::error(
-      format!("el recurso lineal '{name}' se usa {n} veces (duplicación)"),
-      "un recurso cuántico no puede clonarse ni consumirse más de una vez",
+      format!("linear resource '{name}' is used {n} times (duplication)"),
+      "a quantum resource cannot be cloned or consumed more than once",
       span,
     )),
   }
