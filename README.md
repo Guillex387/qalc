@@ -1,108 +1,111 @@
-# TFG: Qalc
+# Qalc
 
-## Tabla de Contenidos
+Qalc es un compilador para un lenguaje funcional con tipado estático fuerte,
+orientado a **computación cuántica**, escrito como un *workspace* de Rust. Su
+objetivo es abstraer la complejidad física de los circuitos cuánticos y ofrecer
+un modelo de programación de alto nivel, seguro y verificado en tiempo de
+compilación. La salida del compilador es **OpenQASM 3**.
 
-- [1. Introducción y Motivación](#1-introducción-y-motivación)
-- [2. Estado del Arte y Tecnologías Actuales](#2-estado-del-arte-y-tecnologías-actuales)
-- [3. Diseño del Lenguaje y Especificación](#3-diseño-del-lenguaje-y-especificación)
-- [4. Arquitectura del Compilador](#4-arquitectura-del-compilador)
-- [5. Análisis Semántico y Sistema de Tipos](#5-análisis-semántico-y-sistema-de-tipos)
-- [6. Generación de Código y Backend](#6-generación-de-código-y-backend)
-- [7. Metodología de Desarrollo y Pruebas](#7-metodología-de-desarrollo-y-pruebas)
-- [8. Conclusiones y Trabajo Futuro](#8-conclusiones-y-trabajo-futuro)
+El lenguaje ofrece lambdas, *pattern matching*, tipos lineales, aplicación
+parcial y bloques monádicos.
 
-Este documento prepara la redacción de la memoria técnica del proyecto. Aquí se estructura cada capítulo con su contenido principal y las ideas clave que deben desarrollarse.
+## El lenguaje
 
-## 1. Introducción y Motivación
+Qalc es funcional y de tipado estático con inferencia de tipos Hindley-Milner.
+Sus rasgos principales son:
 
-Contenido:
-- Define qué es la computación cuántica.
-- Explica por qué los lenguajes actuales basados en circuitos son una barrera para desarrolladores de software.
-- Muestra el problema de la complejidad física y la falta de abstracción en los SDK de bajo nivel.
+- **Tipos lineales.** Los recursos cuánticos (`qcirc`, `qbool`, `qi16`, `qu8`,
+  `qnum`) deben usarse exactamente una vez: no se pueden clonar ni descartar. El
+  compilador rechaza fugas (uso 0) y duplicaciones (uso >1), garantizando el
+  teorema de no-clonación de forma estática.
+- **Sin recursión ni bucles.** La recursión está prohibida para que el *inlining*
+  (beta-reducción total) siempre termine. La iteración se expresa con la
+  primitiva `repeat`.
+- **Separación clásico/cuántico.** Los parámetros y el resultado de `main` deben
+  ser tipos clásicos; esto permite traducirlos directamente a los modificadores
+  `input`/`output` de OpenQASM 3 y producir **circuitos paramétricos**.
+- **Bloques monádicos** (`linear { ... }`) para secuenciar operaciones con
+  efectos, y el operador *pipe* `|>` para encadenar transformaciones.
+- **Identificadores de operador** con *backticks* (`` `+` ``, `` `==` ``) que
+  permiten definir funciones invocables tanto con sintaxis infija como prefija.
 
-El Gancho:
-- Presenta la propuesta del lenguaje: abstraer la complejidad física para permitir algoritmos más complejos.
-- Menciona conceptos clave como la gestión de la "uncomputation".
-- Resalta la importancia de un sistema de tipos fuerte y seguro para programación cuántica.
+### Ejemplo: estado de Bell
 
-## 2. Estado del Arte y Tecnologías Actuales
+```qalc
+main :: f64 -> qio<u8>
+main theta = qcirc 2 |> at 0 H |> controlled 0 1 X |> rz theta |> measure;
+```
 
-Contenido:
-- Comparativa detallada entre SDKs de bajo nivel (Qiskit, Cirq, OpenQASM) y lenguajes de alto nivel (Silq, Q#).
-- Explica las fortalezas y debilidades de cada alternativa.
+`main` toma un ángulo clásico (`f64`) como *input* del circuito, construye un
+registro cuántico de 2 cúbits, le aplica una Hadamard sobre el cúbit 0, un CNOT
+controlado, una rotación `rz` parametrizada y finalmente lo mide.
 
-Punto clave:
-- Analiza las carencias actuales: verbosidad, falta de sistemas de tipos cuánticos fuertes, gestión manual de recursos cuánticos.
-- Justifica por qué se decide diseñar un lenguaje propio con un modelo semántico mejor adaptado.
+En `examples/` hay ejemplos más completos, incluyendo un algoritmo de Grover de
+2 bits (`grover_2bit.qalc`) con un sumador ripple-carry y un comparador de
+igualdad construidos a partir de puertas reales, además de varios ejemplos que
+ilustran errores capturados por el compilador (fuga de recursos, no-clonación,
+tipos).
 
-## 3. Diseño del Lenguaje y Especificación
+## Arquitectura del compilador
 
-Contenido:
-- Describe la visión del lenguaje y su filosofía de diseño.
-- Define la sintaxis general, las palabras clave principales y el sistema de tipos propuesto.
-- Incluye la gramática en formato EBNF.
-- Añade ejemplos de código ideal para mostrar cómo se expresaría un algoritmo cuántico.
+El compilador es un *pipeline* donde cada fase transforma el programa en una
+representación más rica:
 
-Importante:
-- Aunque el compilador no esté terminado al 100%, este capítulo debe estar completo como plano de diseño.
-- Debe mostrar claramente la intención del lenguaje y sus reglas básicas.
+```
+Texto fuente
+  → [qalc-parser]                     ConcreteAST     (gramática PEG con Pest)
+  → [qalc-analysis/normalizer]        NormalizedAST   (desugaring + simplificación)
+  → [qalc-analysis/recursion_checker] NormalizedAST   (rechaza recursión)
+  → [qalc-analysis/hm_inferrer]       TypedAST        (inferencia de tipos HM)
+  → [qalc-analysis/inliner]           FlatAST         (beta-reduce todas las llamadas no-builtin)
+  → [qalc-analysis/linear_checker]    FlatAST         (cada recurso lineal usado una vez)
+  → [qalc-codegen]                    OpenQASM 3      (texto)
+```
 
-## 4. Arquitectura del Compilador
+Cada fase implementa el *trait* `CompilerStep`, con tipos de entrada y salida
+separados. Todos los nodos del AST son genéricos sobre una implementación de
+`ASTMetadata`, lo que permite que los mismos tipos de nodo lleven metadatos
+distintos en cada fase (por ejemplo `Span` en el AST concreto/normalizado y
+`TypeMetadata` en el AST tipado).
 
-Contenido:
-- Detalla la infraestructura técnica ya montada.
-- Explica el pipeline de compilación y la abstracción `CompilerStep`.
-- Muestra cómo ese diseño permite modularidad y extensibilidad.
+### Estructura del workspace
 
-Pipeline de Compilación:
-- Describe la secuencia de fases: parser, normalizador, typechecker, backend.
-- Explica cómo cada fase transforma el AST y qué ganamos con ello.
+| Crate | Rol |
+|---|---|
+| `qalc-utils` | Base: `Source`, `Span`, `Diagnostic`, *trait* `CompilerStep` |
+| `qalc-ast` | Todos los tipos de AST: concreto, normalizado, tipado, plano, *scope* |
+| `qalc-builtins` | `BuiltinDef` y `standard_builtins()` (aritmética + puertas cuánticas + efectos) |
+| `qalc-parser` | Texto → `ConcreteAST` mediante Pest PEG + *parsing* de Pratt |
+| `qalc-analysis` | `ConcreteAST → NormalizedAST → TypedAST → FlatAST`, más los *checkers* de recursión y linealidad |
+| `qalc-codegen` | `FlatAST → OpenQASM 3` (experimental) |
+| `qalc-cli` | Ejecutable de entrada (emite OpenQASM 3 por stdout, volcados JSON intermedios por stderr) |
 
-Análisis Léxico y Sintáctico:
-- Describe el parser y el AST modular.
-- Resalta la gestión de metadatos dinámicos para rastreo de nodos y diagnóstico.
+Otros directorios:
 
-Sistema de Diagnósticos:
-- Explica cómo el compilador comunica errores al usuario.
-- Incluye detalles de mensajes claros, punteros a línea/columna y visualización de spans.
+- `examples/` — programas de ejemplo en Qalc.
+- `report/` — memoria técnica del proyecto (TFG) en LaTeX.
+- `scripts/` — utilidades auxiliares (p. ej. `render_qasm.py`).
 
-## 5. Análisis Semántico y Sistema de Tipos
+## Compilación y uso
 
-Contenido:
-- Describe cómo funciona el typechecker propuesto.
-- Menciona la tabla de símbolos y la gestión de ámbitos (scopes).
-- Explica las reglas de tipado cuántico planificadas.
+```bash
+# Compilar todos los crates
+cargo build
 
-Ejemplos de reglas:
-- Evitar la clonación de cúbits.
-- Gestión de recursos lineales y restricciones de uso.
-- Verificación de operaciones válidas sobre cúbits y tipos clásicos.
+# Ejecutar el compilador sobre un fichero fuente
+cargo run -p qalc-cli -- examples/bell.qalc
 
-Si alguna regla no está implementada, debe describirse como parte del diseño lógico.
+# Ejecutar todos los tests
+cargo test
 
-## 6. Generación de Código y Backend
+# Formatear (indentación de 2 espacios)
+cargo fmt
+```
 
-Contenido:
-- Describe el proceso de transformación del AST a un lenguaje de salida, por ejemplo OpenQASM.
-- Explica la estrategia y el patrón de diseño usado para recorrer el árbol y emitir instrucciones.
+El CLI emite el OpenQASM 3 resultante por `stdout` y los volcados intermedios
+del AST en JSON por `stderr`.
 
-Estrategia:
-- Si se usa un patrón como Visitor, descríbelo.
-- Si el backend está parcial, preséntalo como un módulo de validación básica de circuitos.
+## Licencia
 
-## 7. Metodología de Desarrollo y Pruebas
-
-Contenido:
-- Describe las herramientas usadas (Rust, posibles scripts de soporte, etc.).
-- Explica la estructura del desarrollo del proyecto.
-
-Validación:
-- Añade casos de prueba ya procesables por el compilador.
-- Muestra el código fuente de entrada y el AST generado para ejemplos concretos.
-
-## 8. Conclusiones y Trabajo Futuro
-
-Contenido:
-- Resume los logros actuales: arquitectura modular, parser robusto, sistema de diagnóstico bien definido.
-- Convierte lo que falta en una ventaja: hoja de ruta para librería estándar y optimizaciones avanzadas.
-- Muestra que el proyecto es escalable y profesional, con una base sólida para continuar.
+© Esta obra está bajo una licencia de Creative Commons
+Reconocimiento-CompartirIgual 4.0 Internacional.
