@@ -1,6 +1,6 @@
 # Qalc: un lenguaje funcional para computación cuántica</h2>
 
-> Versión en Markdown de la memoria original, equivalente al PDF [`TFG_Guillermo_DaniyPino.pdf`](TFG_Guillermo_DaniyPino.pdf). Las figuras están en [`assets/`](assets/). La numeración de capítulos, secciones, figuras, tablas y códigos es la del PDF; el índice general se reproduce sin números de página.
+> Versión en Markdown de la memoria original, equivalente al PDF [`memoria.pdf`](memoria.pdf). Las figuras están en [`assets/`](assets/). La numeración de capítulos, secciones, figuras, tablas y códigos es la del PDF; el índice general se reproduce sin números de página.
 
 ---
 
