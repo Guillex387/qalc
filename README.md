@@ -83,7 +83,7 @@ distintos en cada fase (por ejemplo `Span` en el AST concreto/normalizado y
 Otros directorios:
 
 - `examples/` — programas de ejemplo en Qalc.
-- `report/` — memoria técnica del proyecto (TFG) en LaTeX.
+- `docs/` — memoria del TFG: [PDF](docs/memoria.pdf) y [versión en Markdown](docs/memoria.md) (figuras en `docs/assets/`).
 - `scripts/` — utilidades auxiliares (p. ej. `render_qasm.py`).
 
 ## Compilación y uso
@@ -104,6 +104,10 @@ cargo fmt
 
 El CLI emite el OpenQASM 3 resultante por `stdout` y los volcados intermedios
 del AST en JSON por `stderr`.
+
+## Memoria del proyecto
+
+Este compilador es el resultado de un Trabajo de Fin de Grado (Grado en Ingeniería Informática, Universidad de La Laguna). La memoria completa, con el diseño del lenguaje, la arquitectura del compilador y la demostración con el algoritmo de Grover, está disponible en [`docs/memoria.pdf`](docs/memoria.pdf) y en [`docs/memoria.md`](docs/memoria.md).
 
 ## Licencia
 
